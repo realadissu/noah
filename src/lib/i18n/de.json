@@ -21,9 +21,9 @@
     "beamerDisconnected": "Beamer-Ausgabe im Standby"
   },
   "toolbar": {
-    "normal": "Normal (F4)",
-    "black": "Schwarz (F5)",
-    "clear": "Text aus (F6)",
+    "normal": "Folie mit Text anzeigen (F4)",
+    "black": "Schwarzes Bild (F5)",
+    "clear": "Folie ohne Text anzeigen (F6)",
     "logo": "Logo (F7)",
     "freeze": "Freeze (F8)",
     "toggleChords": "Akkorde",

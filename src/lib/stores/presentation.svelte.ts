@@ -256,7 +256,7 @@ const SECOND_SAMPLE_SONG: Song = {
 class PresentationStore {
   activeSong = $state<Song | null>(DEFAULT_SONG);
   activeSlideIndex = $state<number>(0);
-  displayMode = $state<DisplayMode>('normal');
+  displayMode = $state<DisplayMode>('black');
   showChords = $state<boolean>(false);
   detectedEncoding = $state<string>('UTF-8');
   fontScale = $state<number>(1.0);
@@ -343,6 +343,7 @@ class PresentationStore {
         song: this.activeSong,
         slideIndex: this.activeSlideIndex,
       });
+      invokeTauri('set_display_mode', { mode: 'black' });
     }
   }
 
@@ -440,6 +441,32 @@ class PresentationStore {
     }
   }
 
+  reorderSchedule(fromIndex: number, toIndex: number, position: 'before' | 'after' = 'after') {
+    if (
+      fromIndex < 0 ||
+      fromIndex >= this.schedule.length ||
+      toIndex < 0 ||
+      toIndex >= this.schedule.length
+    ) {
+      return;
+    }
+    if (fromIndex === toIndex) return;
+
+    const [item] = this.schedule.splice(fromIndex, 1);
+    if (!item) return;
+
+    let target = toIndex;
+    if (fromIndex < toIndex) {
+      target = position === 'after' ? toIndex : toIndex - 1;
+    } else {
+      target = position === 'after' ? toIndex + 1 : toIndex;
+    }
+
+    target = Math.max(0, Math.min(this.schedule.length, target));
+    this.schedule.splice(target, 0, item);
+    this.activeScheduleIndex = target;
+  }
+
   moveScheduleItem(fromIndex: number, toIndex: number) {
     if (
       fromIndex >= 0 &&
@@ -451,6 +478,26 @@ class PresentationStore {
       if (item) {
         this.schedule.splice(toIndex, 0, item);
         this.activeScheduleIndex = toIndex;
+      }
+    }
+  }
+
+  moveScheduleItemUp(index: number) {
+    if (index > 0 && index < this.schedule.length) {
+      const [item] = this.schedule.splice(index, 1);
+      if (item) {
+        this.schedule.splice(index - 1, 0, item);
+        this.activeScheduleIndex = index - 1;
+      }
+    }
+  }
+
+  moveScheduleItemDown(index: number) {
+    if (index >= 0 && index < this.schedule.length - 1) {
+      const [item] = this.schedule.splice(index, 1);
+      if (item) {
+        this.schedule.splice(index + 1, 0, item);
+        this.activeScheduleIndex = index + 1;
       }
     }
   }

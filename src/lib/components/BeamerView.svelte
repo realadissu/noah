@@ -42,7 +42,32 @@
     return `min(${horizontalVw.toFixed(2)}vw, ${verticalVh.toFixed(2)}vh)`;
   }
 
-  function handleBeamerEvent(event: BeamerEvent) {
+  async function refreshState() {
+    if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const state = await invoke<BeamerStateResponse>('get_beamer_state');
+        if (state) {
+          displayMode = state.display_mode;
+          if (state.active_song) {
+            activeSong = state.active_song;
+            const slide = state.active_song.slides[state.active_slide_index ?? 0] ?? null;
+            if (slide) {
+              if (currentLayer === 'A') {
+                slideA = slide;
+              } else {
+                slideB = slide;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Beamer window IPC state fetch error:', err);
+      }
+    }
+  }
+
+  async function handleBeamerEvent(event: BeamerEvent) {
     if (isFrozen && event.type !== 'SET_BLANK') {
       return;
     }
@@ -55,10 +80,14 @@
         break;
       }
       case 'CHANGE_SLIDE': {
-        if (!activeSong) return;
-        const found = activeSong.slides.find((s) => s.id === event.slideId);
-        if (found) {
-          updateSlideWithTransition(found);
+        if (!activeSong) {
+          await refreshState();
+        }
+        if (activeSong) {
+          const found = activeSong.slides.find((s) => s.id === event.slideId);
+          if (found) {
+            updateSlideWithTransition(found);
+          }
         }
         break;
       }
@@ -94,28 +123,28 @@
 
   onMount(() => {
     let unlisten: (() => void) | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     async function init() {
       if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
         try {
           const { listen } = await import('@tauri-apps/api/event');
-          const { invoke } = await import('@tauri-apps/api/core');
 
           unlisten = await listen<BeamerEvent>('beamer-event', (e) => {
             handleBeamerEvent(e.payload);
           });
 
-          // Fetch full beamer state snapshot (song, active slide, display mode)
-          const state = await invoke<BeamerStateResponse>('get_beamer_state');
-          if (state) {
-            displayMode = state.display_mode;
-            activeSong = state.active_song;
-            if (activeSong && state.active_slide_index !== undefined) {
-              const slide = activeSong.slides[state.active_slide_index] ?? null;
-              slideA = slide;
-              currentLayer = 'A';
+          await refreshState();
+
+          // Auto-recovery polling until song is loaded
+          pollInterval = setInterval(() => {
+            if (!activeSong) {
+              refreshState();
+            } else if (pollInterval) {
+              clearInterval(pollInterval);
+              pollInterval = null;
             }
-          }
+          }, 400);
         } catch (err) {
           console.warn('Beamer window IPC initialization error:', err);
         }
@@ -124,8 +153,13 @@
 
     init();
 
+    const handleFocus = () => { refreshState(); };
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       if (unlisten) unlisten();
+      if (pollInterval) clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocus);
     };
   });
 </script>

@@ -59,13 +59,13 @@
 
             <!-- Slide Box matching aspect ratio -->
             <div
-              class="w-full {getAspectRatioClass(presentation.aspectRatio)} rounded-lg border-2 transition-all duration-150 overflow-hidden relative shadow-md flex items-center justify-center p-4 text-center {isLive
-                ? 'border-emerald-500 ring-2 ring-emerald-500/50 shadow-emerald-950/40 bg-gradient-to-b from-sky-950/70 via-neutral-900 to-neutral-950 text-white'
+              class="w-full {getAspectRatioClass(presentation.aspectRatio)} rounded-xl border-2 transition-all duration-150 overflow-hidden relative shadow-md flex items-center justify-center p-4 text-center {isLive
+                ? 'border-emerald-500 ring-4 ring-emerald-500/25 shadow-lg shadow-emerald-500/15 bg-gradient-to-b from-sky-950 via-neutral-950 to-black text-white'
                 : presentation.uiMode === 'classic' && presentation.theme === 'light'
-                  ? 'border-neutral-400 bg-gradient-to-b from-sky-200 via-sky-100 to-sky-200 text-white'
+                  ? 'border-neutral-400 bg-gradient-to-b from-[#608ebf] via-[#4a7aa8] to-[#3a6691] text-white'
                   : presentation.theme === 'dark'
                     ? 'border-neutral-800 hover:border-neutral-700 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200'
-                    : 'border-neutral-300 hover:border-neutral-400 bg-white text-neutral-800'}"
+                    : 'border-slate-300 hover:border-slate-400 bg-slate-950 text-white shadow-sm'}"
             >
               <!-- Lyrics with accurate baseline alignment (Fixed chord layout) -->
               <div class="w-full max-w-full space-y-1.5 overflow-hidden font-sans">
@@ -84,7 +84,7 @@
                               <span class="text-[11px] font-mono font-bold text-amber-400 leading-tight h-4 select-none">
                                 {token.kind === 'ChordAndText' ? token.chord : '\u00A0'}
                               </span>
-                              <span class="font-bold text-sm md:text-base leading-snug whitespace-pre {presentation.theme === 'dark' || isLive || presentation.uiMode === 'classic' ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]' : 'text-neutral-900'}">
+                              <span class="font-bold text-sm md:text-base leading-snug whitespace-pre text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
                                 {token.text}
                               </span>
                             </span>
@@ -92,7 +92,7 @@
                         {/each}
                       </div>
                     {:else}
-                      <p class="font-bold text-sm md:text-base leading-snug tracking-wide {presentation.theme === 'dark' || isLive || presentation.uiMode === 'classic' ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]' : 'text-neutral-900'}">
+                      <p class="font-bold text-sm md:text-base leading-snug tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
                         {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
                       </p>
                     {/if}

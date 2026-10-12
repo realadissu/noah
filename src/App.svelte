@@ -157,7 +157,7 @@
       ? 'bg-neutral-950 text-neutral-100 dark'
       : presentation.uiMode === 'classic'
         ? 'bg-[#ece9d8] text-neutral-900 light'
-        : 'bg-neutral-100 text-neutral-900 light'}"
+        : 'bg-slate-100 text-slate-900 light'}"
     role="region"
     aria-label="Noah Presentation Control Studio"
     ondragover={(e) => e.preventDefault()}
@@ -175,9 +175,17 @@
 
       <!-- 3. Right Column: Output Monitors & Quick Controls (Collapsible, default closed) -->
       {#if presentation.isRightPanelOpen}
-        <section class="w-80 lg:w-96 border-l border-neutral-800 bg-neutral-950/95 p-3 flex flex-col gap-3 overflow-hidden select-none shrink-0 transition-all">
+        <section
+          class="w-80 lg:w-96 border-l p-3 flex flex-col gap-3 overflow-hidden select-none shrink-0 transition-all {presentation.theme === 'dark'
+            ? 'border-neutral-800 bg-neutral-950/95 text-neutral-100'
+            : 'border-slate-200 bg-white/95 text-slate-900'}"
+        >
           <!-- Top Half: Live Audience Beamer Preview (Exact Output Replica) -->
-          <div class="flex-1 flex flex-col rounded-xl border border-neutral-800 bg-black overflow-hidden relative shadow-xl">
+          <div
+            class="flex-1 flex flex-col rounded-xl border bg-black overflow-hidden relative shadow-xl {presentation.theme === 'dark'
+              ? 'border-neutral-800'
+              : 'border-slate-300'}"
+          >
             <div class="bg-neutral-900/90 border-b border-neutral-800 px-3 py-1.5 flex items-center justify-between text-[11px] font-medium text-neutral-400">
               <span class="flex items-center gap-1.5">
                 <span class="w-2 h-2 rounded-full {presentation.displayMode === 'normal' ? 'bg-red-500 animate-pulse' : 'bg-neutral-600'}"></span>

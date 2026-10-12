@@ -224,6 +224,25 @@ async fn open_beamer_window(
         .show()
         .map_err(|e| format!("Failed to show beamer window: {e}"))?;
 
+    // Push current song snapshot and blanking state to the beamer window immediately upon display
+    let song_snapshot = state.active_song.lock().await.clone();
+    let pres_snapshot = state.presentation.lock().await.clone();
+    if let Some(song) = song_snapshot {
+        let _ = app.emit(
+            "beamer-event",
+            BeamerEvent::SyncSong {
+                song: Box::new(song),
+                slide_index: pres_snapshot.active_slide_index,
+            },
+        );
+    }
+    let _ = app.emit(
+        "beamer-event",
+        BeamerEvent::SetBlank {
+            mode: pres_snapshot.display_mode,
+        },
+    );
+
     Ok(display_info)
 }
 
@@ -347,8 +366,11 @@ pub fn run() {
         }
     };
 
+    let mut initial_presentation = PresentationState::default();
+    initial_presentation.display_mode = DisplayMode::Black;
+
     let initial_state = AppState {
-        presentation: Mutex::new(PresentationState::default()),
+        presentation: Mutex::new(initial_presentation),
         active_song: Mutex::new(None),
         db,
     };

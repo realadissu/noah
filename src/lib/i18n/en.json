@@ -21,9 +21,9 @@
     "beamerDisconnected": "Audience Display Standby"
   },
   "toolbar": {
-    "normal": "Normal (F4)",
-    "black": "Black (F5)",
-    "clear": "Clear (F6)",
+    "normal": "Show slide with text (F4)",
+    "black": "Black screen (F5)",
+    "clear": "Show slide without text (F6)",
     "logo": "Logo (F7)",
     "freeze": "Freeze (F8)",
     "toggleChords": "Chords",
