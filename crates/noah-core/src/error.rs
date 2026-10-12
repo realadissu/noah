@@ -35,6 +35,9 @@ pub enum NoahError {
     #[error("State conflict: {0}")]
     StateConflict(String),
 
+    #[error("Database error: {0}")]
+    Database(String),
+
     #[error("Unsupported operation: {0}")]
     Unsupported(String),
 }

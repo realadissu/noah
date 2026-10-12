@@ -5,6 +5,8 @@
 
 pub mod error;
 pub mod models;
+pub mod storage;
 
 pub use error::{NoahError, NoahResult};
 pub use models::*;
+pub use storage::{SongDatabase, SongSearchResult};
