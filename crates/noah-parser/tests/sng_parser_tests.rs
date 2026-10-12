@@ -131,3 +131,25 @@ fn test_transposition_invariant_12_semitones() {
         );
     }
 }
+
+#[test]
+fn test_sng_serialization_roundtrip() {
+    let original = parse_sng_str(REFERENCE_SNG).expect("Original SNG should parse");
+    let serialized = noah_parser::serialize_sng(&original);
+
+    let reparsed = parse_sng_str(&serialized).expect("Serialized SNG should parse cleanly");
+
+    assert_eq!(reparsed.metadata.title, original.metadata.title);
+    assert_eq!(reparsed.metadata.author, original.metadata.author);
+    assert_eq!(reparsed.metadata.musical_key, original.metadata.musical_key);
+    assert_eq!(reparsed.metadata.verse_order, original.metadata.verse_order);
+    assert_eq!(reparsed.slides.len(), original.slides.len());
+
+    for (s_rep, s_orig) in reparsed.slides.iter().zip(original.slides.iter()) {
+        assert_eq!(s_rep.label, s_orig.label);
+        assert_eq!(s_rep.lines.len(), s_orig.lines.len());
+        for (l_rep, l_orig) in s_rep.lines.iter().zip(s_orig.lines.iter()) {
+            assert_eq!(l_rep.to_audience_string(), l_orig.to_audience_string());
+        }
+    }
+}
