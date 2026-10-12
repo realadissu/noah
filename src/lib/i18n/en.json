@@ -26,7 +26,6 @@
     "clear": "Clear (F6)",
     "logo": "Logo (F7)",
     "freeze": "Freeze (F8)",
-    "loadSample": "Load Sample",
     "toggleChords": "Chords",
     "openBeamer": "Start Beamer",
     "closeBeamer": "Stop Beamer",
@@ -37,7 +36,33 @@
     "screen": "Screen",
     "singleScreenNote": "Single-screen fallback mode (floating preview window)",
     "languages": "Languages",
-    "langAll": "All"
+    "langAll": "All",
+    "settings": "Settings",
+    "toggleTheme": "Toggle Theme",
+    "toggleUiMode": "Toggle UI Mode (Classic / Modern)"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "insert": "Insert",
+    "presentation": "Presentation",
+    "tools": "Tools",
+    "help": "Help"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "themeDark": "Dark Mode",
+    "themeLight": "Light Mode",
+    "uiMode": "UI Design",
+    "uiClassic": "SongBeamer Classic",
+    "uiModern": "Modern Studio",
+    "projection": "Projection & Monitors",
+    "aspectRatio": "Default Aspect Ratio",
+    "showChords": "Show chords on preview slides",
+    "close": "Done"
   },
   "nav": {
     "schedule": "Order of Service",
@@ -72,7 +97,7 @@
     "verseOrder": "Verse Order",
     "encoding": "Detected Encoding",
     "noSongLoaded": "No song loaded",
-    "loadHint": "Click 'Load Sample' or drag and drop an .sng file."
+    "loadHint": "Select a song from the schedule."
   },
   "section": {
     "verse": "Verse",

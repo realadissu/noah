@@ -1,18 +1,12 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
-  import LanguageSwitcher from './LanguageSwitcher.svelte';
   import type { DisplayMode, AspectRatio, SongSearchResult } from '$lib/types/models';
-
-  interface Props {
-    onLoadSample: () => void;
-  }
-
-  const { onLoadSample }: Props = $props();
 
   let searchQuery = $state<string>('');
   let searchResults = $state<SongSearchResult[]>([]);
   let showSearchResults = $state<boolean>(false);
+  let isMobileSearchOpen = $state<boolean>(false);
 
   function setMode(mode: DisplayMode) {
     presentation.setDisplayMode(mode);
@@ -56,56 +50,165 @@
       });
     }
     showSearchResults = false;
+    isMobileSearchOpen = false;
     searchQuery = '';
   }
 </script>
 
-<header class="h-13 border-b border-neutral-800 bg-neutral-900/95 px-3 flex items-center justify-between select-none gap-2 shrink-0">
-  <!-- Brand & Live Indicator -->
-  <div class="flex items-center space-x-3 shrink-0">
-    <div class="flex items-center space-x-2">
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center font-black text-neutral-950 text-sm shadow">
-        N
-      </div>
-      <div>
-        <h1 class="text-sm font-bold tracking-tight text-neutral-100 flex items-center gap-1.5 leading-none">
-          {t('app.title')}
-          <span class="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">v0.1</span>
-        </h1>
-      </div>
-    </div>
+<!-- Classic SongBeamer Menubar (Only shown in Classic UI Mode) -->
+{#if presentation.uiMode === 'classic'}
+  <nav class="h-6 px-2 text-xs flex items-center space-x-3 select-none border-b font-sans {presentation.theme === 'dark' ? 'bg-[#2d3139] border-neutral-700 text-neutral-300' : 'bg-[#f0f0f0] border-neutral-300 text-neutral-800'}">
+    <button type="button" class="px-1.5 py-0.5 hover:bg-black/10 rounded cursor-pointer">{t('menu.file')}</button>
+    <button type="button" class="px-1.5 py-0.5 hover:bg-black/10 rounded cursor-pointer">{t('menu.edit')}</button>
+    <button type="button" class="px-1.5 py-0.5 hover:bg-black/10 rounded cursor-pointer">{t('menu.insert')}</button>
+    <button type="button" class="px-1.5 py-0.5 hover:bg-black/10 rounded cursor-pointer" onclick={() => presentation.toggleBeamer()}>{t('menu.presentation')}</button>
+    <button type="button" class="px-1.5 py-0.5 hover:bg-black/10 rounded cursor-pointer" onclick={() => presentation.toggleSettings()}>{t('menu.tools')}</button>
+    <button type="button" class="px-1.5 py-0.5 hover:bg-black/10 rounded cursor-pointer" onclick={() => presentation.toggleSettings()}>{t('menu.help')}</button>
+  </nav>
+{/if}
 
-    <!-- Live indicator badge -->
-    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold {presentation.displayMode === 'normal' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-neutral-800 text-neutral-400 border border-neutral-700'}">
-      <span class="w-2 h-2 rounded-full {presentation.displayMode === 'normal' ? 'bg-red-500 animate-pulse' : 'bg-neutral-500'}"></span>
-      {presentation.displayMode === 'normal' ? t('status.live') : t('status.offline')}
+<header
+  class="h-12 px-2.5 flex items-center justify-between select-none gap-2 shrink-0 border-b transition-colors {presentation.theme === 'dark'
+    ? 'bg-neutral-900/95 border-neutral-800 text-neutral-100'
+    : presentation.uiMode === 'classic'
+      ? 'bg-[#e4e4e7] border-neutral-300 text-neutral-900'
+      : 'bg-white border-neutral-200 text-neutral-900'}"
+>
+  <!-- Left: Brand Logo & Status Indicator -->
+  <div class="flex items-center space-x-2 shrink-0">
+    <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center font-black text-neutral-950 text-sm shadow">
+      N
+    </div>
+    <span class="font-extrabold tracking-tight text-sm hidden sm:inline">
+      {t('app.title')}
+    </span>
+
+    <!-- Compact Live indicator -->
+    <div
+      class="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold {presentation.displayMode === 'normal'
+        ? 'bg-red-500/15 text-red-500 border border-red-500/30'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+          : 'bg-neutral-200 text-neutral-600 border border-neutral-300'}"
+    >
+      <span class="w-1.5 h-1.5 rounded-full {presentation.displayMode === 'normal' ? 'bg-red-500 animate-pulse' : 'bg-neutral-400'}"></span>
+      <span class="hidden md:inline">{presentation.displayMode === 'normal' ? t('status.live') : t('status.offline')}</span>
     </div>
   </div>
 
-  <!-- SongBeamer Quick Search: "Song suchen: [ ]" -->
-  <div class="relative flex items-center gap-1.5 text-xs text-neutral-300">
-    <span class="font-medium text-neutral-400 whitespace-nowrap text-[11px]">{t('search.label')}</span>
-    <input
-      type="text"
-      bind:value={searchQuery}
-      oninput={handleSearch}
-      onfocus={() => { if (searchResults.length > 0) showSearchResults = true; }}
-      onblur={() => setTimeout(() => { showSearchResults = false; }, 200)}
-      placeholder={t('search.placeholder')}
-      class="w-36 lg:w-48 px-2 py-1 bg-neutral-950 border border-neutral-700 rounded text-xs text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-amber-500"
-    />
+  <!-- Center-Left: Compact Blanking Controls (Icons with Tooltips) -->
+  <div class="flex items-center space-x-1 shrink-0">
+    <button
+      type="button"
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-sm transition border {presentation.displayMode === 'normal'
+        ? 'bg-emerald-500/25 border-emerald-500/60 text-emerald-400 ring-1 ring-emerald-500/40'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800/80 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
+          : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700'}"
+      onclick={() => setMode('normal')}
+      title={t('toolbar.normal')}
+    >
+      ▶️
+    </button>
+    <button
+      type="button"
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-sm transition border {presentation.displayMode === 'black'
+        ? 'bg-neutral-950 border-neutral-500 text-white ring-1 ring-neutral-400'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800/80 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
+          : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700'}"
+      onclick={() => setMode('black')}
+      title={t('toolbar.black')}
+    >
+      ⬛
+    </button>
+    <button
+      type="button"
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-sm transition border {presentation.displayMode === 'clear_text'
+        ? 'bg-sky-500/25 border-sky-500/60 text-sky-400 ring-1 ring-sky-500/40'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800/80 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
+          : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700'}"
+      onclick={() => setMode('clear_text')}
+      title={t('toolbar.clear')}
+    >
+      📄
+    </button>
+    <button
+      type="button"
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-sm transition border {presentation.displayMode === 'logo'
+        ? 'bg-amber-500/25 border-amber-500/60 text-amber-400 ring-1 ring-amber-500/40'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800/80 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
+          : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700'}"
+      onclick={() => setMode('logo')}
+      title={t('toolbar.logo')}
+    >
+      🏛️
+    </button>
+    <button
+      type="button"
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-sm transition border {presentation.displayMode === 'frozen'
+        ? 'bg-blue-500/25 border-blue-500/60 text-blue-400 ring-1 ring-blue-500/40'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800/80 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
+          : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700'}"
+      onclick={() => setMode('frozen')}
+      title={t('toolbar.freeze')}
+    >
+      ❄️
+    </button>
+  </div>
 
-    {#if showSearchResults && searchResults.length > 0}
-      <div class="absolute left-0 top-full mt-1 w-64 bg-neutral-900 border border-neutral-700 rounded-md shadow-2xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+  <!-- Center: Quick Search (Responsive: hidden on very narrow, button toggleable) -->
+  <div class="relative flex items-center text-xs">
+    <div class="hidden md:flex items-center gap-1.5">
+      <input
+        type="text"
+        bind:value={searchQuery}
+        oninput={handleSearch}
+        onfocus={() => { if (searchResults.length > 0) showSearchResults = true; }}
+        onblur={() => setTimeout(() => { showSearchResults = false; }, 200)}
+        placeholder={t('search.placeholder')}
+        class="w-32 lg:w-44 px-2 py-1 rounded text-xs border transition focus:outline-none {presentation.theme === 'dark'
+          ? 'bg-neutral-950 border-neutral-700 text-neutral-100 placeholder-neutral-500 focus:border-amber-500'
+          : 'bg-white border-neutral-300 text-neutral-900 placeholder-neutral-400 focus:border-amber-500'}"
+      />
+    </div>
+
+    <!-- Search icon for narrow screens -->
+    <button
+      type="button"
+      class="md:hidden w-7 h-7 rounded flex items-center justify-center text-xs border {presentation.theme === 'dark' ? 'bg-neutral-800 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-300 text-neutral-700'}"
+      onclick={() => { isMobileSearchOpen = !isMobileSearchOpen; }}
+      title={t('search.label')}
+    >
+      🔍
+    </button>
+
+    {#if isMobileSearchOpen}
+      <div class="absolute left-0 top-full mt-1 z-50 p-2 rounded-lg border shadow-xl {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-300'}">
+        <input
+          type="text"
+          bind:value={searchQuery}
+          oninput={handleSearch}
+          placeholder={t('search.placeholder')}
+          class="w-48 px-2 py-1 rounded text-xs border focus:outline-none {presentation.theme === 'dark' ? 'bg-neutral-950 border-neutral-700 text-white' : 'bg-white border-neutral-300 text-neutral-900'}"
+        />
+      </div>
+    {/if}
+
+    {#if (showSearchResults || isMobileSearchOpen) && searchResults.length > 0}
+      <div class="absolute left-0 top-full mt-1 w-60 rounded-md border shadow-2xl z-50 overflow-hidden max-h-56 overflow-y-auto {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-neutral-300 text-neutral-900'}">
         {#each searchResults as res}
           <button
             type="button"
-            class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-800 border-b border-neutral-800/80 last:border-0"
+            class="w-full text-left px-3 py-1.5 text-xs hover:bg-neutral-500/10 border-b border-neutral-500/20 last:border-0"
             onclick={() => selectSearchResult(res)}
           >
-            <div class="font-semibold text-neutral-200">{res.title}</div>
+            <div class="font-semibold">{res.title}</div>
             {#if res.author}
-              <div class="text-[10px] text-neutral-400">{res.author}</div>
+              <div class="text-[10px] opacity-70">{res.author}</div>
             {/if}
           </button>
         {/each}
@@ -113,130 +216,109 @@
     {/if}
   </div>
 
-  <!-- Output Blanking Controls (F4-F8) -->
+  <!-- Right: Auxiliary & Settings Tools -->
   <div class="flex items-center space-x-1 shrink-0">
-    <button
-      type="button"
-      class="px-2 py-1 rounded text-xs font-medium transition {presentation.displayMode === 'normal' ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 shadow-sm' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
-      onclick={() => setMode('normal')}
-    >
-      {t('toolbar.normal')}
-    </button>
-    <button
-      type="button"
-      class="px-2 py-1 rounded text-xs font-medium transition {presentation.displayMode === 'black' ? 'bg-neutral-950 text-white border border-neutral-600 shadow-inner' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
-      onclick={() => setMode('black')}
-    >
-      {t('toolbar.black')}
-    </button>
-    <button
-      type="button"
-      class="px-2 py-1 rounded text-xs font-medium transition {presentation.displayMode === 'clear_text' ? 'bg-sky-950 text-sky-300 border border-sky-600 shadow-inner' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
-      onclick={() => setMode('clear_text')}
-    >
-      {t('toolbar.clear')}
-    </button>
-    <button
-      type="button"
-      class="px-2 py-1 rounded text-xs font-medium transition {presentation.displayMode === 'logo' ? 'bg-amber-950 text-amber-300 border border-amber-600 shadow-inner' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
-      onclick={() => setMode('logo')}
-    >
-      {t('toolbar.logo')}
-    </button>
-    <button
-      type="button"
-      class="px-2 py-1 rounded text-xs font-medium transition {presentation.displayMode === 'frozen' ? 'bg-blue-950 text-blue-300 border border-blue-600 shadow-inner' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
-      onclick={() => setMode('frozen')}
-    >
-      {t('toolbar.freeze')}
-    </button>
-  </div>
-
-  <!-- SongBeamer Language Switcher: Sprachen: [Alle] [1] [2] [3] -->
-  <div class="hidden xl:flex items-center gap-1 text-[11px] text-neutral-400 bg-neutral-950/60 px-2 py-0.5 rounded border border-neutral-800">
-    <span class="font-medium mr-1">{t('toolbar.languages')}:</span>
-    <button
-      type="button"
-      class="px-1.5 py-0.2 rounded font-semibold {presentation.activeLanguageFilter === 'all' ? 'bg-sky-600 text-white' : 'text-neutral-400 hover:text-neutral-200'}"
-      onclick={() => { presentation.activeLanguageFilter = 'all'; }}
-    >
-      {t('toolbar.langAll')}
-    </button>
-    <button
-      type="button"
-      class="px-1.5 py-0.2 rounded font-semibold {presentation.activeLanguageFilter === 1 ? 'bg-sky-600 text-white' : 'text-neutral-400 hover:text-neutral-200'}"
-      onclick={() => { presentation.activeLanguageFilter = 1; }}
-    >
-      1
-    </button>
-    <button
-      type="button"
-      class="px-1.5 py-0.2 rounded font-semibold {presentation.activeLanguageFilter === 2 ? 'bg-sky-600 text-white' : 'text-neutral-400 hover:text-neutral-200'}"
-      onclick={() => { presentation.activeLanguageFilter = 2; }}
-    >
-      2
-    </button>
-  </div>
-
-  <!-- Aspect Ratio, Monitors Drawer Toggle, Beamer & Locale -->
-  <div class="flex items-center space-x-1.5 shrink-0">
-    <!-- Aspect Ratio Selector (Requirement 3) -->
-    <div class="flex items-center gap-1 bg-neutral-950 border border-neutral-700 rounded px-1.5 py-0.5 text-xs text-neutral-300">
-      <span class="text-[10px] text-neutral-400 font-medium">📐</span>
+    <!-- Aspect Ratio Selector (Responsive: hidden on narrow, accessible in Settings) -->
+    <div class="hidden sm:flex items-center gap-1 border rounded px-1.5 py-0.5 text-xs {presentation.theme === 'dark' ? 'bg-neutral-950 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-300 text-neutral-800'}">
+      <span class="text-[10px] font-medium opacity-70">📐</span>
       <select
         value={presentation.aspectRatioMode === 'auto' ? 'auto' : presentation.aspectRatio}
         onchange={handleAspectRatioChange}
-        class="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer"
+        class="bg-transparent text-xs focus:outline-none cursor-pointer"
         title={t('aspectRatio.label')}
       >
-        <option value="auto" class="bg-neutral-900 text-neutral-200">{t('aspectRatio.auto')}</option>
-        <option value="16:9" class="bg-neutral-900 text-neutral-200">16:9</option>
-        <option value="16:10" class="bg-neutral-900 text-neutral-200">16:10</option>
-        <option value="4:3" class="bg-neutral-900 text-neutral-200">4:3</option>
+        <option value="auto" class="bg-neutral-900 text-white">{t('aspectRatio.auto')}</option>
+        <option value="16:9" class="bg-neutral-900 text-white">16:9</option>
+        <option value="16:10" class="bg-neutral-900 text-white">16:10</option>
+        <option value="4:3" class="bg-neutral-900 text-white">4:3</option>
       </select>
     </div>
 
-    <!-- Toggle Right Monitors Panel Button (Requirement 1) -->
+    <!-- Toggle Right Monitors Panel Button -->
     <button
       type="button"
-      class="px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 transition {presentation.isRightPanelOpen ? 'bg-sky-500/20 text-sky-300 border border-sky-500/50' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
+      class="w-7 h-7 sm:w-auto sm:px-2 sm:py-1 rounded text-xs font-semibold flex items-center gap-1 transition border {presentation.isRightPanelOpen
+        ? 'bg-sky-500/20 text-sky-400 border-sky-500/50'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
+          : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border-neutral-300'}"
       onclick={() => presentation.toggleRightPanel()}
       title={t('toolbar.toggleMonitors')}
     >
       <span>🖥️</span>
-      <span class="hidden sm:inline">{t('toolbar.toggleMonitors')}</span>
+      <span class="hidden xl:inline">{t('toolbar.toggleMonitors')}</span>
     </button>
 
-    <!-- Beamer Output Toggle Button -->
+    <!-- Beamer Output Launch Button (Always Visible) -->
     <button
       type="button"
-      class="px-2 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition shadow-sm {presentation.isBeamerActive ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/50' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
+      class="px-2 py-1 rounded text-xs font-bold flex items-center gap-1 transition shadow-sm border {presentation.isBeamerActive
+        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
+          : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border-neutral-300'}"
       onclick={() => presentation.toggleBeamer()}
       title={presentation.isBeamerActive ? t('toolbar.closeBeamer') : t('toolbar.openBeamer')}
     >
-      <span class="w-2 h-2 rounded-full {presentation.isBeamerActive ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-500'}"></span>
-      <span>📽️ {presentation.isBeamerActive ? t('toolbar.beamerActive') : t('toolbar.openBeamer')}</span>
-      {#if presentation.activeDisplay}
-        <span class="text-[10px] text-emerald-400/80 font-normal hidden lg:inline">({presentation.activeDisplay.name})</span>
-      {/if}
+      <span class="w-2 h-2 rounded-full {presentation.isBeamerActive ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-400'}"></span>
+      <span>📽️</span>
+      <span class="hidden md:inline">{presentation.isBeamerActive ? t('toolbar.beamerActive') : t('toolbar.openBeamer')}</span>
     </button>
 
+    <!-- Chords Toggle (Hidden on small screens) -->
     <button
       type="button"
-      class="px-2 py-1 rounded text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition"
+      class="hidden lg:flex w-7 h-7 sm:w-auto sm:px-2 sm:py-1 rounded text-xs font-medium items-center gap-1 border transition {presentation.showChords
+        ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
+          : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border-neutral-300'}"
       onclick={() => presentation.toggleChords()}
+      title={t('toolbar.toggleChords')}
     >
-      {presentation.showChords ? `✓ ${t('toolbar.toggleChords')}` : t('toolbar.toggleChords')}
+      <span>🎸</span>
+      <span class="hidden xl:inline">{t('toolbar.toggleChords')}</span>
     </button>
 
+    <!-- Theme Switcher (Dark / Light Mode) -->
     <button
       type="button"
-      class="px-2.5 py-1 rounded text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-neutral-950 transition shadow"
-      onclick={onLoadSample}
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-xs border transition {presentation.theme === 'dark'
+        ? 'bg-neutral-800 hover:bg-neutral-700 text-amber-300 border-neutral-700'
+        : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border-neutral-300'}"
+      onclick={() => presentation.toggleTheme()}
+      title={t('toolbar.toggleTheme')}
     >
-      {t('toolbar.loadSample')}
+      {presentation.theme === 'dark' ? '🌙' : '☀️'}
     </button>
 
-    <LanguageSwitcher />
+    <!-- UI Mode Switcher (SongBeamer Classic / Modern Studio) -->
+    <button
+      type="button"
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-xs border transition {presentation.uiMode === 'classic'
+        ? 'bg-sky-500/20 text-sky-400 border-sky-500/50'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
+          : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border-neutral-300'}"
+      onclick={() => presentation.toggleUiMode()}
+      title="{t('toolbar.toggleUiMode')}: {presentation.uiMode === 'classic' ? 'SongBeamer' : 'Modern'}"
+    >
+      🎛️
+    </button>
+
+    <!-- App Settings Modal (Point 7) -->
+    <button
+      type="button"
+      class="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center text-xs border transition {presentation.isSettingsOpen
+        ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+        : presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700'
+          : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border-neutral-300'}"
+      onclick={() => presentation.toggleSettings()}
+      title={t('toolbar.settings')}
+    >
+      ⚙️
+    </button>
   </div>
 </header>
+

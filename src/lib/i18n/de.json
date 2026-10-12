@@ -26,7 +26,6 @@
     "clear": "Text aus (F6)",
     "logo": "Logo (F7)",
     "freeze": "Freeze (F8)",
-    "loadSample": "Beispiel laden",
     "toggleChords": "Akkorde",
     "openBeamer": "Beamer starten",
     "closeBeamer": "Beamer stoppen",
@@ -37,7 +36,33 @@
     "screen": "Bildschirm",
     "singleScreenNote": "Einzelschirm-Vorschaufenster aktiv",
     "languages": "Sprachen",
-    "langAll": "Alle"
+    "langAll": "Alle",
+    "settings": "Einstellungen",
+    "toggleTheme": "Farbschema wechseln",
+    "toggleUiMode": "UI-Modus wechseln (Klassisch / Modern)"
+  },
+  "menu": {
+    "file": "Datei",
+    "edit": "Bearbeiten",
+    "insert": "Einfügen",
+    "presentation": "Präsentation",
+    "tools": "Extras",
+    "help": "Hilfe"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "appearance": "Erscheinungsbild",
+    "theme": "Farbschema",
+    "themeDark": "Dunkel (Dark Mode)",
+    "themeLight": "Hell (Light Mode)",
+    "uiMode": "UI-Design",
+    "uiClassic": "SongBeamer Klassisch",
+    "uiModern": "Modernes Studio",
+    "projection": "Projektion & Monitore",
+    "aspectRatio": "Standard-Bildformat",
+    "showChords": "Akkorde auf Vorschaubildern anzeigen",
+    "close": "Fertig"
   },
   "nav": {
     "schedule": "Ablaufplan",
@@ -72,7 +97,7 @@
     "verseOrder": "Strophenfolge",
     "encoding": "Erkannter Zeichensatz",
     "noSongLoaded": "Kein Lied geladen",
-    "loadHint": "Klicke auf 'Beispiel laden' oder ziehe eine .sng-Datei hierher."
+    "loadHint": "Wähle ein Lied aus dem Ablaufplan."
   },
   "section": {
     "verse": "Vers",

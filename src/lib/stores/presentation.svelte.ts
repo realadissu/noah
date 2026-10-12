@@ -257,9 +257,14 @@ class PresentationStore {
   activeSong = $state<Song | null>(DEFAULT_SONG);
   activeSlideIndex = $state<number>(0);
   displayMode = $state<DisplayMode>('normal');
-  showChords = $state<boolean>(true);
+  showChords = $state<boolean>(false);
   detectedEncoding = $state<string>('UTF-8');
   fontScale = $state<number>(1.0);
+
+  // Appearance & Themes
+  theme = $state<'dark' | 'light'>('dark');
+  uiMode = $state<'classic' | 'modern'>('classic');
+  isSettingsOpen = $state<boolean>(false);
 
   // Right Column Drawer visibility (hidden by default per user requirement)
   isRightPanelOpen = $state<boolean>(false);
@@ -319,6 +324,59 @@ class PresentationStore {
   activeScheduleItem = $derived<ScheduleItem | null>(
     this.schedule[this.activeScheduleIndex] ?? null
   );
+
+  init() {
+    if (typeof localStorage !== 'undefined') {
+      const savedTheme = localStorage.getItem('noah_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        this.theme = savedTheme;
+      }
+      const savedUiMode = localStorage.getItem('noah_ui_mode');
+      if (savedUiMode === 'classic' || savedUiMode === 'modern') {
+        this.uiMode = savedUiMode;
+      }
+    }
+
+    // Automatically sync initial active song to Tauri backend so Beamer immediately has the song
+    if (this.activeSong) {
+      invokeTauri('sync_active_song', {
+        song: this.activeSong,
+        slideIndex: this.activeSlideIndex,
+      });
+    }
+  }
+
+  toggleTheme() {
+    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_theme', this.theme);
+    }
+  }
+
+  setTheme(theme: 'dark' | 'light') {
+    this.theme = theme;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_theme', theme);
+    }
+  }
+
+  toggleUiMode() {
+    this.uiMode = this.uiMode === 'classic' ? 'modern' : 'classic';
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_ui_mode', this.uiMode);
+    }
+  }
+
+  setUiMode(mode: 'classic' | 'modern') {
+    this.uiMode = mode;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_ui_mode', mode);
+    }
+  }
+
+  toggleSettings() {
+    this.isSettingsOpen = !this.isSettingsOpen;
+  }
 
   toggleRightPanel() {
     this.isRightPanelOpen = !this.isRightPanelOpen;

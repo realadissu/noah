@@ -20,7 +20,7 @@
   }
 </script>
 
-<div class="flex-1 flex flex-col h-full bg-neutral-950 overflow-hidden select-none">
+<div class="flex-1 flex flex-col h-full overflow-hidden select-none {presentation.theme === 'dark' ? 'bg-neutral-950 text-neutral-100' : 'bg-neutral-100 text-neutral-900'}">
   <!-- Main Slide Tiles Grid (SongBeamer 2-Column Exact Layout) -->
   <div class="flex-1 overflow-y-auto p-3 lg:p-4">
     {#if presentation.activeSong && presentation.activeSong.slides.length > 0}
@@ -39,51 +39,60 @@
               }
             }}
           >
-            <!-- SongBeamer Header Bar: Blue Section Label on Left, Red Slide Number on Right -->
+            <!-- Header Bar: Blue Section Label on Left, Red Slide Number on Right -->
             <div class="flex items-center justify-between px-1.5 py-1 text-xs font-bold">
-              <span class="text-blue-400 group-hover:text-blue-300 transition tracking-wide">
+              <span class="{presentation.theme === 'dark' ? 'text-blue-400 group-hover:text-blue-300' : 'text-blue-700 group-hover:text-blue-800'} transition tracking-wide font-bold">
                 {slide.label}
               </span>
               <div class="flex items-center gap-2">
                 {#if isLive}
-                  <span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-500 border border-emerald-500/50">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     LIVE
                   </span>
                 {/if}
-                <span class="text-red-500 font-mono text-xs">
+                <span class="text-red-500 font-mono text-xs font-bold">
                   {idx + 1}
                 </span>
               </div>
             </div>
 
-            <!-- Slide Box matching connected/chosen aspect ratio (16:9, 16:10, 4:3) -->
+            <!-- Slide Box matching aspect ratio -->
             <div
               class="w-full {getAspectRatioClass(presentation.aspectRatio)} rounded-lg border-2 transition-all duration-150 overflow-hidden relative shadow-md flex items-center justify-center p-4 text-center {isLive
-                ? 'border-emerald-400 ring-2 ring-emerald-500/50 shadow-emerald-950/60 bg-gradient-to-b from-sky-950/60 via-neutral-900 to-neutral-950'
-                : 'border-neutral-700/80 hover:border-neutral-500 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200'}"
+                ? 'border-emerald-500 ring-2 ring-emerald-500/50 shadow-emerald-950/40 bg-gradient-to-b from-sky-950/70 via-neutral-900 to-neutral-950 text-white'
+                : presentation.uiMode === 'classic' && presentation.theme === 'light'
+                  ? 'border-neutral-400 bg-gradient-to-b from-sky-200 via-sky-100 to-sky-200 text-white'
+                  : presentation.theme === 'dark'
+                    ? 'border-neutral-800 hover:border-neutral-700 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200'
+                    : 'border-neutral-300 hover:border-neutral-400 bg-white text-neutral-800'}"
             >
-              <!-- Lyrics with bold white high-contrast text & black shadow (SongBeamer style) -->
+              <!-- Lyrics with accurate baseline alignment (Fixed chord layout) -->
               <div class="w-full max-w-full space-y-1.5 overflow-hidden font-sans">
                 {#each slide.lines as line}
                   <div class="text-center">
                     {#if presentation.showChords}
-                      <div class="inline-block text-xs md:text-sm font-semibold leading-relaxed">
+                      <div class="inline-flex flex-wrap items-end justify-center leading-normal">
                         {#each line.tokens as token}
-                          {#if token.kind === 'ChordAndText'}
-                            <span class="inline-flex flex-col align-top mx-1">
-                              <span class="text-[10px] font-mono font-bold text-amber-400 leading-none">{token.chord}</span>
-                              <span class="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">{token.text}</span>
+                          {#if token.kind === 'Chord'}
+                            <span class="inline-flex flex-col items-center justify-end mr-1">
+                              <span class="text-[11px] font-mono font-bold text-amber-400 leading-tight h-4 select-none">{token.chord}</span>
+                              <span class="h-0 select-none">&nbsp;</span>
                             </span>
-                          {:else if token.kind === 'Chord'}
-                            <span class="inline-block text-[10px] font-mono font-bold text-amber-400 mx-1 leading-none">{token.chord}</span>
-                          {:else if token.kind === 'Text'}
-                            <span class="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] mx-0.5">{token.text}</span>
+                          {:else}
+                            <span class="inline-flex flex-col items-start justify-end">
+                              <span class="text-[11px] font-mono font-bold text-amber-400 leading-tight h-4 select-none">
+                                {token.kind === 'ChordAndText' ? token.chord : '\u00A0'}
+                              </span>
+                              <span class="font-bold text-sm md:text-base leading-snug whitespace-pre {presentation.theme === 'dark' || isLive || presentation.uiMode === 'classic' ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]' : 'text-neutral-900'}">
+                                {token.text}
+                              </span>
+                            </span>
                           {/if}
                         {/each}
                       </div>
                     {:else}
-                      <p class="font-bold text-sm md:text-base leading-snug text-white tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                      <p class="font-bold text-sm md:text-base leading-snug tracking-wide {presentation.theme === 'dark' || isLive || presentation.uiMode === 'classic' ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]' : 'text-neutral-900'}">
                         {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
                       </p>
                     {/if}
