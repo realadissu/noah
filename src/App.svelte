@@ -3,11 +3,19 @@
   import { t } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import Header from '$lib/components/Header.svelte';
-  import SlidePreview from '$lib/components/SlidePreview.svelte';
+  import SchedulePanel from '$lib/components/SchedulePanel.svelte';
+  import SlideDeck from '$lib/components/SlideDeck.svelte';
   import BeamerView from '$lib/components/BeamerView.svelte';
-  import type { Song, LyricLine } from '$lib/types/models';
+  import type { Song, Slide, LyricLine } from '$lib/types/models';
 
   let windowLabel = $state<string>('main');
+  let currentTime = $state<string>('');
+
+  const nextSlide = $derived<Slide | null>(
+    presentation.activeSong && presentation.activeSlideIndex + 1 < presentation.activeSong.slides.length
+      ? presentation.activeSong.slides[presentation.activeSlideIndex + 1]
+      : null
+  );
 
   function getAudienceText(line: LyricLine): string {
     return line.tokens
@@ -253,6 +261,22 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
         e.preventDefault();
         presentation.setDisplayMode(presentation.displayMode === 'frozen' ? 'normal' : 'frozen');
         break;
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': {
+        const index = parseInt(e.key, 10) - 1;
+        if (presentation.activeSong && index < presentation.activeSong.slides.length) {
+          e.preventDefault();
+          presentation.selectSlide(index);
+        }
+        break;
+      }
     }
   }
 
@@ -293,15 +317,21 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
       }
 
       if (windowLabel === 'main') {
-        loadSampleSong();
         presentation.refreshDisplays();
       }
     }
 
     init();
+
+    const timer = setInterval(() => {
+      const now = new Date();
+      currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }, 1000);
+
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      clearInterval(timer);
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
@@ -358,32 +388,19 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
     </div>
   {/if}
 
-  <!-- Main Content Grid -->
+  <!-- 3-Column SongBeamer Workspace -->
   <main class="flex-1 flex overflow-hidden">
-    <!-- Left Column: Slide List -->
-    <section class="w-80 md:w-96 border-r border-neutral-800 bg-neutral-950/80 p-3 overflow-y-auto space-y-2.5">
-      {#if presentation.activeSong}
-        {#each presentation.activeSong.slides as slide}
-          <SlidePreview
-            {slide}
-            isActive={presentation.activeSlideIndex === slide.index}
-            showChords={presentation.showChords}
-            onSelect={() => presentation.selectSlide(slide.index)}
-          />
-        {/each}
-      {:else}
-        <div class="h-full flex flex-col items-center justify-center text-center p-6 text-neutral-500">
-          <p class="font-semibold text-neutral-300 mb-1">{t('song.noSongLoaded')}</p>
-          <p class="text-xs">{t('song.loadHint')}</p>
-        </div>
-      {/if}
-    </section>
+    <!-- 1. Left Column: Ablaufplan (Order of Service) -->
+    <SchedulePanel />
 
-    <!-- Right Column: Dual Stage & Audience Output View -->
-    <section class="flex-1 flex flex-col p-4 bg-neutral-900/40 gap-4 overflow-hidden">
-      <!-- Top Half: Audience Output Preview -->
-      <div class="flex-1 flex flex-col rounded-xl border border-neutral-800 bg-black overflow-hidden relative shadow-2xl">
-        <div class="bg-neutral-900/80 border-b border-neutral-800 px-3 py-1.5 flex items-center justify-between text-[11px] font-medium text-neutral-400">
+    <!-- 2. Center Column: Folien-Deck (Main Interactive Presentation Workspace) -->
+    <SlideDeck />
+
+    <!-- 3. Right Column: Output Monitors & Quick Controls -->
+    <section class="w-80 lg:w-96 border-l border-neutral-800 bg-neutral-950/90 p-3 flex flex-col gap-3 overflow-hidden select-none">
+      <!-- Top Half: Live Audience Beamer Preview (16:9 Exact Output Replica) -->
+      <div class="flex-1 flex flex-col rounded-xl border border-neutral-800 bg-black overflow-hidden relative shadow-xl">
+        <div class="bg-neutral-900/90 border-b border-neutral-800 px-3 py-1.5 flex items-center justify-between text-[11px] font-medium text-neutral-400">
           <span class="flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full {presentation.displayMode === 'normal' ? 'bg-red-500 animate-pulse' : 'bg-neutral-600'}"></span>
             {t('slide.audienceView')}
@@ -393,25 +410,25 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
           </span>
         </div>
 
-        <!-- Audience Screen Content / Blanking Overlays -->
-        <div class="flex-1 flex items-center justify-center p-8 relative">
+        <!-- Audience Screen Content -->
+        <div class="flex-1 flex items-center justify-center p-4 relative overflow-hidden text-center">
           {#if presentation.displayMode === 'black'}
             <div class="absolute inset-0 bg-black flex items-center justify-center">
-              <span class="text-xs font-mono text-neutral-700 tracking-widest uppercase">BLACK OUT</span>
+              <span class="text-[10px] font-mono text-neutral-700 tracking-widest uppercase">BLACK OUT</span>
             </div>
           {:else if presentation.displayMode === 'clear_text'}
-            <div class="absolute inset-0 bg-neutral-950/90 flex items-center justify-center">
-              <span class="text-xs font-mono text-neutral-600 tracking-widest uppercase">TEXT CLEARED</span>
+            <div class="absolute inset-0 bg-neutral-950 flex items-center justify-center">
+              <span class="text-[10px] font-mono text-neutral-600 tracking-widest uppercase">TEXT CLEARED</span>
             </div>
           {:else if presentation.displayMode === 'logo'}
             <div class="absolute inset-0 bg-neutral-950 flex flex-col items-center justify-center">
-              <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 text-2xl font-bold mb-2 shadow-lg">
-                NOAH
+              <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 text-lg font-bold mb-1 shadow">
+                N
               </div>
-              <span class="text-xs font-semibold text-neutral-400">NOT ONLY ANOTHER HYMNAL</span>
+              <span class="text-[10px] font-semibold text-neutral-400 tracking-wider">NOAH</span>
             </div>
           {:else if presentation.activeSlide}
-            <div class="text-center max-w-3xl space-y-3 font-semibold text-2xl md:text-3xl lg:text-4xl leading-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
+            <div class="text-center space-y-1.5 font-semibold text-sm md:text-base leading-snug text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] max-w-full">
               {#each presentation.activeSlide.lines as line}
                 <p class="tracking-wide">{getAudienceText(line)}</p>
               {/each}
@@ -420,43 +437,29 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
         </div>
       </div>
 
-      <!-- Bottom Half: Musician / Stage Confidence Preview -->
-      <div class="h-44 md:h-52 rounded-xl border border-neutral-800 bg-neutral-950 flex flex-col overflow-hidden shadow-md">
-        <div class="bg-neutral-900/80 border-b border-neutral-800 px-3 py-1.5 flex items-center justify-between text-[11px] font-medium text-amber-400/90">
+      <!-- Bottom Half: Stage Confidence Monitor with Next Slide Preview & Clock -->
+      <div class="h-60 rounded-xl border border-neutral-800 bg-neutral-950 flex flex-col overflow-hidden shadow-md">
+        <div class="bg-neutral-900/90 border-b border-neutral-800 px-3 py-1.5 flex items-center justify-between text-[11px] font-medium text-amber-400/90">
           <span class="flex items-center gap-1.5 font-semibold">
             {t('slide.stageView')}
           </span>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="px-2 py-0.5 rounded text-[10px] bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700"
-              onclick={() => presentation.prevSlide()}
-            >
-              ← {t('slide.prev')}
-            </button>
-            <button
-              type="button"
-              class="px-2 py-0.5 rounded text-[10px] bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700"
-              onclick={() => presentation.nextSlide()}
-            >
-              {t('slide.next')} →
-            </button>
-          </div>
+          <span class="font-mono text-[11px] text-neutral-400 font-semibold">{currentTime}</span>
         </div>
 
-        <div class="flex-1 p-4 overflow-y-auto flex items-center justify-center">
+        <div class="flex-1 p-3 overflow-y-auto flex flex-col justify-between">
+          <!-- Active Slide Chords -->
           {#if presentation.activeSlide}
-            <div class="space-y-1.5 text-center font-mono">
+            <div class="space-y-1 text-center font-mono">
               {#each presentation.activeSlide.lines as line}
-                <div class="text-sm">
+                <div class="text-xs">
                   {#each line.tokens as token}
                     {#if token.kind === 'ChordAndText'}
                       <span class="inline-flex flex-col align-top mx-1">
-                        <span class="text-xs font-bold text-amber-400">{token.chord}</span>
+                        <span class="text-[10px] font-bold text-amber-400 leading-none">{token.chord}</span>
                         <span class="text-neutral-200">{token.text}</span>
                       </span>
                     {:else if token.kind === 'Chord'}
-                      <span class="inline-block text-xs font-bold text-amber-400 mx-1">{token.chord}</span>
+                      <span class="inline-block text-[10px] font-bold text-amber-400 mx-1 leading-none">{token.chord}</span>
                     {:else if token.kind === 'Text'}
                       <span class="text-neutral-200 mx-1">{token.text}</span>
                     {/if}
@@ -465,9 +468,38 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
               {/each}
             </div>
           {/if}
+
+          <!-- Next Slide Preview Hint -->
+          {#if nextSlide}
+            <div class="mt-2 pt-2 border-t border-neutral-800/80 text-[11px] text-neutral-400 truncate flex items-center gap-1.5">
+              <span class="text-amber-500/80 font-semibold shrink-0">{t('deck.nextSlideHint')}</span>
+              <span class="text-neutral-300 truncate">
+                {nextSlide.lines.map(l => getAudienceText(l)).join(' / ')}
+              </span>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Stage Navigation Controls -->
+        <div class="bg-neutral-900/80 border-t border-neutral-800 p-2 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            class="flex-1 py-1.5 rounded text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition"
+            onclick={() => presentation.prevSlide()}
+          >
+            ← {t('slide.prev')}
+          </button>
+          <button
+            type="button"
+            class="flex-1 py-1.5 rounded text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow transition font-bold"
+            onclick={() => presentation.nextSlide()}
+          >
+            {t('slide.next')} →
+          </button>
         </div>
       </div>
     </section>
   </main>
   </div>
+
 {/if}

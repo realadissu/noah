@@ -1,6 +1,6 @@
 //! Presentation state store using Svelte 5 runes.
 
-import type { DisplayMode, Song, Slide, DisplayInfo } from '$lib/types/models';
+import type { DisplayMode, Song, Slide, DisplayInfo, ScheduleItem } from '$lib/types/models';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
@@ -15,12 +15,280 @@ async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Prom
   return null;
 }
 
+// Sample default song for instant preview
+const DEFAULT_SONG: Song = {
+  id: 'song-sample-1',
+  metadata: {
+    title: 'Lobe den Herrn, meine Seele',
+    author: 'Norbert Kissel',
+    musical_key: 'D',
+    verse_order: ['Refrain', 'Vers 1', 'Refrain', 'Vers 2'],
+    lang_count: 1,
+    custom_tags: {},
+  },
+  slides: [
+    {
+      id: 'slide-1',
+      index: 0,
+      label: 'Refrain',
+      section: { type: 'Chorus' },
+      raw_content: '[D]Lobe den Herrn, [G]meine Seele,\nund [A]alles in mir seinen [D]heiligen Namen.\n[D]Lobe den Herrn, [G]meine Seele,\nund [A]vergiss nicht, was er dir [D]Gutes getan.',
+      lines: [
+        {
+          raw_text: '[D]Lobe den Herrn, [G]meine Seele,',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'D', text: 'Lobe den Herrn, ' },
+            { kind: 'ChordAndText', chord: 'G', text: 'meine Seele,' },
+          ],
+        },
+        {
+          raw_text: 'und [A]alles in mir seinen [D]heiligen Namen.',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'und ' },
+            { kind: 'ChordAndText', chord: 'A', text: 'alles in mir seinen ' },
+            { kind: 'ChordAndText', chord: 'D', text: 'heiligen Namen.' },
+          ],
+        },
+        {
+          raw_text: '[D]Lobe den Herrn, [G]meine Seele,',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'D', text: 'Lobe den Herrn, ' },
+            { kind: 'ChordAndText', chord: 'G', text: 'meine Seele,' },
+          ],
+        },
+        {
+          raw_text: 'und [A]vergiss nicht, was er dir [D]Gutes getan.',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'und ' },
+            { kind: 'ChordAndText', chord: 'A', text: 'vergiss nicht, was er dir ' },
+            { kind: 'ChordAndText', chord: 'D', text: 'Gutes getan.' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'slide-2',
+      index: 1,
+      label: 'Vers 1',
+      section: { type: 'Verse', value: 1 },
+      raw_content: 'Der dir [Em]alle deine [A]Sünden vergibt\nund [F#m]heilet alle deine [Bm]Gebrechen,\nder dein [Em]Leben vom Ver[A]derben erlöst,\nder dich [G]krönet mit Gnade und [A]Barmherzigkeit.',
+      lines: [
+        {
+          raw_text: 'Der dir [Em]alle deine [A]Sünden vergibt',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'Der dir ' },
+            { kind: 'ChordAndText', chord: 'Em', text: 'alle deine ' },
+            { kind: 'ChordAndText', chord: 'A', text: 'Sünden vergibt' },
+          ],
+        },
+        {
+          raw_text: 'und [F#m]heilet alle deine [Bm]Gebrechen,',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'und ' },
+            { kind: 'ChordAndText', chord: 'F#m', text: 'heilet alle deine ' },
+            { kind: 'ChordAndText', chord: 'Bm', text: 'Gebrechen,' },
+          ],
+        },
+        {
+          raw_text: 'der dein [Em]Leben vom Ver[A]derben erlöst,',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'der dein ' },
+            { kind: 'ChordAndText', chord: 'Em', text: 'Leben vom Ver' },
+            { kind: 'ChordAndText', chord: 'A', text: 'derben erlöst,' },
+          ],
+        },
+        {
+          raw_text: 'der dich [G]krönet mit Gnade und [A]Barmherzigkeit.',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'der dich ' },
+            { kind: 'ChordAndText', chord: 'G', text: 'krönet mit Gnade und ' },
+            { kind: 'ChordAndText', chord: 'A', text: 'Barmherzigkeit.' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'slide-3',
+      index: 2,
+      label: 'Vers 2',
+      section: { type: 'Verse', value: 2 },
+      raw_content: 'Der deinen [Em]Mund fröhlich [A]macht,\nund du wieder [F#m]jung wirst wie ein [Bm]Adler.\nDer Herr [Em]schafft Ge[A]rechtigkeit\nund Ge[G]richt allen, die Ge[A]walt leiden.',
+      lines: [
+        {
+          raw_text: 'Der deinen [Em]Mund fröhlich [A]macht,',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'Der deinen ' },
+            { kind: 'ChordAndText', chord: 'Em', text: 'Mund fröhlich ' },
+            { kind: 'ChordAndText', chord: 'A', text: 'macht,' },
+          ],
+        },
+        {
+          raw_text: 'und du wieder [F#m]jung wirst wie ein [Bm]Adler.',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'und du wieder ' },
+            { kind: 'ChordAndText', chord: 'F#m', text: 'jung wirst wie ein ' },
+            { kind: 'ChordAndText', chord: 'Bm', text: 'Adler.' },
+          ],
+        },
+        {
+          raw_text: 'Der Herr [Em]schafft Ge[A]rechtigkeit',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'Der Herr ' },
+            { kind: 'ChordAndText', chord: 'Em', text: 'schafft Ge' },
+            { kind: 'ChordAndText', chord: 'A', text: 'rechtigkeit' },
+          ],
+        },
+        {
+          raw_text: 'und Ge[G]richt allen, die Ge[A]walt leiden.',
+          language_index: 0,
+          tokens: [
+            { kind: 'Text', text: 'und Ge' },
+            { kind: 'ChordAndText', chord: 'G', text: 'richt allen, die Ge' },
+            { kind: 'ChordAndText', chord: 'A', text: 'walt leiden.' },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const SECOND_SAMPLE_SONG: Song = {
+  id: 'song-sample-2',
+  metadata: {
+    title: 'Großer Gott, wir loben dich',
+    author: 'Ignaz Franz',
+    musical_key: 'F',
+    verse_order: ['Strophe 1', 'Strophe 2'],
+    lang_count: 1,
+    custom_tags: {},
+  },
+  slides: [
+    {
+      id: 'slide-2-1',
+      index: 0,
+      label: 'Strophe 1',
+      section: { type: 'Verse', value: 1 },
+      raw_content: '[F]Großer Gott, wir [Bb]loben [F]dich,\n[C]Herr, wir preisen [F]deine Stärke.\n[F]Vor dir beugt die [Bb]Erde [F]sich\n[C]und bewundert [F]deine Werke.',
+      lines: [
+        {
+          raw_text: '[F]Großer Gott, wir [Bb]loben [F]dich,',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'F', text: 'Großer Gott, wir ' },
+            { kind: 'ChordAndText', chord: 'Bb', text: 'loben ' },
+            { kind: 'ChordAndText', chord: 'F', text: 'dich,' },
+          ],
+        },
+        {
+          raw_text: '[C]Herr, wir preisen [F]deine Stärke.',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'C', text: 'Herr, wir preisen ' },
+            { kind: 'ChordAndText', chord: 'F', text: 'deine Stärke.' },
+          ],
+        },
+        {
+          raw_text: '[F]Vor dir beugt die [Bb]Erde [F]sich',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'F', text: 'Vor dir beugt die ' },
+            { kind: 'ChordAndText', chord: 'Bb', text: 'Erde ' },
+            { kind: 'ChordAndText', chord: 'F', text: 'sich' },
+          ],
+        },
+        {
+          raw_text: '[C]und bewundert [F]deine Werke.',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'C', text: 'und bewundert ' },
+            { kind: 'ChordAndText', chord: 'F', text: 'deine Werke.' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'slide-2-2',
+      index: 1,
+      label: 'Strophe 2',
+      section: { type: 'Verse', value: 2 },
+      raw_content: '[F]Wie du warst vor [Bb]aller [F]Zeit,\n[C]so bleibst du in [F]Ewigkeit.',
+      lines: [
+        {
+          raw_text: '[F]Wie du warst vor [Bb]aller [F]Zeit,',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'F', text: 'Wie du warst vor ' },
+            { kind: 'ChordAndText', chord: 'Bb', text: 'aller ' },
+            { kind: 'ChordAndText', chord: 'F', text: 'Zeit,' },
+          ],
+        },
+        {
+          raw_text: '[C]so bleibst du in [F]Ewigkeit.',
+          language_index: 0,
+          tokens: [
+            { kind: 'ChordAndText', chord: 'C', text: 'so bleibst du in ' },
+            { kind: 'ChordAndText', chord: 'F', text: 'Ewigkeit.' },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 class PresentationStore {
-  activeSong = $state<Song | null>(null);
+  activeSong = $state<Song | null>(DEFAULT_SONG);
   activeSlideIndex = $state<number>(0);
   displayMode = $state<DisplayMode>('normal');
   showChords = $state<boolean>(true);
   detectedEncoding = $state<string>('UTF-8');
+  fontScale = $state<number>(1.0);
+
+  // Ablaufplan (Order of Service)
+  schedule = $state<ScheduleItem[]>([
+    {
+      id: 'item-1',
+      title: 'Lobe den Herrn, meine Seele',
+      item_type: { kind: 'Song', payload: DEFAULT_SONG },
+      duration_seconds: 240,
+    },
+    {
+      id: 'item-2',
+      title: 'Schriftlesung: Psalm 103, 1-5',
+      item_type: {
+        kind: 'Scripture',
+        payload: {
+          reference: 'Psalm 103, 1-5',
+          text: 'Lobe den HERRN, meine Seele, und was in mir ist, seinen heiligen Namen!',
+          translation: 'Luther 2017',
+        },
+      },
+      duration_seconds: 120,
+    },
+    {
+      id: 'item-3',
+      title: 'Großer Gott, wir loben dich',
+      item_type: { kind: 'Song', payload: SECOND_SAMPLE_SONG },
+      duration_seconds: 300,
+    },
+    {
+      id: 'item-4',
+      title: 'Gemeindenachrichten & Kollekte',
+      item_type: { kind: 'Note', payload: { text: 'Informationen zum Gemeindefreizeit-Wochenende' } },
+      duration_seconds: 180,
+    },
+  ]);
+  activeScheduleIndex = $state<number>(0);
 
   // Display & Dual-window state
   isBeamerActive = $state<boolean>(false);
@@ -29,6 +297,10 @@ class PresentationStore {
 
   activeSlide = $derived<Slide | null>(
     this.activeSong?.slides[this.activeSlideIndex] ?? null
+  );
+
+  activeScheduleItem = $derived<ScheduleItem | null>(
+    this.schedule[this.activeScheduleIndex] ?? null
   );
 
   setSong(song: Song, encoding: string = 'UTF-8') {
@@ -42,15 +314,62 @@ class PresentationStore {
     });
   }
 
+  selectScheduleItem(index: number) {
+    if (index >= 0 && index < this.schedule.length) {
+      this.activeScheduleIndex = index;
+      const item = this.schedule[index];
+      if (item && item.item_type.kind === 'Song') {
+        this.setSong(item.item_type.payload);
+      }
+    }
+  }
+
+  addScheduleItem(item: ScheduleItem) {
+    this.schedule.push(item);
+  }
+
+  removeScheduleItem(index: number) {
+    if (index >= 0 && index < this.schedule.length) {
+      this.schedule.splice(index, 1);
+      if (this.activeScheduleIndex >= this.schedule.length) {
+        this.activeScheduleIndex = Math.max(0, this.schedule.length - 1);
+      }
+    }
+  }
+
+  moveScheduleItem(fromIndex: number, toIndex: number) {
+    if (
+      fromIndex >= 0 &&
+      fromIndex < this.schedule.length &&
+      toIndex >= 0 &&
+      toIndex < this.schedule.length
+    ) {
+      const [item] = this.schedule.splice(fromIndex, 1);
+      if (item) {
+        this.schedule.splice(toIndex, 0, item);
+        this.activeScheduleIndex = toIndex;
+      }
+    }
+  }
+
   nextSlide() {
     if (this.activeSong && this.activeSlideIndex + 1 < this.activeSong.slides.length) {
       this.selectSlide(this.activeSlideIndex + 1);
+    } else if (this.activeScheduleIndex + 1 < this.schedule.length) {
+      // Advance to next item in schedule if at last slide!
+      this.selectScheduleItem(this.activeScheduleIndex + 1);
     }
   }
 
   prevSlide() {
     if (this.activeSlideIndex > 0) {
       this.selectSlide(this.activeSlideIndex - 1);
+    } else if (this.activeScheduleIndex > 0) {
+      // Go back to previous schedule item
+      this.selectScheduleItem(this.activeScheduleIndex - 1);
+      if (this.activeSong && this.activeSong.slides.length > 0) {
+        this.selectSlide(this.activeSong.slides.length - 1);
+      }
     }
   }
 
@@ -75,6 +394,10 @@ class PresentationStore {
 
   toggleChords() {
     this.showChords = !this.showChords;
+  }
+
+  setFontScale(scale: number) {
+    this.fontScale = Math.max(0.6, Math.min(2.0, scale));
   }
 
   async refreshDisplays() {

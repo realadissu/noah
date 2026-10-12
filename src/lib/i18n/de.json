@@ -31,6 +31,23 @@
     "scripture": "Bibel",
     "media": "Medien"
   },
+  "schedule": {
+    "title": "Ablaufplan",
+    "addItem": "Element hinzufügen",
+    "addSong": "Lied hinzufügen",
+    "addScripture": "Bibelstelle",
+    "addNote": "Notiz / Ansage",
+    "empty": "Keine Elemente im Ablaufplan. Ziehe .sng-Dateien per Drag & Drop hierher.",
+    "slidesCount": "{count} Folien",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "remove": "Entfernen"
+  },
+  "deck": {
+    "title": "Folien",
+    "jumpHint": "Klicken oder Cursortasten / Leertaste zum Weiterschalten",
+    "nextSlideHint": "Nächste:"
+  },
   "song": {
     "title": "Titel",
     "author": "Autor / Urheber",

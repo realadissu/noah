@@ -31,6 +31,23 @@
     "scripture": "Scripture",
     "media": "Media"
   },
+  "schedule": {
+    "title": "Order of Service",
+    "addItem": "Add Item",
+    "addSong": "Add Song",
+    "addScripture": "Add Scripture",
+    "addNote": "Add Note",
+    "empty": "No items in schedule. Drag and drop .sng files or add items.",
+    "slidesCount": "{count} slides",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove item"
+  },
+  "deck": {
+    "title": "Slides",
+    "jumpHint": "Click or use Cursor / Space to present",
+    "nextSlideHint": "Next:"
+  },
   "song": {
     "title": "Title",
     "author": "Author",

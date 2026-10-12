@@ -79,11 +79,25 @@ export interface PresentationState {
   overlay_alert: AlertMessage | null;
 }
 
+export type ScheduleItemType =
+  | { kind: 'Song'; payload: Song }
+  | { kind: 'Scripture'; payload: { reference: string; text: string; translation: string } }
+  | { kind: 'Media'; payload: { path: string; media_type: 'Image' | 'Video' | 'Audio' | 'LiveCamera' } }
+  | { kind: 'SlideDeck'; payload: { title: string; slide_count: number } }
+  | { kind: 'Note'; payload: { text: string } };
+
 export interface ScheduleItem {
   id: ScheduleItemId;
   title: string;
-  item_type: { kind: string; payload: unknown };
+  item_type: ScheduleItemType;
   duration_seconds?: number;
+  notes?: string;
+}
+
+export interface Schedule {
+  id: ScheduleId;
+  title: string;
+  items: ScheduleItem[];
   notes?: string;
 }
 
