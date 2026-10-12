@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "NOAH",
+    "subtitle": "Live-Präsentations- & Gottesdienstsystem"
+  },
+  "status": {
+    "live": "LIVE",
+    "offline": "BEREIT",
+    "beamerReady": "Beamer-Ausgabe verbunden",
+    "beamerDisconnected": "Beamer-Ausgabe im Standby"
+  },
+  "toolbar": {
+    "normal": "Normal (F4)",
+    "black": "Schwarz (F5)",
+    "clear": "Text ausblenden (F6)",
+    "logo": "Gemeindelogo (F7)",
+    "freeze": "Bild einfrieren (F8)",
+    "loadSample": "Beispiel-Lied laden (.sng)",
+    "toggleChords": "Akkorde anzeigen"
+  },
+  "nav": {
+    "schedule": "Ablaufplan",
+    "songs": "Lieddatenbank",
+    "scripture": "Bibel",
+    "media": "Medien"
+  },
+  "song": {
+    "title": "Titel",
+    "author": "Autor / Urheber",
+    "key": "Tonart",
+    "transpose": "Transponieren",
+    "ccli": "CCLI-Nummer",
+    "copyright": "Rechteinhaber",
+    "verseOrder": "Strophenfolge",
+    "encoding": "Erkannter Zeichensatz",
+    "noSongLoaded": "Kein Lied geladen",
+    "loadHint": "Klicke auf 'Beispiel-Lied laden' oder ziehe eine .sng-Datei hierher."
+  },
+  "section": {
+    "verse": "Strophe",
+    "chorus": "Refrain",
+    "preChorus": "Pre-Chorus",
+    "bridge": "Bridge",
+    "intro": "Intro",
+    "outro": "Outro",
+    "slide": "Folie"
+  },
+  "slide": {
+    "liveBadge": "LIVE-AUSGABE",
+    "previewBadge": "VORSCHAU",
+    "audienceView": "Beamer-Projektion (ohne Akkorde)",
+    "stageView": "Bühnen- / Musikermonitor (mit Akkorden)",
+    "next": "Nächste Folie",
+    "prev": "Vorherige Folie"
+  },
+  "language": {
+    "en": "English",
+    "de": "Deutsch"
+  }
+}

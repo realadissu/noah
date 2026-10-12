@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "NOAH",
+    "subtitle": "Live Worship & Presentation System"
+  },
+  "status": {
+    "live": "LIVE",
+    "offline": "STANDBY",
+    "beamerReady": "Audience Display Connected",
+    "beamerDisconnected": "Audience Display Standby"
+  },
+  "toolbar": {
+    "normal": "Normal (F4)",
+    "black": "Black (F5)",
+    "clear": "Clear Text (F6)",
+    "logo": "Logo (F7)",
+    "freeze": "Freeze (F8)",
+    "loadSample": "Load Sample Song (.sng)",
+    "toggleChords": "Show Chords"
+  },
+  "nav": {
+    "schedule": "Order of Service",
+    "songs": "Song Library",
+    "scripture": "Scripture",
+    "media": "Media"
+  },
+  "song": {
+    "title": "Title",
+    "author": "Author",
+    "key": "Key",
+    "transpose": "Transpose",
+    "ccli": "CCLI #",
+    "copyright": "Copyright",
+    "verseOrder": "Verse Order",
+    "encoding": "Detected Encoding",
+    "noSongLoaded": "No song loaded",
+    "loadHint": "Click 'Load Sample Song' or drag and drop an .sng file."
+  },
+  "section": {
+    "verse": "Verse",
+    "chorus": "Chorus",
+    "preChorus": "Pre-Chorus",
+    "bridge": "Bridge",
+    "intro": "Intro",
+    "outro": "Outro",
+    "slide": "Slide"
+  },
+  "slide": {
+    "liveBadge": "LIVE PROJECTION",
+    "previewBadge": "PREVIEW",
+    "audienceView": "Audience Output (Chords Hidden)",
+    "stageView": "Stage / Musician View (Chords Visible)",
+    "next": "Next Slide",
+    "prev": "Previous Slide"
+  },
+  "language": {
+    "en": "English",
+    "de": "Deutsch"
+  }
+}
