@@ -78,3 +78,25 @@ pub enum BeamerEvent {
         duration_ms: u32,
     },
 }
+
+/// Information describing a connected physical screen or monitor.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DisplayInfo {
+    pub id: String,
+    pub name: String,
+    pub width: u32,
+    pub height: u32,
+    pub scale_factor: f64,
+    pub is_primary: bool,
+    pub position_x: i32,
+    pub position_y: i32,
+}
+
+/// Active display routing targets configured by the operator.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct DisplayConfiguration {
+    pub control_display_id: Option<String>,
+    pub beamer_display_id: Option<String>,
+    pub stage_display_id: Option<String>,
+}
+

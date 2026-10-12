@@ -3,6 +3,7 @@
 //! Re-exports canonical models from `noah_core::models` and defines IPC response structures.
 
 pub use noah_core::models::*;
+pub use noah_core::storage::SongSearchResult;
 
 use serde::{Deserialize, Serialize};
 
