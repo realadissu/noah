@@ -101,6 +101,8 @@ export interface Schedule {
   notes?: string;
 }
 
+export type AspectRatio = '16:9' | '16:10' | '4:3';
+
 export interface DisplayInfo {
   id: string;
   name: string;
@@ -111,4 +113,18 @@ export interface DisplayInfo {
   position_x: number;
   position_y: number;
 }
+
+export interface BeamerStateResponse {
+  active_song: Song | null;
+  active_slide_index: number;
+  display_mode: DisplayMode;
+}
+
+export interface SongSearchResult {
+  id: string;
+  title: string;
+  author?: string;
+  preview_snippet: string;
+}
+
 

@@ -1,7 +1,18 @@
 {
   "app": {
-    "title": "NOAH",
+    "title": "Noah",
     "subtitle": "Live-Präsentations- & Gottesdienstsystem"
+  },
+  "search": {
+    "label": "Song suchen:",
+    "placeholder": "Titel eingeben..."
+  },
+  "aspectRatio": {
+    "label": "Format",
+    "auto": "Auto",
+    "r16_9": "16:9",
+    "r16_10": "16:10",
+    "r4_3": "4:3"
   },
   "status": {
     "live": "LIVE",
@@ -12,18 +23,21 @@
   "toolbar": {
     "normal": "Normal (F4)",
     "black": "Schwarz (F5)",
-    "clear": "Text ausblenden (F6)",
-    "logo": "Gemeindelogo (F7)",
-    "freeze": "Bild einfrieren (F8)",
-    "loadSample": "Beispiel-Lied laden (.sng)",
-    "toggleChords": "Akkorde anzeigen",
+    "clear": "Text aus (F6)",
+    "logo": "Logo (F7)",
+    "freeze": "Freeze (F8)",
+    "loadSample": "Beispiel laden",
+    "toggleChords": "Akkorde",
     "openBeamer": "Beamer starten",
     "closeBeamer": "Beamer stoppen",
     "beamerActive": "Beamer aktiv",
     "beamerInactive": "Beamer inaktiv",
+    "toggleMonitors": "Monitore",
     "monitors": "Monitore",
     "screen": "Bildschirm",
-    "singleScreenNote": "Einzelschirm-Vorschaufenster aktiv"
+    "singleScreenNote": "Einzelschirm-Vorschaufenster aktiv",
+    "languages": "Sprachen",
+    "langAll": "Alle"
   },
   "nav": {
     "schedule": "Ablaufplan",
@@ -58,10 +72,10 @@
     "verseOrder": "Strophenfolge",
     "encoding": "Erkannter Zeichensatz",
     "noSongLoaded": "Kein Lied geladen",
-    "loadHint": "Klicke auf 'Beispiel-Lied laden' oder ziehe eine .sng-Datei hierher."
+    "loadHint": "Klicke auf 'Beispiel laden' oder ziehe eine .sng-Datei hierher."
   },
   "section": {
-    "verse": "Strophe",
+    "verse": "Vers",
     "chorus": "Refrain",
     "preChorus": "Pre-Chorus",
     "bridge": "Bridge",

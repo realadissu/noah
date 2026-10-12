@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { DisplayMode, Song, Slide, LyricLine, BeamerEvent, PresentationState } from '$lib/types';
+  import type { DisplayMode, Song, Slide, LyricLine, BeamerEvent, BeamerStateResponse } from '$lib/types';
 
   // State managed inside the Beamer webview process
   let activeSong = $state<Song | null>(null);
@@ -105,10 +105,16 @@
             handleBeamerEvent(e.payload);
           });
 
-          // Fetch current presentation state
-          const state = await invoke<PresentationState>('get_presentation_state');
+          // Fetch full beamer state snapshot (song, active slide, display mode)
+          const state = await invoke<BeamerStateResponse>('get_beamer_state');
           if (state) {
             displayMode = state.display_mode;
+            activeSong = state.active_song;
+            if (activeSong && state.active_slide_index !== undefined) {
+              const slide = activeSong.slides[state.active_slide_index] ?? null;
+              slideA = slide;
+              currentLayer = 'A';
+            }
           }
         } catch (err) {
           console.warn('Beamer window IPC initialization error:', err);
@@ -136,7 +142,7 @@
       <div class="w-32 h-32 md:w-44 md:h-44 rounded-3xl bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center shadow-2xl mb-6 backdrop-blur">
         <span class="text-amber-400 font-black text-6xl md:text-7xl tracking-wider">N</span>
       </div>
-      <h1 class="text-3xl md:text-4xl font-extrabold tracking-widest text-neutral-200">NOAH</h1>
+      <h1 class="text-3xl md:text-4xl font-extrabold tracking-widest text-neutral-200">Noah</h1>
       <p class="text-sm md:text-base font-medium text-neutral-500 tracking-widest mt-2">NOT ONLY ANOTHER HYMNAL</p>
     </div>
   {/if}

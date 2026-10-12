@@ -1,7 +1,18 @@
 {
   "app": {
-    "title": "NOAH",
+    "title": "Noah",
     "subtitle": "Live Worship & Presentation System"
+  },
+  "search": {
+    "label": "Search Song:",
+    "placeholder": "Enter title..."
+  },
+  "aspectRatio": {
+    "label": "Aspect Ratio",
+    "auto": "Auto",
+    "r16_9": "16:9",
+    "r16_10": "16:10",
+    "r4_3": "4:3"
   },
   "status": {
     "live": "LIVE",
@@ -12,18 +23,21 @@
   "toolbar": {
     "normal": "Normal (F4)",
     "black": "Black (F5)",
-    "clear": "Clear Text (F6)",
+    "clear": "Clear (F6)",
     "logo": "Logo (F7)",
     "freeze": "Freeze (F8)",
-    "loadSample": "Load Sample Song (.sng)",
-    "toggleChords": "Show Chords",
+    "loadSample": "Load Sample",
+    "toggleChords": "Chords",
     "openBeamer": "Start Beamer",
     "closeBeamer": "Stop Beamer",
     "beamerActive": "Beamer Active",
     "beamerInactive": "Beamer Inactive",
+    "toggleMonitors": "Monitors",
     "monitors": "Monitors",
     "screen": "Screen",
-    "singleScreenNote": "Single-screen fallback mode (floating preview window)"
+    "singleScreenNote": "Single-screen fallback mode (floating preview window)",
+    "languages": "Languages",
+    "langAll": "All"
   },
   "nav": {
     "schedule": "Order of Service",
@@ -58,7 +72,7 @@
     "verseOrder": "Verse Order",
     "encoding": "Detected Encoding",
     "noSongLoaded": "No song loaded",
-    "loadHint": "Click 'Load Sample Song' or drag and drop an .sng file."
+    "loadHint": "Click 'Load Sample' or drag and drop an .sng file."
   },
   "section": {
     "verse": "Verse",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "NOAH",
+  "productName": "Noah",
   "version": "0.1.0",
   "identifier": "org.noah.app",
   "build": {
@@ -12,14 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "NOAH - Control Window",
+        "title": "Noah - Control Window",
         "label": "main",
         "width": 1280,
         "height": 800,
         "resizable": true
       },
       {
-        "title": "NOAH - Audience Beamer",
+        "title": "Noah - Audience Beamer",
         "label": "beamer",
         "width": 1024,
         "height": 768,

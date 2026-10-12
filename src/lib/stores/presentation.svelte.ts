@@ -1,6 +1,13 @@
 //! Presentation state store using Svelte 5 runes.
 
-import type { DisplayMode, Song, Slide, DisplayInfo, ScheduleItem } from '$lib/types/models';
+import type {
+  DisplayMode,
+  Song,
+  Slide,
+  DisplayInfo,
+  ScheduleItem,
+  AspectRatio,
+} from '$lib/types/models';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
@@ -254,6 +261,16 @@ class PresentationStore {
   detectedEncoding = $state<string>('UTF-8');
   fontScale = $state<number>(1.0);
 
+  // Right Column Drawer visibility (hidden by default per user requirement)
+  isRightPanelOpen = $state<boolean>(false);
+
+  // Aspect ratio for slide containers (16:9, 16:10, 4:3, Auto)
+  aspectRatio = $state<AspectRatio>('16:9');
+  aspectRatioMode = $state<'auto' | AspectRatio>('auto');
+
+  // Multi-language filter (SongBeamer parity: 'all', 1, 2, 3)
+  activeLanguageFilter = $state<number | 'all'>('all');
+
   // Ablaufplan (Order of Service)
   schedule = $state<ScheduleItem[]>([
     {
@@ -302,6 +319,34 @@ class PresentationStore {
   activeScheduleItem = $derived<ScheduleItem | null>(
     this.schedule[this.activeScheduleIndex] ?? null
   );
+
+  toggleRightPanel() {
+    this.isRightPanelOpen = !this.isRightPanelOpen;
+  }
+
+  setAspectRatio(mode: 'auto' | AspectRatio) {
+    this.aspectRatioMode = mode;
+    if (mode === 'auto') {
+      this.recalculateAutoAspectRatio();
+    } else {
+      this.aspectRatio = mode;
+    }
+  }
+
+  recalculateAutoAspectRatio() {
+    if (this.activeDisplay && this.activeDisplay.width > 0 && this.activeDisplay.height > 0) {
+      const ratio = this.activeDisplay.width / this.activeDisplay.height;
+      if (ratio >= 1.7) {
+        this.aspectRatio = '16:9';
+      } else if (ratio >= 1.55) {
+        this.aspectRatio = '16:10';
+      } else {
+        this.aspectRatio = '4:3';
+      }
+    } else {
+      this.aspectRatio = '16:9';
+    }
+  }
 
   setSong(song: Song, encoding: string = 'UTF-8') {
     this.activeSong = song;
@@ -356,7 +401,7 @@ class PresentationStore {
     if (this.activeSong && this.activeSlideIndex + 1 < this.activeSong.slides.length) {
       this.selectSlide(this.activeSlideIndex + 1);
     } else if (this.activeScheduleIndex + 1 < this.schedule.length) {
-      // Advance to next item in schedule if at last slide!
+      // Advance to next item in schedule if at last slide
       this.selectScheduleItem(this.activeScheduleIndex + 1);
     }
   }
@@ -376,6 +421,8 @@ class PresentationStore {
   selectSlide(index: number) {
     if (this.activeSong && index >= 0 && index < this.activeSong.slides.length) {
       this.activeSlideIndex = index;
+      // Selecting a slide brings it live on screen
+      this.displayMode = 'normal';
       const slide = this.activeSong.slides[index];
       if (slide) {
         invokeTauri('change_slide', {
@@ -404,6 +451,15 @@ class PresentationStore {
     const list = await invokeTauri<DisplayInfo[]>('list_displays');
     if (list) {
       this.connectedDisplays = list;
+      if (list.length > 1 && !this.activeDisplay) {
+        const secondary = list.find((d) => !d.is_primary) ?? list[0];
+        if (secondary) {
+          this.activeDisplay = secondary;
+          if (this.aspectRatioMode === 'auto') {
+            this.recalculateAutoAspectRatio();
+          }
+        }
+      }
     }
   }
 
@@ -412,10 +468,15 @@ class PresentationStore {
       await invokeTauri('close_beamer_window');
       this.isBeamerActive = false;
     } else {
+      // Beamer projection starts in black per requirement 4.5
+      this.displayMode = 'black';
       const target = await invokeTauri<DisplayInfo>('open_beamer_window', { displayId });
       if (target) {
         this.activeDisplay = target;
         this.isBeamerActive = true;
+        if (this.aspectRatioMode === 'auto') {
+          this.recalculateAutoAspectRatio();
+        }
         // Synchronize state immediately
         if (this.activeSong) {
           await invokeTauri('sync_active_song', {
@@ -423,7 +484,7 @@ class PresentationStore {
             slideIndex: this.activeSlideIndex,
           });
         }
-        await invokeTauri('set_display_mode', { mode: this.displayMode });
+        await invokeTauri('set_display_mode', { mode: 'black' });
       }
     }
   }

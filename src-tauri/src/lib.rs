@@ -8,8 +8,8 @@ pub mod models;
 use std::sync::Arc;
 
 use models::{
-    BeamerEvent, DisplayInfo, DisplayMode, PresentationState, SngLoadResponse, Song,
-    SongSearchResult,
+    BeamerEvent, BeamerStateResponse, DisplayInfo, DisplayMode, PresentationState, SngLoadResponse,
+    Song, SongSearchResult,
 };
 use noah_core::storage::SongDatabase;
 use noah_parser::{parse_sng_bytes_with_info, serialize_sng, DetectedEncoding};
@@ -19,6 +19,7 @@ use tokio::sync::Mutex;
 /// Live application state managed inside Tauri runtime.
 pub struct AppState {
     pub presentation: Mutex<PresentationState>,
+    pub active_song: Mutex<Option<Song>>,
     pub db: Arc<SongDatabase>,
 }
 
@@ -122,11 +123,17 @@ fn list_displays(app: AppHandle) -> Result<Vec<DisplayInfo>, String> {
 }
 
 #[tauri::command]
-#[allow(clippy::needless_pass_by_value)]
-fn open_beamer_window(
+async fn open_beamer_window(
     app: AppHandle,
     display_id: Option<String>,
+    state: State<'_, AppState>,
 ) -> Result<DisplayInfo, String> {
+    {
+        let mut lock = state.presentation.lock().await;
+        lock.display_mode = DisplayMode::Black;
+    }
+    let _ = app.emit("beamer-event", BeamerEvent::SetBlank { mode: DisplayMode::Black });
+
     let monitors = app
         .available_monitors()
         .map_err(|e| format!("Failed to enumerate monitors: {e}"))?;
@@ -232,12 +239,27 @@ fn close_beamer_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn get_beamer_state(state: State<'_, AppState>) -> Result<BeamerStateResponse, String> {
+    let pres = state.presentation.lock().await;
+    let song = state.active_song.lock().await;
+    Ok(BeamerStateResponse {
+        active_song: song.clone(),
+        active_slide_index: pres.active_slide_index.value(),
+        display_mode: pres.display_mode,
+    })
+}
+
+#[tauri::command]
 async fn sync_active_song(
     app: AppHandle,
     song: Song,
     slide_index: usize,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    {
+        let mut song_lock = state.active_song.lock().await;
+        *song_lock = Some(song.clone());
+    }
     {
         let mut lock = state.presentation.lock().await;
         lock.active_slide_index = models::SlideIndex::new(slide_index);
@@ -265,6 +287,7 @@ async fn change_slide(
     {
         let mut lock = state.presentation.lock().await;
         lock.active_slide_index = models::SlideIndex::new(slide_index);
+        lock.display_mode = DisplayMode::Normal;
     }
 
     let transition = transition_ms.map_or(
@@ -277,6 +300,12 @@ async fn change_slide(
         BeamerEvent::ChangeSlide {
             slide_id,
             transition,
+        },
+    );
+    let _ = app.emit(
+        "beamer-event",
+        BeamerEvent::SetBlank {
+            mode: DisplayMode::Normal,
         },
     );
 
@@ -320,6 +349,7 @@ pub fn run() {
 
     let initial_state = AppState {
         presentation: Mutex::new(PresentationState::default()),
+        active_song: Mutex::new(None),
         db,
     };
 
@@ -331,6 +361,7 @@ pub fn run() {
             search_songs,
             index_song,
             get_presentation_state,
+            get_beamer_state,
             set_display_mode,
             list_displays,
             open_beamer_window,
