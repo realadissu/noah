@@ -77,8 +77,22 @@
     </button>
   </div>
 
-  <!-- Auxiliary & Language Switcher -->
+  <!-- Auxiliary, Beamer & Language Controls -->
   <div class="flex items-center space-x-2">
+    <!-- Beamer Output Toggle Button (Phase 2 Dual-Window) -->
+    <button
+      type="button"
+      class="px-2.5 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition shadow-sm {presentation.isBeamerActive ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/50' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'}"
+      onclick={() => presentation.toggleBeamer()}
+      title={presentation.isBeamerActive ? t('toolbar.closeBeamer') : t('toolbar.openBeamer')}
+    >
+      <span class="w-2 h-2 rounded-full {presentation.isBeamerActive ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-500'}"></span>
+      <span>📽️ {presentation.isBeamerActive ? t('toolbar.beamerActive') : t('toolbar.openBeamer')}</span>
+      {#if presentation.activeDisplay}
+        <span class="text-[10px] text-emerald-400/80 font-normal">({presentation.activeDisplay.name})</span>
+      {/if}
+    </button>
+
     <button
       type="button"
       class="px-2.5 py-1.5 rounded text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition"

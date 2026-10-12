@@ -67,6 +67,12 @@ pub enum BeamerEvent {
         slide_id: String,
         transition: TransitionType,
     },
+    #[serde(rename = "SYNC_SONG")]
+    SyncSong {
+        song: Box<super::song::Song>,
+        #[serde(rename = "slideIndex")]
+        slide_index: SlideIndex,
+    },
     #[serde(rename = "SET_BLANK")]
     SetBlank {
         mode: DisplayMode,

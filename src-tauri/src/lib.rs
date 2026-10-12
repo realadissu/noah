@@ -123,6 +123,168 @@ fn list_displays(app: AppHandle) -> Result<Vec<DisplayInfo>, String> {
 
 #[tauri::command]
 #[allow(clippy::needless_pass_by_value)]
+fn open_beamer_window(
+    app: AppHandle,
+    display_id: Option<String>,
+) -> Result<DisplayInfo, String> {
+    let monitors = app
+        .available_monitors()
+        .map_err(|e| format!("Failed to enumerate monitors: {e}"))?;
+
+    if monitors.is_empty() {
+        return Err("No monitors detected on system".to_string());
+    }
+
+    let primary = app.primary_monitor().ok().flatten();
+    let primary_name = primary.as_ref().and_then(|m| m.name());
+
+    let mut selected_idx = 0;
+    let mut target_is_secondary = false;
+
+    if let Some(ref target_id) = display_id {
+        for (idx, m) in monitors.iter().enumerate() {
+            let id = format!("screen-{idx}");
+            if &id == target_id || m.name().is_some_and(|n| n == target_id) {
+                selected_idx = idx;
+                target_is_secondary = primary_name.map_or(idx > 0, |pn| m.name().is_some_and(|n| n != pn));
+                break;
+            }
+        }
+    } else {
+        // Automatic selection: prefer secondary monitor
+        for (idx, m) in monitors.iter().enumerate() {
+            let is_primary = primary_name.map_or(idx == 0, |pn| m.name().is_some_and(|n| n == pn));
+            if !is_primary {
+                selected_idx = idx;
+                target_is_secondary = true;
+                break;
+            }
+        }
+    }
+
+    let target_monitor = monitors
+        .get(selected_idx)
+        .ok_or_else(|| "Selected monitor index out of bounds".to_string())?;
+
+    let size = target_monitor.size();
+    let pos = target_monitor.position();
+    let scale = target_monitor.scale_factor();
+    let name = target_monitor
+        .name()
+        .cloned()
+        .unwrap_or_else(|| format!("Display {}", selected_idx + 1));
+    let is_primary = primary_name.map_or(selected_idx == 0, |pn| pn == &name);
+
+    let display_info = DisplayInfo {
+        id: format!("screen-{selected_idx}"),
+        name,
+        width: size.width,
+        height: size.height,
+        scale_factor: scale,
+        is_primary,
+        position_x: pos.x,
+        position_y: pos.y,
+    };
+
+    let beamer_window = app
+        .get_webview_window("beamer")
+        .ok_or_else(|| "Beamer window not configured in tauri.conf.json".to_string())?;
+
+    if target_is_secondary {
+        let _ = beamer_window.set_fullscreen(false);
+        let _ = beamer_window.set_decorations(false);
+        let _ = beamer_window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+            x: pos.x,
+            y: pos.y,
+        }));
+        let _ = beamer_window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+            width: size.width,
+            height: size.height,
+        }));
+        let _ = beamer_window.set_fullscreen(true);
+    } else {
+        // Single-monitor fallback: preview window
+        let _ = beamer_window.set_fullscreen(false);
+        let _ = beamer_window.set_decorations(true);
+        let _ = beamer_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+            width: 800.0,
+            height: 600.0,
+        }));
+        let _ = beamer_window.center();
+    }
+
+    beamer_window
+        .show()
+        .map_err(|e| format!("Failed to show beamer window: {e}"))?;
+
+    Ok(display_info)
+}
+
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+fn close_beamer_window(app: AppHandle) -> Result<(), String> {
+    if let Some(beamer_window) = app.get_webview_window("beamer") {
+        beamer_window
+            .hide()
+            .map_err(|e| format!("Failed to hide beamer window: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn sync_active_song(
+    app: AppHandle,
+    song: Song,
+    slide_index: usize,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    {
+        let mut lock = state.presentation.lock().await;
+        lock.active_slide_index = models::SlideIndex::new(slide_index);
+    }
+
+    let _ = app.emit(
+        "beamer-event",
+        BeamerEvent::SyncSong {
+            song: Box::new(song),
+            slide_index: models::SlideIndex::new(slide_index),
+        },
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn change_slide(
+    app: AppHandle,
+    slide_id: String,
+    slide_index: usize,
+    transition_ms: Option<u32>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    {
+        let mut lock = state.presentation.lock().await;
+        lock.active_slide_index = models::SlideIndex::new(slide_index);
+    }
+
+    let transition = transition_ms.map_or(
+        noah_core::models::TransitionType::Cut,
+        |ms| noah_core::models::TransitionType::Crossfade { duration_ms: ms },
+    );
+
+    let _ = app.emit(
+        "beamer-event",
+        BeamerEvent::ChangeSlide {
+            slide_id,
+            transition,
+        },
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
 fn set_beamer_visible(app: AppHandle, visible: bool) -> Result<(), String> {
     if let Some(beamer_window) = app.get_webview_window("beamer") {
         if visible {
@@ -171,6 +333,10 @@ pub fn run() {
             get_presentation_state,
             set_display_mode,
             list_displays,
+            open_beamer_window,
+            close_beamer_window,
+            sync_active_song,
+            change_slide,
             set_beamer_visible,
             dispatch_beamer_event
         ])

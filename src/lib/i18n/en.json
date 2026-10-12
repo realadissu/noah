@@ -16,7 +16,14 @@
     "logo": "Logo (F7)",
     "freeze": "Freeze (F8)",
     "loadSample": "Load Sample Song (.sng)",
-    "toggleChords": "Show Chords"
+    "toggleChords": "Show Chords",
+    "openBeamer": "Start Beamer",
+    "closeBeamer": "Stop Beamer",
+    "beamerActive": "Beamer Active",
+    "beamerInactive": "Beamer Inactive",
+    "monitors": "Monitors",
+    "screen": "Screen",
+    "singleScreenNote": "Single-screen fallback mode (floating preview window)"
   },
   "nav": {
     "schedule": "Order of Service",

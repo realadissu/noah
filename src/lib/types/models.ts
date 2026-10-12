@@ -86,3 +86,15 @@ export interface ScheduleItem {
   duration_seconds?: number;
   notes?: string;
 }
+
+export interface DisplayInfo {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  scale_factor: number;
+  is_primary: boolean;
+  position_x: number;
+  position_y: number;
+}
+

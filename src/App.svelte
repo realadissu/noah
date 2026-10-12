@@ -4,7 +4,10 @@
   import { presentation } from '$lib/stores/presentation.svelte';
   import Header from '$lib/components/Header.svelte';
   import SlidePreview from '$lib/components/SlidePreview.svelte';
+  import BeamerView from '$lib/components/BeamerView.svelte';
   import type { Song, LyricLine } from '$lib/types/models';
+
+  let windowLabel = $state<string>('main');
 
   function getAudienceText(line: LyricLine): string {
     return line.tokens
@@ -253,17 +256,68 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
     }
   }
 
+  async function handleFileDrop(e: DragEvent) {
+    e.preventDefault();
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file && (file.name.endsWith('.sng') || file.name.endsWith('.txt') || file.name.endsWith('.pro'))) {
+      const content = await file.text();
+      try {
+        if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const res = await invoke<{ song: Song; encoding: string }>('parse_sng', { content });
+          presentation.setSong(res.song, res.encoding);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to parse dropped file via IPC:', err);
+      }
+    }
+  }
+
   onMount(() => {
-    loadSampleSong();
+    async function init() {
+      // Detect whether running in secondary 'beamer' window or main control window
+      if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+        try {
+          const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+          windowLabel = getCurrentWebviewWindow().label;
+        } catch {
+          windowLabel = 'main';
+        }
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        windowLabel = params.get('window') || 'main';
+      }
+
+      if (windowLabel === 'main') {
+        loadSampleSong();
+        presentation.refreshDisplays();
+      }
+    }
+
+    init();
     window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
 </script>
 
-<div class="flex flex-col h-screen w-screen overflow-hidden bg-neutral-950 text-neutral-100 font-sans">
-  <Header onLoadSample={loadSampleSong} />
+{#if windowLabel === 'beamer'}
+  <BeamerView />
+{:else}
+  <div
+    class="flex flex-col h-screen w-screen overflow-hidden bg-neutral-950 text-neutral-100 font-sans"
+    role="region"
+    aria-label="NOAH Presentation Control Studio"
+    ondragover={(e) => e.preventDefault()}
+    ondrop={handleFileDrop}
+  >
+    <Header onLoadSample={loadSampleSong} />
 
   <!-- Song Metadata Sub-Bar -->
   {#if presentation.activeSong}
@@ -415,4 +469,5 @@ und Ge[G]richt allen, die Ge[A]walt leiden.
       </div>
     </section>
   </main>
-</div>
+  </div>
+{/if}

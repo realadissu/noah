@@ -16,7 +16,14 @@
     "logo": "Gemeindelogo (F7)",
     "freeze": "Bild einfrieren (F8)",
     "loadSample": "Beispiel-Lied laden (.sng)",
-    "toggleChords": "Akkorde anzeigen"
+    "toggleChords": "Akkorde anzeigen",
+    "openBeamer": "Beamer starten",
+    "closeBeamer": "Beamer stoppen",
+    "beamerActive": "Beamer aktiv",
+    "beamerInactive": "Beamer inaktiv",
+    "monitors": "Monitore",
+    "screen": "Bildschirm",
+    "singleScreenNote": "Einzelschirm-Vorschaufenster aktiv"
   },
   "nav": {
     "schedule": "Ablaufplan",
