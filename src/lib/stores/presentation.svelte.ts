@@ -265,7 +265,7 @@ class PresentationStore {
   fontScale = $state<number>(1.0);
 
   // Appearance & Themes
-  theme = $state<'dark' | 'light'>('dark');
+  theme = $state<'dark' | 'light'>('light');
   uiMode = $state<'classic' | 'modern'>('classic');
   isSettingsOpen = $state<boolean>(false);
 

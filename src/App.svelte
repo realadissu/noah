@@ -5,6 +5,7 @@
   import Header from '$lib/components/Header.svelte';
   import SchedulePanel from '$lib/components/SchedulePanel.svelte';
   import SlideDeck from '$lib/components/SlideDeck.svelte';
+  import ClassicLayout from '$lib/components/ClassicLayout.svelte';
   import BeamerView from '$lib/components/BeamerView.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import SongEditorModal from '$lib/components/SongEditorModal.svelte';
@@ -211,13 +212,34 @@
 
 {#if windowLabel === 'beamer'}
   <BeamerView />
+{:else if presentation.uiMode === 'classic'}
+  <div
+    class="flex flex-col h-screen w-screen overflow-hidden font-sans select-none"
+    role="region"
+    aria-label="Noah Presentation Control Studio (Classic)"
+    ondragover={(e) => {
+      if (e.dataTransfer?.types.includes('application/x-noah-schedule')) {
+        return;
+      }
+      e.preventDefault();
+    }}
+    ondrop={handleFileDrop}
+  >
+    <ClassicLayout />
+
+    {#if presentation.isSettingsOpen}
+      <SettingsModal />
+    {/if}
+
+    {#if presentation.isSongEditorOpen}
+      <SongEditorModal />
+    {/if}
+  </div>
 {:else}
   <div
     class="flex flex-col h-screen w-screen overflow-hidden font-sans transition-colors {presentation.theme === 'dark'
       ? 'bg-neutral-950 text-neutral-100 dark'
-      : presentation.uiMode === 'classic'
-        ? 'bg-[#ece9d8] text-neutral-900 light'
-        : 'bg-slate-100 text-slate-900 light'}"
+      : 'bg-slate-100 text-slate-900 light'}"
     role="region"
     aria-label="Noah Presentation Control Studio"
     ondragover={(e) => {
