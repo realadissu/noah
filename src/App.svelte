@@ -9,7 +9,28 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import type { Song, Slide, LyricLine } from '$lib/types/models';
 
-  let windowLabel = $state<string>('main');
+  function getInitialWindowLabel(): string {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlLabel = params.get('window');
+      if (urlLabel) return urlLabel;
+
+      const internals = (window as unknown as {
+        __TAURI_INTERNALS__?: {
+          metadata?: {
+            currentWebview?: { label?: string };
+            currentWindow?: { label?: string };
+          };
+        };
+      }).__TAURI_INTERNALS__;
+
+      const webviewLabel = internals?.metadata?.currentWebview?.label ?? internals?.metadata?.currentWindow?.label;
+      if (webviewLabel) return webviewLabel;
+    }
+    return 'main';
+  }
+
+  let windowLabel = $state<string>(getInitialWindowLabel());
   let currentTime = $state<string>('');
 
   const nextSlide = $derived<Slide | null>(
@@ -92,6 +113,9 @@
   }
 
   async function handleFileDrop(e: DragEvent) {
+    if (e.dataTransfer?.types.includes('application/x-noah-schedule')) {
+      return;
+    }
     e.preventDefault();
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
@@ -160,7 +184,12 @@
         : 'bg-slate-100 text-slate-900 light'}"
     role="region"
     aria-label="Noah Presentation Control Studio"
-    ondragover={(e) => e.preventDefault()}
+    ondragover={(e) => {
+      if (e.dataTransfer?.types.includes('application/x-noah-schedule')) {
+        return;
+      }
+      e.preventDefault();
+    }}
     ondrop={handleFileDrop}
   >
     <Header />

@@ -115,3 +115,44 @@ fn test_fault_injection_corrupt_ipc_envelopes() {
     let corrupt_types = r#"{"type":"ALERT_OVERLAY","message":12345,"durationMs":"infinite"}"#;
     assert!(serde_json::from_str::<BeamerEvent>(corrupt_types).is_err());
 }
+
+#[test]
+fn test_resilient_arbitrary_string_identifiers_deserialization() {
+    // Non-UUID string IDs from frontend samples or external imports must be gracefully converted
+    let json_with_non_uuid = r#"{
+        "id": "song-sample-1",
+        "metadata": {
+            "title": "Lobe den Herrn",
+            "title_lang2": null,
+            "author": null,
+            "copyright": null,
+            "ccli": null,
+            "transpose": null,
+            "speed": null,
+            "musical_key": null,
+            "font_size": null,
+            "verse_order": [],
+            "lang_count": 1,
+            "custom_tags": {}
+        },
+        "slides": [
+            {
+                "id": "slide-sample-1",
+                "index": 0,
+                "section": null,
+                "label": "Refrain",
+                "lines": [],
+                "raw_content": "Lobe den Herrn"
+            }
+        ],
+        "raw_format": null
+    }"#;
+
+    let song: Result<Song, _> = serde_json::from_str(json_with_non_uuid);
+    assert!(song.is_ok(), "Song with arbitrary string IDs must deserialize gracefully");
+    let song = song.unwrap();
+    assert_ne!(song.id.0, uuid::Uuid::nil());
+    assert_eq!(song.slides.len(), 1);
+    assert_ne!(song.slides[0].id.0, uuid::Uuid::nil());
+}
+

@@ -7,8 +7,24 @@ use uuid::Uuid;
 
 use crate::error::NoahError;
 
+fn deterministic_uuid_from_str(s: &str) -> Uuid {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut h1 = DefaultHasher::new();
+    s.hash(&mut h1);
+    let part1 = h1.finish();
+
+    let mut h2 = DefaultHasher::new();
+    (s, "noah-deterministic-salt").hash(&mut h2);
+    let part2 = h2.finish();
+
+    let combined = (u128::from(part1) << 64) | u128::from(part2);
+    Uuid::from_u128(combined)
+}
+
 /// Type-safe identifier for a Song entity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct SongId(pub Uuid);
 
@@ -36,14 +52,28 @@ impl FromStr for SongId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::parse_str(s)
-            .map(Self)
-            .map_err(|e| NoahError::InvalidIdentifier(format!("Invalid SongId '{s}': {e}")))
+        match Uuid::parse_str(s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SongId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match Uuid::parse_str(&s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
+        }
     }
 }
 
 /// Type-safe identifier for a Slide entity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct SlideId(pub Uuid);
 
@@ -71,9 +101,23 @@ impl FromStr for SlideId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::parse_str(s)
-            .map(Self)
-            .map_err(|e| NoahError::InvalidIdentifier(format!("Invalid SlideId '{s}': {e}")))
+        match Uuid::parse_str(s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SlideId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match Uuid::parse_str(&s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
+        }
     }
 }
 
@@ -101,7 +145,7 @@ impl fmt::Display for SlideIndex {
 }
 
 /// Type-safe identifier for an item in a schedule (order of service).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct ScheduleItemId(pub Uuid);
 
@@ -129,14 +173,28 @@ impl FromStr for ScheduleItemId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::parse_str(s)
-            .map(Self)
-            .map_err(|e| NoahError::InvalidIdentifier(format!("Invalid ScheduleItemId '{s}': {e}")))
+        match Uuid::parse_str(s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ScheduleItemId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match Uuid::parse_str(&s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
+        }
     }
 }
 
 /// Type-safe identifier for an entire Schedule (service plan).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(transparent)]
 pub struct ScheduleId(pub Uuid);
 
@@ -164,8 +222,22 @@ impl FromStr for ScheduleId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::parse_str(s)
-            .map(Self)
-            .map_err(|e| NoahError::InvalidIdentifier(format!("Invalid ScheduleId '{s}': {e}")))
+        match Uuid::parse_str(s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ScheduleId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match Uuid::parse_str(&s) {
+            Ok(uuid) => Ok(Self(uuid)),
+            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
+        }
     }
 }

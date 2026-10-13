@@ -15,12 +15,28 @@
 
   function getAudienceLines(slide: Slide | null): string[] {
     if (!slide) return [];
-    return slide.lines.map((line: LyricLine) =>
-      line.tokens
-        .filter((t) => t.kind !== 'Chord')
-        .map((t) => t.text)
-        .join('')
-    );
+    const fromTokens = slide.lines
+      .map((line: LyricLine) =>
+        line.tokens
+          .filter((t) => t.kind !== 'Chord')
+          .map((t) => t.text)
+          .join('')
+      )
+      .filter((l) => l.trim().length > 0);
+
+    if (fromTokens.length > 0) {
+      return fromTokens;
+    }
+
+    if (slide.raw_content) {
+      return slide.raw_content
+        .replace(/\[[^\]]*\]/g, '')
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+    }
+
+    return [];
   }
 
   // Dynamic binary auto-font sizing (REQ-SONG-03)
@@ -53,11 +69,8 @@
             activeSong = state.active_song;
             const slide = state.active_song.slides[state.active_slide_index ?? 0] ?? null;
             if (slide) {
-              if (currentLayer === 'A') {
-                slideA = slide;
-              } else {
-                slideB = slide;
-              }
+              slideA = slide;
+              currentLayer = 'A';
             }
           }
         }
@@ -80,6 +93,8 @@
         break;
       }
       case 'CHANGE_SLIDE': {
+        displayMode = 'normal';
+        isFrozen = false;
         if (!activeSong) {
           await refreshState();
         }

@@ -24,7 +24,7 @@ async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Prom
 
 // Sample default song for instant preview
 const DEFAULT_SONG: Song = {
-  id: 'song-sample-1',
+  id: '11111111-1111-1111-1111-111111111111',
   metadata: {
     title: 'Lobe den Herrn, meine Seele',
     author: 'Norbert Kissel',
@@ -35,7 +35,7 @@ const DEFAULT_SONG: Song = {
   },
   slides: [
     {
-      id: 'slide-1',
+      id: '11111111-1111-1111-1111-111111111112',
       index: 0,
       label: 'Refrain',
       section: { type: 'Chorus' },
@@ -78,7 +78,7 @@ const DEFAULT_SONG: Song = {
       ],
     },
     {
-      id: 'slide-2',
+      id: '11111111-1111-1111-1111-111111111113',
       index: 1,
       label: 'Vers 1',
       section: { type: 'Verse', value: 1 },
@@ -123,7 +123,7 @@ const DEFAULT_SONG: Song = {
       ],
     },
     {
-      id: 'slide-3',
+      id: '11111111-1111-1111-1111-111111111114',
       index: 2,
       label: 'Vers 2',
       section: { type: 'Verse', value: 2 },
@@ -171,7 +171,7 @@ const DEFAULT_SONG: Song = {
 };
 
 const SECOND_SAMPLE_SONG: Song = {
-  id: 'song-sample-2',
+  id: '22222222-2222-2222-2222-222222222222',
   metadata: {
     title: 'Großer Gott, wir loben dich',
     author: 'Ignaz Franz',
@@ -182,7 +182,7 @@ const SECOND_SAMPLE_SONG: Song = {
   },
   slides: [
     {
-      id: 'slide-2-1',
+      id: '22222222-2222-2222-2222-222222222223',
       index: 0,
       label: 'Strophe 1',
       section: { type: 'Verse', value: 1 },
@@ -225,7 +225,7 @@ const SECOND_SAMPLE_SONG: Song = {
       ],
     },
     {
-      id: 'slide-2-2',
+      id: '22222222-2222-2222-2222-222222222224',
       index: 1,
       label: 'Strophe 2',
       section: { type: 'Verse', value: 2 },
@@ -256,7 +256,7 @@ const SECOND_SAMPLE_SONG: Song = {
 class PresentationStore {
   activeSong = $state<Song | null>(DEFAULT_SONG);
   activeSlideIndex = $state<number>(0);
-  displayMode = $state<DisplayMode>('black');
+  displayMode = $state<DisplayMode>('normal');
   showChords = $state<boolean>(false);
   detectedEncoding = $state<string>('UTF-8');
   fontScale = $state<number>(1.0);
@@ -279,13 +279,13 @@ class PresentationStore {
   // Ablaufplan (Order of Service)
   schedule = $state<ScheduleItem[]>([
     {
-      id: 'item-1',
+      id: '33333333-3333-3333-3333-333333333331',
       title: 'Lobe den Herrn, meine Seele',
       item_type: { kind: 'Song', payload: DEFAULT_SONG },
       duration_seconds: 240,
     },
     {
-      id: 'item-2',
+      id: '33333333-3333-3333-3333-333333333332',
       title: 'Schriftlesung: Psalm 103, 1-5',
       item_type: {
         kind: 'Scripture',
@@ -298,13 +298,13 @@ class PresentationStore {
       duration_seconds: 120,
     },
     {
-      id: 'item-3',
+      id: '33333333-3333-3333-3333-333333333333',
       title: 'Großer Gott, wir loben dich',
       item_type: { kind: 'Song', payload: SECOND_SAMPLE_SONG },
       duration_seconds: 300,
     },
     {
-      id: 'item-4',
+      id: '33333333-3333-3333-3333-333333333334',
       title: 'Gemeindenachrichten & Kollekte',
       item_type: { kind: 'Note', payload: { text: 'Informationen zum Gemeindefreizeit-Wochenende' } },
       duration_seconds: 180,
@@ -343,7 +343,7 @@ class PresentationStore {
         song: this.activeSong,
         slideIndex: this.activeSlideIndex,
       });
-      invokeTauri('set_display_mode', { mode: 'black' });
+      invokeTauri('set_display_mode', { mode: this.displayMode });
     }
   }
 
@@ -573,8 +573,6 @@ class PresentationStore {
       await invokeTauri('close_beamer_window');
       this.isBeamerActive = false;
     } else {
-      // Beamer projection starts in black per requirement 4.5
-      this.displayMode = 'black';
       const target = await invokeTauri<DisplayInfo>('open_beamer_window', { displayId });
       if (target) {
         this.activeDisplay = target;
@@ -589,7 +587,7 @@ class PresentationStore {
             slideIndex: this.activeSlideIndex,
           });
         }
-        await invokeTauri('set_display_mode', { mode: 'black' });
+        await invokeTauri('set_display_mode', { mode: this.displayMode });
       }
     }
   }

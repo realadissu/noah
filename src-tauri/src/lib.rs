@@ -200,6 +200,7 @@ async fn open_beamer_window(
     if target_is_secondary {
         let _ = beamer_window.set_fullscreen(false);
         let _ = beamer_window.set_decorations(false);
+        let _ = beamer_window.set_always_on_top(true);
         let _ = beamer_window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
             x: pos.x,
             y: pos.y,
@@ -208,10 +209,10 @@ async fn open_beamer_window(
             width: size.width,
             height: size.height,
         }));
-        let _ = beamer_window.set_fullscreen(true);
     } else {
         // Single-monitor fallback: preview window
         let _ = beamer_window.set_fullscreen(false);
+        let _ = beamer_window.set_always_on_top(false);
         let _ = beamer_window.set_decorations(true);
         let _ = beamer_window.set_size(tauri::Size::Logical(tauri::LogicalSize {
             width: 800.0,
@@ -250,6 +251,8 @@ async fn open_beamer_window(
 #[allow(clippy::needless_pass_by_value)]
 fn close_beamer_window(app: AppHandle) -> Result<(), String> {
     if let Some(beamer_window) = app.get_webview_window("beamer") {
+        let _ = beamer_window.set_fullscreen(false);
+        let _ = beamer_window.set_always_on_top(false);
         beamer_window
             .hide()
             .map_err(|e| format!("Failed to hide beamer window: {e}"))?;

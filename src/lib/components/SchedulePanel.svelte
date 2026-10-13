@@ -27,16 +27,18 @@
   }
 
   function handleDragStart(e: DragEvent, index: number) {
+    e.stopPropagation();
     draggedIndex = index;
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', String(index));
       e.dataTransfer.setData('application/x-noah-schedule', String(index));
+      e.dataTransfer.setData('text/plain', String(index));
     }
   }
 
   function handleDragOver(e: DragEvent, index: number) {
     e.preventDefault();
+    e.stopPropagation();
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = 'move';
     }
@@ -49,8 +51,17 @@
     }
   }
 
+  function handleDragEnter(e: DragEvent, index: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+    dragOverIndex = index;
+  }
+
   function handleDragLeave(e: DragEvent, index: number) {
-    // Only reset if actually leaving the current target to outside
+    e.stopPropagation();
     const related = e.relatedTarget as Node | null;
     const current = e.currentTarget as Node | null;
     if (current && related && current.contains(related)) {
@@ -64,15 +75,25 @@
 
   function handleDrop(e: DragEvent, index: number) {
     e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== index) {
-      presentation.reorderSchedule(draggedIndex, index, dropPosition ?? 'after');
+    e.stopPropagation();
+    let from = draggedIndex;
+    if (from === null && e.dataTransfer) {
+      const stored = e.dataTransfer.getData('application/x-noah-schedule') || e.dataTransfer.getData('text/plain');
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed)) from = parsed;
+      }
+    }
+    if (from !== null && from !== index) {
+      presentation.reorderSchedule(from, index, dropPosition ?? 'after');
     }
     draggedIndex = null;
     dragOverIndex = null;
     dropPosition = null;
   }
 
-  function handleDragEnd() {
+  function handleDragEnd(e: DragEvent) {
+    e.stopPropagation();
     draggedIndex = null;
     dragOverIndex = null;
     dropPosition = null;
@@ -108,7 +129,16 @@
 
   <!-- Item List -->
   <div
+    role="region"
+    aria-label="Schedule items"
     class="flex-1 overflow-y-auto {presentation.uiMode === 'classic' ? 'p-0.5 space-y-0.5' : 'p-2 space-y-1.5'}"
+    ondragover={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'move';
+      }
+    }}
   >
     {#if presentation.schedule.length === 0}
       <div class="p-6 text-center text-xs text-neutral-500">
@@ -118,18 +148,13 @@
       {#each presentation.schedule as item, idx}
         {@const isActive = presentation.activeScheduleIndex === idx}
         {@const isDragging = draggedIndex === idx}
-
-        <!-- Drop target line (Before) -->
-        {#if dragOverIndex === idx && dropPosition === 'before' && draggedIndex !== idx}
-          <div class="h-1 bg-amber-400 rounded-full shadow-md shadow-amber-500/60 my-0.5 animate-pulse"></div>
-        {/if}
+        {@const isDropTarget = dragOverIndex === idx && draggedIndex !== idx}
 
         <div
           role="button"
           tabindex="0"
           draggable="true"
-          style="-webkit-user-drag: element;"
-          class="w-full text-left transition cursor-pointer flex items-center gap-2 group {isDragging ? 'opacity-30 border-dashed border-amber-500' : ''} {presentation.uiMode === 'classic'
+          class="w-full text-left transition cursor-pointer flex items-center gap-2 group relative select-none {isDragging ? 'opacity-30 border-dashed border-amber-500' : ''} {isDropTarget ? (dropPosition === 'before' ? 'border-t-2 !border-t-amber-400' : 'border-b-2 !border-b-amber-400') : ''} {presentation.uiMode === 'classic'
             ? `px-2 py-1 border-b last:border-b-0 ${
                 isActive
                   ? presentation.theme === 'dark'
@@ -157,6 +182,7 @@
           }}
           ondragstart={(e) => handleDragStart(e, idx)}
           ondragover={(e) => handleDragOver(e, idx)}
+          ondragenter={(e) => handleDragEnter(e, idx)}
           ondragleave={(e) => handleDragLeave(e, idx)}
           ondrop={(e) => handleDrop(e, idx)}
           ondragend={handleDragEnd}
@@ -182,42 +208,7 @@
           >
             {item.title}
           </span>
-
-          <!-- Reorder Action Arrows (visible on hover) -->
-          <div class="hidden group-hover:flex items-center gap-0.5 shrink-0 opacity-80">
-            {#if idx > 0}
-              <button
-                type="button"
-                class="w-5 h-5 rounded flex items-center justify-center text-[10px] hover:bg-black/10 transition"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  presentation.moveScheduleItemUp(idx);
-                }}
-                title="Nach oben verschieben"
-              >
-                ▲
-              </button>
-            {/if}
-            {#if idx < presentation.schedule.length - 1}
-              <button
-                type="button"
-                class="w-5 h-5 rounded flex items-center justify-center text-[10px] hover:bg-black/10 transition"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  presentation.moveScheduleItemDown(idx);
-                }}
-                title="Nach unten verschieben"
-              >
-                ▼
-              </button>
-            {/if}
-          </div>
         </div>
-
-        <!-- Drop target line (After) -->
-        {#if dragOverIndex === idx && dropPosition === 'after' && draggedIndex !== idx}
-          <div class="h-1 bg-amber-400 rounded-full shadow-md shadow-amber-500/60 my-0.5 animate-pulse"></div>
-        {/if}
       {/each}
     {/if}
   </div>
