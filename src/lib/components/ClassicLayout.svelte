@@ -3,6 +3,7 @@
   import { presentation } from '$lib/stores/presentation.svelte';
   import SongBeamerIcon from '$lib/components/icons/SongBeamerIcon.svelte';
   import type { ScheduleItem, Slide, LyricLine, SongSearchResult } from '$lib/types/models';
+  import { getAudienceLines, calculateSlideFontSize } from '$lib/utils/slideTypography';
 
   // --- Clock ---
   let currentTime = $state<string>('');
@@ -555,10 +556,10 @@
         type="button"
         class="px-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none font-mono font-semibold"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(10px * var(--ui-scale));"
-        title={t('toolbar.zoomReset')}
-        onclick={() => presentation.resetZoom()}
+        title={presentation.uiScaleMode === 'auto' ? t('toolbar.zoomAuto') : t('toolbar.zoomReset')}
+        onclick={() => presentation.toggleZoomMode()}
       >
-        {Math.round(presentation.uiScale * 100)}%
+        {presentation.uiScaleMode === 'auto' ? 'Auto' : `${Math.round(presentation.uiScale * 100)}%`}
       </button>
       <button
         type="button"
@@ -773,17 +774,20 @@
                   </div>
                 </div>
 
-                <!-- Slide Thumbnail Container: 16:9 Aspect Ratio with Container Query for dynamic lyrics scaling -->
+                <!-- Slide Thumbnail Container: 16:9 Aspect Ratio with Container Query for 1:1 WYSIWYG parity -->
                 <div
-                  class="w-full aspect-video border rounded-none relative overflow-hidden flex items-center justify-center text-center p-2.5 {isLive
+                  class="w-full aspect-video border rounded-none relative overflow-hidden flex items-center justify-center text-center {isLive
                     ? 'border-[#0000cc] dark:border-emerald-500 ring-2 ring-[#0000cc]/30 bg-black text-white'
                     : 'border-[#999999] dark:border-neutral-700 bg-neutral-900 text-white'}"
-                  style="container-type: inline-size;"
+                  style="container-type: size; padding: 6cqh 8cqw;"
                 >
-                  <!-- Lyrics Text Preview (Scales dynamically with slide container size) -->
-                  <div class="w-full text-center space-y-1 font-semibold leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] slide-lyrics-preview">
-                    {#each slide.lines as line}
-                      <p class="truncate">{getAudienceText(line)}</p>
+                  <!-- Lyrics Text Preview (100% WYSIWYG Parity to Beamer Output) -->
+                  <div
+                    class="w-full text-center space-y-1 font-bold leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
+                    style="font-size: {calculateSlideFontSize(slide, presentation.showChords)}; line-height: 1.35;"
+                  >
+                    {#each getAudienceLines(slide) as line}
+                      <p class="truncate">{line}</p>
                     {/each}
                   </div>
                 </div>
@@ -815,8 +819,8 @@
         </div>
 
         <div
-          class="w-full aspect-video bg-black border border-[#7f9db9] rounded-none flex items-center justify-center p-2 text-center text-white relative"
-          style="container-type: inline-size;"
+          class="w-full aspect-video bg-black border border-[#7f9db9] rounded-none flex items-center justify-center text-center text-white relative"
+          style="container-type: size; padding: 6cqh 8cqw;"
         >
           {#if presentation.displayMode === 'black'}
             <div class="absolute inset-0 bg-black flex items-center justify-center">
@@ -831,9 +835,12 @@
               <span class="text-xl font-bold text-amber-500">Noah</span>
             </div>
           {:else if presentation.activeSlide}
-            <div class="text-center font-bold space-y-0.5 leading-tight slide-lyrics-preview">
-              {#each presentation.activeSlide.lines as line}
-                <p class="truncate">{getAudienceText(line)}</p>
+            <div
+              class="w-full text-center font-bold space-y-0.5 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
+              style="font-size: {calculateSlideFontSize(presentation.activeSlide)}; line-height: 1.35;"
+            >
+              {#each getAudienceLines(presentation.activeSlide) as line}
+                <p class="truncate">{line}</p>
               {/each}
             </div>
           {/if}

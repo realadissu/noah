@@ -59,6 +59,7 @@
     "zoomIn": "Vergrößern (Strg++)",
     "zoomOut": "Verkleinern (Strg+-)",
     "zoomReset": "Standardgröße (Strg+0)",
+    "zoomAuto": "Automatische Skalierung (Strg+0)",
     "quickControls": "Schnellsteuerung",
     "stageConfidence": "Bühnenmonitor",
     "settings": "Einstellungen",

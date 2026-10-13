@@ -1,7 +1,8 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
-  import type { AspectRatio, Slide } from '$lib/types/models';
+  import type { AspectRatio } from '$lib/types/models';
+  import { calculateSlideFontSize } from '$lib/utils/slideTypography';
 
   function getAspectRatioClass(ratio: AspectRatio): string {
     switch (ratio) {
@@ -17,28 +18,6 @@
 
   function handleSlideClick(index: number) {
     presentation.selectSlide(index);
-  }
-
-  // Linear scaling calculation matching the audience beamer projection (REQ-SONG-03)
-  // Uses CSS Container Query Units (cqw / cqh) so font and spacing scale 100% linearly with preview size
-  function calculateSlideFontSize(slide: Slide): string {
-    const lines = slide.lines
-      .map((l) => l.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join(''))
-      .filter((l) => l.trim().length > 0);
-
-    const lineCount = Math.max(lines.length, 1);
-    const maxLineLen = Math.max(...lines.map((l) => l.trim().length), 1);
-
-    // Headroom for chords
-    const verticalFactor = presentation.showChords ? 2.3 : 1.45;
-
-    // Horizontal limit: ensure longest line fits in 90% of slide container width
-    const cqw = Math.min(10.0, Math.max(1.8, 88 / (maxLineLen * 0.54)));
-
-    // Vertical limit: ensure all lines with line-height fit in 82% of slide container height
-    const cqh = Math.min(12.5, Math.max(2.0, 80 / (lineCount * verticalFactor)));
-
-    return `min(${cqw.toFixed(2)}cqw, ${cqh.toFixed(2)}cqh)`;
   }
 </script>
 
@@ -93,7 +72,7 @@
               <!-- Lyrics with accurate baseline alignment and linear responsive typography -->
               <div
                 class="w-full h-full flex flex-col items-center justify-center overflow-hidden font-sans select-none"
-                style="padding: 2.5cqw 3cqw; font-size: {calculateSlideFontSize(slide)}; line-height: 1.25;"
+                style="padding: 6cqh 8cqw; font-size: {calculateSlideFontSize(slide, presentation.showChords)}; line-height: 1.35;"
               >
                 <div class="w-full flex flex-col items-center justify-center" style="gap: 0.2em;">
                   {#each slide.lines as line}

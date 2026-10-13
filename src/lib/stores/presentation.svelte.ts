@@ -264,6 +264,7 @@ class PresentationStore {
   detectedEncoding = $state<string>('UTF-8');
   fontScale = $state<number>(1.0);
   uiScale = $state<number>(1.0);
+  uiScaleMode = $state<'auto' | 'custom'>('auto');
 
   // Appearance & Themes
   theme = $state<'dark' | 'light'>('light');
@@ -354,17 +355,31 @@ class PresentationStore {
         this.songsDirectory = savedSongsDir;
         this.scanSongsDirectory(savedSongsDir);
       }
-      const savedUiScale = localStorage.getItem('noah_ui_scale');
-      if (savedUiScale) {
-        const parsed = parseFloat(savedUiScale);
-        if (!isNaN(parsed) && parsed >= 0.75 && parsed <= 2.5) {
-          this.uiScale = parsed;
+      const savedScaleMode = localStorage.getItem('noah_ui_scale_mode');
+      if (savedScaleMode === 'custom') {
+        this.uiScaleMode = 'custom';
+        const savedUiScale = localStorage.getItem('noah_ui_scale');
+        if (savedUiScale) {
+          const parsed = parseFloat(savedUiScale);
+          if (!isNaN(parsed) && parsed >= 0.75 && parsed <= 2.5) {
+            this.uiScale = parsed;
+          }
         }
-      } else if (typeof window !== 'undefined') {
-        if (window.innerWidth >= 2560 || (window.devicePixelRatio && window.devicePixelRatio >= 1.75)) {
-          this.uiScale = 1.25;
-        }
+      } else {
+        this.uiScaleMode = 'auto';
+        this.updateAutoUiScale();
       }
+    } else {
+      this.updateAutoUiScale();
+    }
+
+    // Dynamic resize listener to automatically adjust UI scaling in Auto mode
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', () => {
+        if (this.uiScaleMode === 'auto') {
+          this.updateAutoUiScale();
+        }
+      });
     }
 
     // Automatically sync initial active song to Tauri backend so Beamer immediately has the song
@@ -377,9 +392,34 @@ class PresentationStore {
     }
   }
 
+  updateAutoUiScale() {
+    if (typeof window === 'undefined') return;
+    const h = window.innerHeight;
+    const w = window.innerWidth;
+
+    // Cross-platform ergonomic calibration (Windows, macOS, Linux):
+    // 4K UHD or UltraWide (h >= 1250 or w >= 2400) -> 1.35x
+    // QHD / High-density laptops (h >= 950 or w >= 1700) -> 1.15x
+    // Compact screens (h < 720 or w < 1150) -> 0.92x
+    // Standard 1080p full display -> 1.0x
+    let target = 1.0;
+    if (h >= 1250 || w >= 2400) {
+      target = 1.35;
+    } else if (h >= 950 || w >= 1700) {
+      target = 1.15;
+    } else if (h < 720 || w < 1150) {
+      target = 0.92;
+    } else {
+      target = 1.0;
+    }
+    this.uiScale = target;
+  }
+
   setUiScale(scale: number) {
+    this.uiScaleMode = 'custom';
     this.uiScale = Math.min(2.5, Math.max(0.75, Math.round(scale * 100) / 100));
     if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_ui_scale_mode', 'custom');
       localStorage.setItem('noah_ui_scale', this.uiScale.toString());
     }
   }
@@ -393,7 +433,19 @@ class PresentationStore {
   }
 
   resetZoom() {
-    this.setUiScale(1.0);
+    this.uiScaleMode = 'auto';
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_ui_scale_mode', 'auto');
+    }
+    this.updateAutoUiScale();
+  }
+
+  toggleZoomMode() {
+    if (this.uiScaleMode === 'auto') {
+      this.setUiScale(1.0);
+    } else {
+      this.resetZoom();
+    }
   }
 
   newSchedule() {

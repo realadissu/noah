@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { DisplayMode, Song, Slide, LyricLine, BeamerEvent, BeamerStateResponse } from '$lib/types';
+  import type { DisplayMode, Song, Slide, BeamerEvent, BeamerStateResponse } from '$lib/types';
+  import { getAudienceLines, calculateSlideFontSize } from '$lib/utils/slideTypography';
 
   // State managed inside the Beamer webview process
   let activeSong = $state<Song | null>(null);
@@ -12,51 +13,6 @@
   let currentLayer = $state<'A' | 'B'>('A');
   let slideA = $state<Slide | null>(null);
   let slideB = $state<Slide | null>(null);
-
-  function getAudienceLines(slide: Slide | null): string[] {
-    if (!slide) return [];
-    const fromTokens = slide.lines
-      .map((line: LyricLine) =>
-        line.tokens
-          .filter((t) => t.kind !== 'Chord')
-          .map((t) => t.text)
-          .join('')
-      )
-      .filter((l) => l.trim().length > 0);
-
-    if (fromTokens.length > 0) {
-      return fromTokens;
-    }
-
-    if (slide.raw_content) {
-      return slide.raw_content
-        .replace(/\[[^\]]*\]/g, '')
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-    }
-
-    return [];
-  }
-
-  // Dynamic binary auto-font sizing (REQ-SONG-03)
-  // Calculates optimal viewport-relative font size so text fills ~85% of screen without clipping
-  function calculateDynamicFontSize(slide: Slide | null): string {
-    if (!slide) return '5.5vw';
-    const lines = getAudienceLines(slide);
-    if (lines.length === 0) return '5.5vw';
-
-    const lineCount = lines.length;
-    const maxLineLen = Math.max(...lines.map((l) => l.trim().length), 1);
-
-    // Horizontal limit: longest line must fit in 92vw safely
-    const horizontalVw = Math.min(10.5, Math.max(2.8, 92 / (maxLineLen * 0.52)));
-
-    // Vertical limit: all lines with line-height fit in 82vh safely
-    const verticalVh = Math.min(13.0, Math.max(3.2, 82 / (lineCount * 1.35)));
-
-    return `min(${horizontalVw.toFixed(2)}vw, ${verticalVh.toFixed(2)}vh)`;
-  }
 
   async function refreshState() {
     if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
@@ -180,7 +136,7 @@
 </script>
 
 <!-- Audience Display Canvas (Zero-border, GPU-accelerated) -->
-<div class="h-screen w-screen bg-black text-white relative overflow-hidden select-none font-sans flex items-center justify-center">
+<div class="h-screen w-screen bg-black text-white relative overflow-hidden select-none font-sans flex items-center justify-center" style="container-type: size;">
   <!-- Blanking Overlays -->
   {#if displayMode === 'black'}
     <div class="absolute inset-0 bg-black z-50"></div>
@@ -196,16 +152,16 @@
     </div>
   {/if}
 
-  <!-- Double-Buffered Slide Layers with Dynamic Auto-Font Sizing -->
+  <!-- Double-Buffered Slide Layers with Shared Dynamic Auto-Font Sizing -->
   <!-- Layer A -->
   <div
-    class="absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-300 pointer-events-none p-4"
-    style="opacity: {currentLayer === 'A' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'A' ? '10' : '5'};"
+    class="absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-300 pointer-events-none"
+    style="opacity: {currentLayer === 'A' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'A' ? '10' : '5'}; padding: 6cqh 8cqw;"
   >
     {#if slideA}
       <div
-        class="w-full max-w-[95vw] text-center space-y-2 md:space-y-4"
-        style="font-size: {calculateDynamicFontSize(slideA)};"
+        class="w-full text-center space-y-2 md:space-y-4"
+        style="font-size: {calculateSlideFontSize(slideA)}; line-height: 1.35;"
       >
         {#each getAudienceLines(slideA) as line}
           <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">
@@ -218,13 +174,13 @@
 
   <!-- Layer B -->
   <div
-    class="absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-300 pointer-events-none p-4"
-    style="opacity: {currentLayer === 'B' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'B' ? '10' : '5'};"
+    class="absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-300 pointer-events-none"
+    style="opacity: {currentLayer === 'B' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'B' ? '10' : '5'}; padding: 6cqh 8cqw;"
   >
     {#if slideB}
       <div
-        class="w-full max-w-[95vw] text-center space-y-2 md:space-y-4"
-        style="font-size: {calculateDynamicFontSize(slideB)};"
+        class="w-full text-center space-y-2 md:space-y-4"
+        style="font-size: {calculateSlideFontSize(slideB)}; line-height: 1.35;"
       >
         {#each getAudienceLines(slideB) as line}
           <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">
