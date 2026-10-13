@@ -59,15 +59,12 @@
             </div>
 
             <!-- Slide Box matching aspect ratio with Container Query context -->
+            <!-- Pure black canvas matching beamer, with red border when selected -->
             <div
               style="container-type: size;"
-              class="w-full {getAspectRatioClass(presentation.aspectRatio)} rounded-xl border-2 transition-all duration-150 overflow-hidden relative shadow-md flex items-center justify-center text-center {isLive
-                ? 'border-emerald-500 ring-4 ring-emerald-500/25 shadow-lg shadow-emerald-500/15 bg-gradient-to-b from-sky-950 via-neutral-950 to-black text-white'
-                : presentation.uiMode === 'classic' && presentation.theme === 'light'
-                  ? 'border-neutral-400 bg-gradient-to-b from-[#608ebf] via-[#4a7aa8] to-[#3a6691] text-white'
-                  : presentation.theme === 'dark'
-                    ? 'border-neutral-800 hover:border-neutral-700 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200'
-                    : 'border-slate-300 hover:border-slate-400 bg-slate-950 text-white shadow-sm'}"
+              class="w-full {getAspectRatioClass(presentation.aspectRatio)} rounded-xl border-2 transition-all duration-150 overflow-hidden relative shadow-md flex items-center justify-center text-center bg-black text-white {isLive
+                ? 'border-red-600 ring-2 ring-red-600/30'
+                : 'border-neutral-700 hover:border-neutral-600'}"
             >
               <!-- Lyrics with accurate baseline alignment and linear responsive typography -->
               <div

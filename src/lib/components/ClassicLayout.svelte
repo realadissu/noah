@@ -760,7 +760,7 @@
                 role="button"
                 tabindex="0"
                 class="flex flex-col border rounded-none cursor-pointer transition-none select-none {isLive
-                  ? 'border-[#0000cc] bg-[#edf2fc] dark:bg-[#202738] dark:border-[#528bff] shadow-sm'
+                  ? 'border-[#cc0000] dark:border-[#e53935] bg-white dark:bg-[#21252b] shadow-sm'
                   : 'border-[#b0b0b0] dark:border-neutral-700 bg-white dark:bg-[#21252b] hover:bg-neutral-50 dark:hover:bg-[#282c34]'}"
                 onclick={() => presentation.selectSlide(idx)}
                 onkeydown={(e) => {
@@ -777,7 +777,7 @@
                   </span>
                   <div class="flex items-center gap-1.5">
                     {#if isLive}
-                      <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <span class="text-[10px] font-bold text-[#cc0000] dark:text-[#e53935]">
                         ● LIVE
                       </span>
                     {/if}
@@ -788,10 +788,11 @@
                 </div>
 
                 <!-- Slide Thumbnail Container: Dynamic Aspect Ratio with Container Query for 1:1 WYSIWYG parity -->
+                <!-- Consistent black canvas matching Beamer exactly, with red border when selected -->
                 <div
-                  class="w-full border rounded-none relative overflow-hidden {isLive
-                    ? 'border-[#0000cc] dark:border-emerald-500 ring-2 ring-[#0000cc]/30 bg-black text-white'
-                    : 'border-[#999999] dark:border-neutral-700 bg-neutral-900 text-white'}"
+                  class="w-full relative overflow-hidden bg-black text-white {isLive
+                    ? 'border border-[#cc0000] dark:border-[#e53935] ring-1 ring-[#cc0000] dark:ring-[#e53935] ring-inset'
+                    : 'border border-[#7f9db9] dark:border-neutral-700'}"
                   style="aspect-ratio: {presentation.aspectRatio.replace(':', '/')}; container-type: size;"
                 >
                   <div
