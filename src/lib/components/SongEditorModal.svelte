@@ -2,7 +2,7 @@
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { Song } from '$lib/types/models';
 
-  type EditorTab = 'text' | 'format' | 'background' | 'categories' | 'copyrights';
+  type EditorTab = 'text' | 'format' | 'background' | 'categories' | 'media' | 'copyrights';
 
   const song = $derived<Song | null>(presentation.editingSong);
 
@@ -29,9 +29,15 @@
   let categories = $state<string[]>([]);
   let newCategoryInput = $state<string>('');
 
-  // UI & Chord state
+  // Media metadata
+  let audioFile = $state<string>('');
+  let chordsheetFile = $state<string>('');
+
+  // UI state
   let isChordModalOpen = $state<boolean>(false);
+  let isMarkeDropdownOpen = $state<boolean>(false);
   let newOrderPartInput = $state<string>('');
+  let selectedAblaufIdx = $state<number | null>(null);
 
   // Editor DOM elements
   let textareaEl = $state<HTMLTextAreaElement | null>(null);
@@ -41,6 +47,27 @@
   // Drag & drop state for Ablauf box
   let draggedAblaufIdx = $state<number | null>(null);
   let targetAblaufIdx = $state<number | null>(null);
+
+  // Marker options for quick insertion
+  const MARKE_OPTIONS = [
+    'Vers 1',
+    'Vers 2',
+    'Vers 3',
+    'Vers 4',
+    'Vers 5',
+    'Vers 6',
+    'Vers 7',
+    'Vers 8',
+    'Refrain',
+    'Chorus 1',
+    'Chorus 2',
+    'Bridge',
+    'Pre-Chorus',
+    'Intro',
+    'Outro',
+    'Zwischenspiel',
+    'Schluss',
+  ];
 
   // Multilingual section keyword map
   const SECTION_KEYWORD_MAP: Record<string, { kind: string; hex: string; defaultLabel: string }> = {
@@ -121,7 +148,7 @@
     return { hex: '#0078d7' };
   }
 
-  // Strict check if song currently contains valid guitar chords (avoiding false positives like [Denn] or [1])
+  // Strict check if song currently contains valid guitar chords
   function hasValidGuitarChords(text: string): boolean {
     const bracketMatches = text.match(/\[([^\]]+)\]/g);
     if (!bracketMatches) return false;
@@ -149,9 +176,11 @@
 
   const hasChords = $derived<boolean>(hasValidGuitarChords(editorText));
 
-  // Reconstruct initial editor text from song slides
+  // Reconstruct initial editor text from song slides, deduplicating slides repeated by verse_order
   function songToText(s: Song): string {
     const parts: string[] = [];
+    const seen = new Set<string>();
+
     for (const slide of s.slides) {
       let sectionTag = '';
       if (slide.section) {
@@ -204,15 +233,36 @@
         return line.raw_text;
       });
 
+      const body = lineStrings.join('\n').trim();
+      // Deduplicate blocks expanded by verse_order
+      const dedupKey = `${sectionTag}:::${body}`;
+      if (seen.has(dedupKey)) {
+        continue;
+      }
+      seen.add(dedupKey);
+
       let block = '';
       if (sectionTag) {
         block += `${sectionTag}\n`;
       }
-      block += lineStrings.join('\n');
+      block += body;
       parts.push(block.trim());
     }
     return parts.join('\n---\n');
   }
+
+  // Derive unique section headers from current editor text
+  const detectedSections = $derived.by<string[]>(() => {
+    const allLines = editorText.split('\n');
+    const detected: string[] = [];
+    for (const l of allLines) {
+      const info = getSectionHeaderInfo(l);
+      if (info && !detected.includes(info.label)) {
+        detected.push(info.label);
+      }
+    }
+    return detected;
+  });
 
   // Initialize fields from active editing song
   $effect(() => {
@@ -233,6 +283,9 @@
       categories = s.metadata.custom_tags['category']
         ? s.metadata.custom_tags['category'].split(',').map((x) => x.trim())
         : [];
+      audioFile = s.metadata.custom_tags['audiofile'] ?? '';
+      chordsheetFile = s.metadata.custom_tags['chordsheet'] ?? '';
+      selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
       updateCurrentSectionFromCursor();
     }
   });
@@ -269,33 +322,67 @@
     updateCurrentSectionFromCursor();
     if (currentSection) {
       verseOrder = [...verseOrder, currentSection];
+      selectedAblaufIdx = verseOrder.length - 1;
     }
+  }
+
+  function appendSectionToAblauf(sec: string) {
+    if (!sec.trim()) return;
+    verseOrder = [...verseOrder, sec.trim()];
+    selectedAblaufIdx = verseOrder.length - 1;
   }
 
   function addCustomOrderPart(part: string) {
     if (!part.trim()) return;
     verseOrder = [...verseOrder, part.trim()];
     newOrderPartInput = '';
+    selectedAblaufIdx = verseOrder.length - 1;
   }
 
   function removeOrderPart(idx: number) {
     verseOrder = verseOrder.filter((_, i) => i !== idx);
+    if (selectedAblaufIdx !== null) {
+      if (selectedAblaufIdx === idx) {
+        selectedAblaufIdx = verseOrder.length > 0 ? Math.min(idx, verseOrder.length - 1) : null;
+      } else if (selectedAblaufIdx > idx) {
+        selectedAblaufIdx -= 1;
+      }
+    }
+  }
+
+  function moveSelectedAblaufUp() {
+    if (selectedAblaufIdx === null || selectedAblaufIdx <= 0) return;
+    const items = [...verseOrder];
+    const prev = items[selectedAblaufIdx - 1];
+    items[selectedAblaufIdx - 1] = items[selectedAblaufIdx];
+    items[selectedAblaufIdx] = prev;
+    verseOrder = items;
+    selectedAblaufIdx -= 1;
+  }
+
+  function moveSelectedAblaufDown() {
+    if (selectedAblaufIdx === null || selectedAblaufIdx >= verseOrder.length - 1) return;
+    const items = [...verseOrder];
+    const next = items[selectedAblaufIdx + 1];
+    items[selectedAblaufIdx + 1] = items[selectedAblaufIdx];
+    items[selectedAblaufIdx] = next;
+    verseOrder = items;
+    selectedAblaufIdx += 1;
+  }
+
+  function removeSelectedAblauf() {
+    if (selectedAblaufIdx === null || selectedAblaufIdx >= verseOrder.length) return;
+    removeOrderPart(selectedAblaufIdx);
   }
 
   // Lightning Auto-populate Ablauf
   function autoPopulateAblauf() {
-    const allLines = editorText.split('\n');
-    const detected: string[] = [];
-    for (const l of allLines) {
-      const info = getSectionHeaderInfo(l);
-      if (info && !detected.includes(info.label)) {
-        detected.push(info.label);
-      }
-    }
+    const detected = detectedSections;
+    if (detected.length === 0) return;
 
     if (
-      detected.some((s) => s.toLowerCase().startsWith('vers 1')) &&
-      detected.some((s) => s.toLowerCase().startsWith('refrain'))
+      detected.some((s) => s.toLowerCase().startsWith('vers') || s.toLowerCase().startsWith('strophe')) &&
+      detected.some((s) => s.toLowerCase().startsWith('refrain') || s.toLowerCase().startsWith('chorus'))
     ) {
       const order: string[] = [];
       const verses = detected.filter((s) => s.toLowerCase().startsWith('vers') || s.toLowerCase().startsWith('strophe'));
@@ -312,13 +399,15 @@
       }
       verseOrder = order;
     } else {
-      verseOrder = detected;
+      verseOrder = [...detected];
     }
+    selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
   }
 
   // Ablauf Drag & Drop reordering
   function handleAblaufDragStart(e: DragEvent, idx: number) {
     draggedAblaufIdx = idx;
+    selectedAblaufIdx = idx;
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', String(idx));
@@ -339,6 +428,7 @@
       const [moved] = items.splice(draggedAblaufIdx, 1);
       items.splice(idx, 0, moved);
       verseOrder = items;
+      selectedAblaufIdx = idx;
     }
     draggedAblaufIdx = null;
     targetAblaufIdx = null;
@@ -349,7 +439,32 @@
     targetAblaufIdx = null;
   }
 
-  // Point 5 & 6: Insertion & macOS Smart Dash prevention
+  // Insertion helpers for markers, page breaks, and line breaks
+  function insertMarker(markerName: string) {
+    if (!textareaEl) {
+      editorText += (editorText ? '\n---\n' : '') + `${markerName}\n`;
+      isMarkeDropdownOpen = false;
+      return;
+    }
+    const start = textareaEl.selectionStart;
+    const end = textareaEl.selectionEnd;
+    const text = editorText;
+    const before = text.slice(0, start);
+    const after = text.slice(end);
+
+    const prefix = before.length === 0 ? '' : before.endsWith('\n') ? '---\n' : '\n---\n';
+    const insertion = `${prefix}${markerName}\n`;
+    const newText = before + insertion + after;
+    const newCursorPos = start + insertion.length;
+
+    editorText = newText;
+    textareaEl.value = newText;
+    textareaEl.focus();
+    textareaEl.setSelectionRange(newCursorPos, newCursorPos);
+    updateCurrentSectionFromCursor();
+    isMarkeDropdownOpen = false;
+  }
+
   function insertSlideSeparator() {
     if (!textareaEl) {
       editorText += '\n---\n';
@@ -367,6 +482,33 @@
     const suffix = after.length === 0 || after.startsWith('\n') ? '' : '\n';
 
     const separator = `${prefix}---\n${suffix}`;
+    const newText = before + separator + after;
+    const newCursorPos = start + separator.length;
+
+    editorText = newText;
+    textareaEl.value = newText;
+    textareaEl.focus();
+    textareaEl.setSelectionRange(newCursorPos, newCursorPos);
+    updateCurrentSectionFromCursor();
+  }
+
+  function insertContinuationBreak() {
+    if (!textareaEl) {
+      editorText += '\n--\n';
+      return;
+    }
+
+    const start = textareaEl.selectionStart;
+    const end = textareaEl.selectionEnd;
+    const text = editorText;
+
+    const before = text.slice(0, start);
+    const after = text.slice(end);
+
+    const prefix = before.length === 0 || before.endsWith('\n') ? '' : '\n';
+    const suffix = after.length === 0 || after.startsWith('\n') ? '' : '\n';
+
+    const separator = `${prefix}--\n${suffix}`;
     const newText = before + separator + after;
     const newCursorPos = start + separator.length;
 
@@ -397,7 +539,7 @@
     if (e.key === '-' && textareaEl) {
       const start = textareaEl.selectionStart;
       if (start >= 2 && editorText.slice(start - 2, start) === '--') {
-        // Prevent macOS text replacement system hook
+        // Prevent macOS text replacement hook
         e.preventDefault();
         const end = textareaEl.selectionEnd;
         const val = textareaEl.value;
@@ -457,10 +599,39 @@
     if (speed) sngContent += `#Speed=${speed}\n`;
     if (transpose !== 0) sngContent += `#Transpose=${transpose}\n`;
     if (fontSize) sngContent += `#FontSize=${fontSize}\n`;
-    if (verseOrder.length > 0) sngContent += `#Format=${verseOrder.join(',')}\n`;
+    if (verseOrder.length > 0) sngContent += `#VerseOrder=${verseOrder.join(',')}\n`;
     if (langCount > 1) sngContent += `#LangCount=${langCount}\n`;
     if (titleLang2.trim()) sngContent += `#TitleLang2=${titleLang2.trim()}\n`;
     if (categories.length > 0) sngContent += `#category=${categories.join(',')}\n`;
+    if (audioFile.trim()) sngContent += `#AudioFile=${audioFile.trim()}\n`;
+    if (chordsheetFile.trim()) sngContent += `#Chordsheet=${chordsheetFile.trim()}\n`;
+
+    // Preserve custom tags from original song (like #Format, #BackgroundImage, etc.)
+    if (song?.metadata?.custom_tags) {
+      for (const [k, v] of Object.entries(song.metadata.custom_tags)) {
+        const lowerK = k.toLowerCase();
+        if (
+          lowerK !== 'title' &&
+          lowerK !== 'author' &&
+          lowerK !== 'artist' &&
+          lowerK !== 'copyright' &&
+          lowerK !== 'ccli' &&
+          lowerK !== 'key' &&
+          lowerK !== 'tonart' &&
+          lowerK !== 'speed' &&
+          lowerK !== 'transpose' &&
+          lowerK !== 'fontsize' &&
+          lowerK !== 'verseorder' &&
+          lowerK !== 'langcount' &&
+          lowerK !== 'titlelang2' &&
+          lowerK !== 'category' &&
+          lowerK !== 'audiofile' &&
+          lowerK !== 'chordsheet'
+        ) {
+          sngContent += `#${k}=${v}\n`;
+        }
+      }
+    }
 
     sngContent += '---\n' + editorText.trim();
 
@@ -484,6 +655,7 @@
   <!-- Backdrop -->
   <div
     class="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none font-sans"
+    style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
     role="dialog"
     aria-modal="true"
     aria-label="Song bearbeiten"
@@ -502,7 +674,7 @@
       >
         <div class="flex items-center gap-2">
           <span>🎵</span>
-          <span>Song bearbeiten</span>
+          <span>Song bearbeiten - {title || 'Neuer Song'}</span>
         </div>
         <button
           type="button"
@@ -514,7 +686,7 @@
         </button>
       </div>
 
-      <!-- Navigation Tabs (Text | Formatierung | Hintergrund | Kategorien | Copyrights) -->
+      <!-- Navigation Tabs (Text | Formatierung | Hintergrund | Kategorien | Medien | Copyrights) -->
       <div
         class="flex items-center px-2 pt-1 border-b gap-1 text-xs shrink-0 select-none {presentation.theme === 'dark'
           ? 'bg-[#252932] border-neutral-700'
@@ -563,6 +735,17 @@
           onclick={() => (activeTab = 'categories')}
         >
           Kategorien
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'media'
+            ? presentation.theme === 'dark'
+              ? 'bg-[#1e2229] border-neutral-700 text-amber-400 border-b-transparent shadow-xs'
+              : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 border-b-transparent font-bold'
+            : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'}"
+          onclick={() => (activeTab = 'media')}
+        >
+          Medien
         </button>
         <button
           type="button"
@@ -695,19 +878,125 @@
             </div>
           {/if}
 
-          <!-- 2. Dual Column: Left = Main Text Editor with Auto Section Banners, Right = Ablauf & Controls -->
-          <div class="flex-1 flex flex-col md:flex-row gap-3 min-h-[320px] overflow-hidden">
-            <!-- Left Column: Unified Text Editor with Automatic Header Banners -->
+          <!-- 2. Dual Column: Left = Main Text Editor with Toolbar & Guidelines, Right = Ablauf & Controls -->
+          <div class="flex-1 flex flex-col md:flex-row gap-3 min-h-[340px] overflow-hidden">
+            <!-- Left Column: Unified Text Editor with Toolbar, Automatic Header Banners & Guidelines -->
             <div
               class="flex-1 flex flex-col rounded-lg border overflow-hidden relative {presentation.theme === 'dark'
                 ? 'bg-neutral-950 border-neutral-700'
                 : 'bg-white border-neutral-400'}"
             >
-              <!-- Container with center dotted guideline and red bottom border -->
+              <!-- SongBeamer Editor Toolbar above text area -->
+              <div
+                class="h-8 px-2 border-b flex items-center justify-between gap-1 text-xs shrink-0 select-none {presentation.theme === 'dark'
+                  ? 'bg-neutral-900 border-neutral-800'
+                  : 'bg-[#f4f3ed] border-neutral-300'}"
+              >
+                <div class="flex items-center gap-1 relative">
+                  <!-- Marke insertion dropdown -->
+                  <div class="relative">
+                    <button
+                      type="button"
+                      class="px-2 py-0.5 rounded border font-semibold flex items-center gap-1 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
+                        ? 'border-neutral-700 text-neutral-200'
+                        : 'border-neutral-300 text-neutral-800'}"
+                      onclick={() => (isMarkeDropdownOpen = !isMarkeDropdownOpen)}
+                      title="Abschnittsmarke an Cursorposition einfügen"
+                    >
+                      <span>🏷️ Marke</span>
+                      <span class="text-[10px]">▼</span>
+                    </button>
+
+                    {#if isMarkeDropdownOpen}
+                      <div
+                        class="absolute left-0 top-full mt-1 w-44 max-h-60 overflow-y-auto rounded-md border shadow-xl z-50 py-1 text-xs {presentation.theme === 'dark'
+                          ? 'bg-neutral-900 border-neutral-700 text-neutral-200'
+                          : 'bg-white border-neutral-400 text-neutral-900'}"
+                      >
+                        {#each MARKE_OPTIONS as opt}
+                          <button
+                            type="button"
+                            class="w-full text-left px-3 py-1 hover:bg-blue-600 hover:text-white cursor-pointer transition flex items-center gap-2"
+                            onclick={() => insertMarker(opt)}
+                          >
+                            <span
+                              class="w-2 h-2 rounded-full"
+                              style="background-color: {getSectionColor(opt).hex};"
+                            ></span>
+                            <span>{opt}</span>
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+
+                  <!-- Page break separator (---) -->
+                  <button
+                    type="button"
+                    class="px-2 py-0.5 rounded border font-mono font-bold text-red-600 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
+                      ? 'border-neutral-700'
+                      : 'border-neutral-300'}"
+                    onclick={insertSlideSeparator}
+                    title="Neue Folie mit '---' trennen"
+                  >
+                    --- Folie
+                  </button>
+
+                  <!-- Block break continuation (--) -->
+                  <button
+                    type="button"
+                    class="px-2 py-0.5 rounded border font-mono font-bold text-red-500 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
+                      ? 'border-neutral-700'
+                      : 'border-neutral-300'}"
+                    onclick={insertContinuationBreak}
+                    title="Folienumbruch mit '--' (gleiche Marke fortführen)"
+                  >
+                    -- Umbruch
+                  </button>
+                </div>
+
+                <!-- Quick Chords buttons in toolbar -->
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="px-1.5 py-0.5 rounded border text-[11px] font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
+                      ? 'border-neutral-700 text-emerald-400'
+                      : 'border-neutral-300 text-emerald-700'}"
+                    onclick={() => transposeBy(1)}
+                    title="Akkorde +1 Halbton transponieren"
+                  >
+                    # +1
+                  </button>
+                  <button
+                    type="button"
+                    class="px-1.5 py-0.5 rounded border text-[11px] font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
+                      ? 'border-neutral-700 text-emerald-400'
+                      : 'border-neutral-300 text-emerald-700'}"
+                    onclick={() => transposeBy(-1)}
+                    title="Akkorde -1 Halbton transponieren"
+                  >
+                    b -1
+                  </button>
+                  <button
+                    type="button"
+                    class="px-1.5 py-0.5 rounded border text-[11px] text-red-500 hover:bg-red-500/10 cursor-pointer {presentation.theme === 'dark'
+                      ? 'border-neutral-700'
+                      : 'border-neutral-300'}"
+                    onclick={stripAllChords}
+                    title="Alle Akkorde aus dem Text entfernen"
+                  >
+                    ✂️ Akkorde
+                  </button>
+                </div>
+              </div>
+
+              <!-- Main text area with SongBeamer vertical red guideline at 48ch -->
               <div class="relative flex-1 w-full h-full overflow-hidden">
-                <!-- Subtle center guideline down the middle -->
+                <!-- SongBeamer vertical red guideline (approx. 48 monospace characters width) -->
                 <div
-                  class="absolute inset-y-0 left-1/2 border-r border-dotted border-neutral-300 dark:border-neutral-800 pointer-events-none z-10"
+                  class="absolute inset-y-0 border-r border-dotted border-red-500/60 dark:border-red-500/40 pointer-events-none z-10"
+                  style="left: calc(48ch + 16px);"
+                  title="SongBeamer Zeilenbegrenzungslinie (48 Zeichen)"
                   aria-hidden="true"
                 ></div>
 
@@ -759,22 +1048,23 @@
               </div>
 
               <!-- Red horizontal guideline at bottom matching SongBeamer -->
-              <div class="w-full h-0.5 bg-red-500 shrink-0"></div>
+              <div class="w-full h-0.5 bg-red-600 shrink-0"></div>
             </div>
 
-            <!-- Right Column: Ablauf (Order of Service) & Language / Slide Controls -->
-            <div class="w-full md:w-64 flex flex-col gap-3 shrink-0 text-xs">
+            <!-- Right Column: Versreihenfolge / Ablauf (Order of Service) & Language / Slide Controls -->
+            <div class="w-full md:w-64 flex flex-col gap-2.5 shrink-0 text-xs">
               <!-- Ablauf Box -->
               <div
                 class="flex-1 flex flex-col rounded-lg border p-2.5 {presentation.theme === 'dark'
                   ? 'bg-neutral-900/60 border-neutral-700'
                   : 'bg-white border-neutral-400'}"
               >
+                <!-- Ablauf Header with Actions -->
                 <div class="flex items-center justify-between font-bold mb-1.5">
                   <div class="flex items-center gap-1.5">
-                    <span>Ablauf:</span>
+                    <span>Versreihenfolge:</span>
                     {#if currentSection}
-                      <span class="text-[10px] opacity-60 font-normal truncate max-w-[90px]" title="Aktiver Teil an Cursorposition">
+                      <span class="text-[10px] opacity-60 font-normal truncate max-w-[80px]" title="Aktiver Teil an Cursorposition">
                         ({currentSection})
                       </span>
                     {/if}
@@ -790,28 +1080,29 @@
                     </button>
                     <button
                       type="button"
-                      class="p-1 rounded hover:bg-black/10 transition cursor-pointer font-bold text-amber-500"
+                      class="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer font-bold text-amber-500"
                       onclick={autoPopulateAblauf}
-                      title="Ablauf automatisch aus Text generieren (Blitz)"
+                      title="Ablauf automatisch aus Text generieren (⚡ Auto)"
                     >
                       ⚡ Auto
                     </button>
                   </div>
                 </div>
 
-                <!-- Sequence list with colored text matching SongBeamer & Drag'n'Drop -->
+                <!-- Sequence list with colored badges matching SongBeamer & Drag'n'Drop -->
                 <div
-                  class="flex-1 min-h-[120px] max-h-48 overflow-y-auto border rounded p-1 space-y-0.5 select-none {presentation.theme === 'dark'
+                  class="flex-1 min-h-[130px] max-h-48 overflow-y-auto border rounded p-1 space-y-0.5 select-none {presentation.theme === 'dark'
                     ? 'bg-neutral-950 border-neutral-800'
                     : 'bg-white border-neutral-300'}"
                 >
                   {#if verseOrder.length === 0}
                     <div class="text-[11px] text-neutral-400 p-2 text-center">
-                      Kein Ablauf festgelegt. Klicke auf '+ Teil' oder '⚡ Auto'.
+                      Keine Versreihenfolge festgelegt. Klicke auf '+ Teil' oder '⚡ Auto'.
                     </div>
                   {:else}
                     {#each verseOrder as item, idx}
                       {@const color = getSectionColor(item)}
+                      {@const isSelected = selectedAblaufIdx === idx}
                       {@const isDragging = draggedAblaufIdx === idx}
                       {@const isTarget = targetAblaufIdx === idx && draggedAblaufIdx !== null}
 
@@ -819,11 +1110,19 @@
                         role="button"
                         tabindex="0"
                         draggable="true"
+                        onclick={() => (selectedAblaufIdx = idx)}
+                        onkeydown={(e) => {
+                          if (e.key === 'Enter') selectedAblaufIdx = idx;
+                        }}
                         ondragstart={(e) => handleAblaufDragStart(e, idx)}
                         ondragover={(e) => handleAblaufDragOver(e, idx)}
                         ondrop={(e) => handleAblaufDrop(e, idx)}
                         ondragend={handleAblaufDragEnd}
-                        class="px-2 py-1 rounded text-xs font-bold flex items-center justify-between group cursor-grab active:cursor-grabbing transition relative {isDragging ? 'opacity-30 border border-dashed border-amber-500' : ''} {presentation.theme === 'dark'
+                        class="px-2 py-1 rounded text-xs font-bold flex items-center justify-between group cursor-grab active:cursor-grabbing transition relative {isSelected
+                          ? presentation.theme === 'dark'
+                            ? 'bg-blue-600/30 border border-blue-500'
+                            : 'bg-blue-100 border border-blue-400'
+                          : ''} {isDragging ? 'opacity-30 border border-dashed border-amber-500' : ''} {presentation.theme === 'dark'
                           ? 'hover:bg-neutral-800'
                           : 'hover:bg-neutral-100'}"
                         style="color: {color.hex};"
@@ -833,11 +1132,14 @@
                           <div class="absolute -top-[2px] left-0 right-0 h-[2px] bg-amber-400 pointer-events-none"></div>
                         {/if}
 
-                        <span class="truncate">{item}</span>
+                        <span class="truncate">{idx + 1}. {item}</span>
                         <button
                           type="button"
                           class="opacity-0 group-hover:opacity-100 text-red-500 text-[10px] hover:font-black cursor-pointer ml-1"
-                          onclick={() => removeOrderPart(idx)}
+                          onclick={(e) => {
+                            e.stopPropagation();
+                            removeOrderPart(idx);
+                          }}
                           title="Entfernen"
                         >
                           ✕
@@ -847,12 +1149,73 @@
                   {/if}
                 </div>
 
+                <!-- Up, Down, Remove buttons for selected item in Ablauf -->
+                <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-neutral-300 dark:border-neutral-800">
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="px-2 py-0.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
+                        ? 'border-neutral-700 text-neutral-300'
+                        : 'border-neutral-300 text-neutral-700'}"
+                      onclick={moveSelectedAblaufUp}
+                      disabled={selectedAblaufIdx === null || selectedAblaufIdx <= 0}
+                      title="Ausgewählten Teil nach oben verschieben"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      class="px-2 py-0.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
+                        ? 'border-neutral-700 text-neutral-300'
+                        : 'border-neutral-300 text-neutral-700'}"
+                      onclick={moveSelectedAblaufDown}
+                      disabled={selectedAblaufIdx === null || selectedAblaufIdx >= verseOrder.length - 1}
+                      title="Ausgewählten Teil nach unten verschieben"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    class="px-2 py-0.5 rounded border text-red-500 hover:bg-red-500/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
+                      ? 'border-neutral-700'
+                      : 'border-neutral-300'}"
+                    onclick={removeSelectedAblauf}
+                    disabled={selectedAblaufIdx === null || verseOrder.length === 0}
+                    title="Ausgewählten Teil aus Ablauf entfernen"
+                  >
+                    ✕ Löschen
+                  </button>
+                </div>
+
+                <!-- Quick-Add Chips for detected sections in song -->
+                {#if detectedSections.length > 0}
+                  <div class="mt-2">
+                    <span class="text-[10px] opacity-70 font-semibold block mb-1">Verfügbare Teile anfügen:</span>
+                    <div class="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+                      {#each detectedSections as sec}
+                        {@const color = getSectionColor(sec)}
+                        <button
+                          type="button"
+                          class="px-1.5 py-0.5 rounded text-[10px] font-bold border hover:opacity-80 transition cursor-pointer flex items-center gap-1"
+                          style="border-color: {color.hex}; color: {color.hex};"
+                          onclick={() => appendSectionToAblauf(sec)}
+                          title="'+ {sec}' zur Reihenfolge hinzufügen"
+                        >
+                          <span>+</span>
+                          <span>{sec}</span>
+                        </button>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+
                 <!-- Add custom part to order -->
                 <div class="flex items-center gap-1 mt-2">
                   <input
                     type="text"
                     bind:value={newOrderPartInput}
-                    placeholder="Teil hinzufügen..."
+                    placeholder="Eigener Teil..."
                     class="flex-1 px-2 py-0.5 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
                       ? 'bg-neutral-900 border-neutral-700 text-white'
                       : 'bg-white border-neutral-300 text-neutral-900'}"
@@ -897,7 +1260,7 @@
                 </p>
               </div>
 
-              <!-- Yellow Button: Folien mit --- trennen (at cursor position) -->
+              <!-- Yellow Button: Seiten mit --- trennen (at cursor position) -->
               <button
                 type="button"
                 class="w-full py-2 px-3 rounded-lg border font-bold text-xs shadow-xs transition cursor-pointer text-center {presentation.theme === 'dark'
@@ -906,13 +1269,13 @@
                 onclick={insertSlideSeparator}
                 title="Trennt die Folie an der aktuellen Cursorposition mit '---'"
               >
-                Folien mit --- trennen
+                Seiten mit --- trennen
               </button>
 
               <!-- Chord status notice (strictly only when guitar chords exist) -->
               {#if hasChords}
-                <div class="text-red-600 font-bold text-xs text-center mt-1">
-                  Dieser Song besitzt Gitarrenakkorde.
+                <div class="text-red-600 font-bold text-xs text-center mt-0.5">
+                  Dieser Song besitzt Akkorde.
                 </div>
               {/if}
             </div>
@@ -1081,8 +1444,66 @@
               </button>
             </div>
           </div>
+        {:else if activeTab === 'media'}
+          <!-- 5. Medien Tab -->
+          <div
+            class="flex-1 flex flex-col gap-3 rounded-lg border p-4 {presentation.theme === 'dark'
+              ? 'bg-neutral-950 border-neutral-700'
+              : 'bg-white border-neutral-300'}"
+          >
+            <div class="font-bold text-sm border-b pb-1">Verknüpfte Mediendateien</div>
+            <div class="flex flex-col gap-3 text-xs">
+              <div class="flex flex-col gap-1">
+                <label for="audio-file-input" class="font-bold">Audio-Begleitdatei (#AudioFile):</label>
+                <div class="flex items-center gap-2">
+                  <input
+                    id="audio-file-input"
+                    type="text"
+                    bind:value={audioFile}
+                    placeholder="Pfad zu MP3, WAV oder OGG Begleittrack..."
+                    class="flex-1 px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                      ? 'bg-neutral-900 border-neutral-700 text-white'
+                      : 'bg-white border-neutral-300'}"
+                  />
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold {presentation.theme === 'dark'
+                      ? 'border-neutral-700'
+                      : 'border-neutral-300'}"
+                    onclick={() => alert('Dateiauswahl für Audio wird über Dateidialog geladen.')}
+                  >
+                    Durchsuchen...
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label for="chordsheet-input" class="font-bold">Notenblatt / Chordsheet (#Chordsheet):</label>
+                <div class="flex items-center gap-2">
+                  <input
+                    id="chordsheet-input"
+                    type="text"
+                    bind:value={chordsheetFile}
+                    placeholder="Pfad zu Notenblatt PDF oder Bild..."
+                    class="flex-1 px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                      ? 'bg-neutral-900 border-neutral-700 text-white'
+                      : 'bg-white border-neutral-300'}"
+                  />
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold {presentation.theme === 'dark'
+                      ? 'border-neutral-700'
+                      : 'border-neutral-300'}"
+                    onclick={() => alert('Dateiauswahl für Notenblatt wird über Dateidialog geladen.')}
+                  >
+                    Durchsuchen...
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         {:else if activeTab === 'categories'}
-          <!-- 5. Categories Tab -->
+          <!-- 6. Categories Tab -->
           <div
             class="flex-1 flex flex-col gap-3 rounded-lg border p-4 {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'

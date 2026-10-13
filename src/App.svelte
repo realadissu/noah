@@ -246,19 +246,21 @@
 {#if windowLabel === 'beamer'}
   <BeamerView />
 {:else if presentation.uiMode === 'classic'}
-  <div
-    class="flex flex-col h-screen w-screen overflow-hidden font-sans select-none"
-    role="region"
-    aria-label="Noah Presentation Control Studio (Classic)"
-    ondragover={(e) => {
-      if (e.dataTransfer?.types.includes('application/x-noah-schedule')) {
-        return;
-      }
-      e.preventDefault();
-    }}
-    ondrop={handleFileDrop}
-  >
-    <ClassicLayout />
+  <div class="h-screen w-screen overflow-hidden relative">
+    <div
+      class="flex flex-col h-full w-full font-sans select-none"
+      role="region"
+      aria-label="Noah Presentation Control Studio (Classic)"
+      ondragover={(e) => {
+        if (e.dataTransfer?.types.includes('application/x-noah-schedule')) {
+          return;
+        }
+        e.preventDefault();
+      }}
+      ondrop={handleFileDrop}
+    >
+      <ClassicLayout />
+    </div>
 
     {#if presentation.isSettingsOpen}
       <SettingsModal />
