@@ -3,16 +3,20 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod dialog;
 pub mod models;
+pub mod scanner;
 
 use std::sync::Arc;
 
+use dialog::{pick_sng_files_native, pick_songs_folder_native};
 use models::{
     BeamerEvent, BeamerStateResponse, DisplayInfo, DisplayMode, PresentationState, SngLoadResponse,
     Song, SongSearchResult,
 };
 use noah_core::storage::SongDatabase;
 use noah_parser::{parse_sng_bytes_with_info, serialize_sng, DetectedEncoding};
+use scanner::{load_sng_file_from_disk, scan_and_index_directory, FileLoadResult, ScanSummary};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::Mutex;
 
@@ -21,6 +25,59 @@ pub struct AppState {
     pub presentation: Mutex<PresentationState>,
     pub active_song: Mutex<Option<Song>>,
     pub db: Arc<SongDatabase>,
+}
+
+#[tauri::command]
+fn pick_sng_files() -> Result<Vec<String>, String> {
+    pick_sng_files_native()
+}
+
+#[tauri::command]
+fn pick_songs_folder() -> Result<Option<String>, String> {
+    pick_songs_folder_native()
+}
+
+#[tauri::command]
+async fn load_sng_file(
+    path: String,
+    state: State<'_, AppState>,
+) -> Result<FileLoadResult, String> {
+    let p = std::path::Path::new(&path);
+    let loaded = load_sng_file_from_disk(p)?;
+    let _ = state.db.upsert_song(&loaded.song, Some(p));
+    Ok(loaded)
+}
+
+#[tauri::command]
+async fn parse_sng_bytes(
+    bytes: Vec<u8>,
+    file_path: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<SngLoadResponse, String> {
+    let result = parse_sng_bytes_with_info(&bytes).map_err(|e| e.to_string())?;
+
+    let encoding_name = match result.detected_encoding {
+        DetectedEncoding::Utf8WithBom => "UTF-8 (BOM)",
+        DetectedEncoding::Utf8 => "UTF-8",
+        DetectedEncoding::Windows1252 => "Windows-1252",
+    };
+
+    let path_ref = file_path.as_deref().map(std::path::Path::new);
+    let _ = state.db.upsert_song(&result.song, path_ref);
+
+    Ok(SngLoadResponse {
+        song: result.song,
+        encoding: encoding_name.to_string(),
+    })
+}
+
+#[tauri::command]
+async fn scan_songs_directory(
+    dir_path: String,
+    state: State<'_, AppState>,
+) -> Result<ScanSummary, String> {
+    let p = std::path::Path::new(&dir_path);
+    scan_and_index_directory(p, &state.db)
 }
 
 #[tauri::command]
@@ -384,6 +441,11 @@ pub fn run() {
     if let Err(err) = tauri::Builder::default()
         .manage(initial_state)
         .invoke_handler(tauri::generate_handler![
+            pick_sng_files,
+            pick_songs_folder,
+            load_sng_file,
+            parse_sng_bytes,
+            scan_songs_directory,
             parse_sng,
             export_sng,
             search_songs,
