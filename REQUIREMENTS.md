@@ -33,6 +33,15 @@
   * Real-time transposition (+/- semitones, sharp/flat preference).
   * Chords visible on Stage Monitor / Musician View, automatically stripped from Audience Beamer View.
 * **REQ-SONG-07 (Live Editing):** Real-time text corrections in the Control UI without interrupting the active projection.
+* **REQ-SONG-08 (1:1 WYSIWYG Parity & Dynamic Aspect Ratio):**
+  * Thumbnail cards in the Slide Deck and the Beamer Preview mirror the actual Beamer projection 1:1 in relative layout, font metrics, margins, and line breaks.
+  * Preview card aspect ratios dynamically bind to the configured Beamer aspect ratio (16:9, 16:10, 4:3).
+* **REQ-SONG-09 (Deterministic SNG Line Breaks & Two-Boundary Sizing):**
+  * Line breaks are strictly dictated by the authored `.sng` file. The software never applies automatic word wrapping.
+  * Slide font size is determined deterministically by `min(boundary_horizontal, boundary_vertical)`:
+    - Horizontal boundary: longest line fits inside the safe width (~88% container width, 6% side margins).
+    - Vertical boundary: total lines fit inside the safe height (~90% container height, 5% vertical margins).
+    - No text overflow, no ellipsis (`...`) clipping, and no artificial clamp floors that violate container boundaries.
 
 ### 3.2 Scripture & Bible Module
 * **REQ-BIB-01 (Public Domain Bibles):** Built-in support for open SQLite/XML Bible formats (e.g., Zefania XML, OpenSong Bibles, Luther 1912, Elberfelder 1905, King James Version, World English Bible).

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { DisplayMode, Song, Slide, BeamerEvent, BeamerStateResponse } from '$lib/types';
+  import type { DisplayMode, Song, Slide, BeamerEvent, BeamerStateResponse, AspectRatio } from '$lib/types';
   import { getAudienceLines, calculateSlideFontSize } from '$lib/utils/slideTypography';
+  import { DEFAULT_SONG } from '$lib/stores/presentation.svelte';
 
   // State managed inside the Beamer webview process
   let activeSong = $state<Song | null>(null);
   let displayMode = $state<DisplayMode>('normal');
+  let aspectRatio = $state<AspectRatio>('16:9');
   let isFrozen = $state<boolean>(false);
   let alertMessage = $state<{ text: string; expiry: number } | null>(null);
 
@@ -44,8 +46,15 @@
     switch (event.type) {
       case 'SYNC_SONG': {
         activeSong = event.song;
+        if (event.aspectRatio) {
+          aspectRatio = event.aspectRatio;
+        }
         const targetSlide = event.song.slides[event.slideIndex] ?? null;
         updateSlideWithTransition(targetSlide);
+        break;
+      }
+      case 'SET_ASPECT_RATIO': {
+        aspectRatio = event.aspectRatio;
         break;
       }
       case 'CHANGE_SLIDE': {
@@ -135,6 +144,9 @@
           if (snap.song) {
             activeSong = snap.song;
             displayMode = snap.displayMode || 'normal';
+            if (snap.aspectRatio) {
+              aspectRatio = snap.aspectRatio;
+            }
             const slide = snap.song.slides[snap.slideIndex ?? 0] ?? null;
             if (slide) {
               slideA = slide;
@@ -143,6 +155,13 @@
           }
         }
       } catch {}
+    }
+
+    // Safe visual default if standalone or uninitialized
+    if (!activeSong && DEFAULT_SONG) {
+      activeSong = DEFAULT_SONG;
+      slideA = DEFAULT_SONG.slides[0] ?? null;
+      currentLayer = 'A';
     }
 
     // 4. Tauri IPC initialization
@@ -213,10 +232,10 @@
     {#if slideA}
       <div
         class="w-full text-center space-y-2 md:space-y-4 px-4"
-        style="font-size: {calculateSlideFontSize(slideA, false, false)}; line-height: 1.28;"
+        style="font-size: {calculateSlideFontSize(slideA, false, aspectRatio)}; line-height: 1.35;"
       >
         {#each getAudienceLines(slideA) as line}
-          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] break-words whitespace-normal">
+          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible">
             {line}
           </p>
         {/each}
@@ -232,10 +251,10 @@
     {#if slideB}
       <div
         class="w-full text-center space-y-2 md:space-y-4 px-4"
-        style="font-size: {calculateSlideFontSize(slideB, false, false)}; line-height: 1.28;"
+        style="font-size: {calculateSlideFontSize(slideB, false, aspectRatio)}; line-height: 1.35;"
       >
         {#each getAudienceLines(slideB) as line}
-          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] break-words whitespace-normal">
+          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible">
             {line}
           </p>
         {/each}

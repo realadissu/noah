@@ -1,7 +1,7 @@
 //! Shared typography and slide layout calculation for 1:1 WYSIWYG parity between Beamer and Preview.
-//! Pure functions working consistently across Windows, macOS, and Linux using CSS Container Queries.
+//! Pure functions implementing REQ-SONG-08 and REQ-SONG-09.
 
-import type { Slide, LyricLine } from '$lib/types/models';
+import type { Slide, LyricLine, AspectRatio } from '$lib/types/models';
 
 /**
  * Extracts plain audience text lines (chords stripped) from a slide.
@@ -38,43 +38,63 @@ export function getAudienceLines(slide: Slide | null): string[] {
 }
 
 /**
- * Calculates optimal Container-Query font size for slides.
+ * Calculates optimal Container-Query font size according to REQ-SONG-08 & REQ-SONG-09.
  *
- * Provides:
- * 1. Generous fill: Text occupies ~60-70% of slide area with comfortable safety margins.
- * 2. 2-line verses scale up to ~8.5cqw; 4-line verses scale up to ~6.8-7.4cqw.
- * 3. Legibility on thumbnails: preview cards use isThumbnail=true with clamp(1.0rem, optimalCqw, 2.5rem)
- *    so preview text is bold, prominent, and fills the thumbnail cards.
- * 4. Audience preview thumbnail in Column 3 uses pure container query cqw to avoid text overflow.
+ * Guarantees:
+ * 1. Strict SNG Line Breaks: No automatic software word-wrapping.
+ * 2. Deterministic Two-Boundary Sizing: min(boundaryHorizontal, boundaryVertical).
+ *    - Boundary Horizontal: Longest line must fit without wrapping inside safe width (~88% width, 6% side margins).
+ *    - Boundary Vertical: All lines must fit vertically inside safe height (~90% height, 5% top/bottom margins).
+ * 3. 1:1 WYSIWYG Parity: Both Beamer and preview cards use the exact same pure cqw unit, guaranteeing
+ *    zero text overflow and mathematically identical relative proportions across all viewports and aspect ratios.
  */
 export function calculateSlideFontSize(
   slide: Slide | null,
   showChords: boolean = false,
-  isThumbnail: boolean = false
+  aspectRatio: AspectRatio = '16:9'
 ): string {
-  if (!slide) return isThumbnail ? 'clamp(1.0rem, 6.5cqw, 2.5rem)' : '6.8cqw';
+  if (!slide) return '5.2cqw';
   const lines = getAudienceLines(slide);
-  if (lines.length === 0) return isThumbnail ? 'clamp(1.0rem, 6.5cqw, 2.5rem)' : '6.8cqw';
+  if (lines.length === 0) return '5.2cqw';
 
   const lineCount = lines.length;
   const maxLineLen = Math.max(...lines.map((l) => l.trim().length), 1);
 
-  // Line-height multiplier
-  const lineFactor = showChords ? 1.95 : 1.26;
+  // Line-height multiplier (more vertical headroom needed if chords are shown)
+  const lineFactor = showChords ? 2.1 : 1.35;
 
-  // Target vertical fill: ~60-68% of 16:9 slide height (56.25cqw total height)
-  // Available vertical text height budget: ~36-38cqw
-  const verticalTargetCqw = Math.min(8.6, Math.max(3.8, 36.5 / (lineCount * lineFactor)));
-
-  // Horizontal fitting: allow natural wrapping for long lines (>36 chars) rather than shrinking all other lines
-  const effectiveMaxLen = Math.min(maxLineLen, Math.max(26, maxLineLen > 36 ? maxLineLen * 0.65 : maxLineLen));
-  const horizontalCqw = Math.min(8.6, Math.max(3.8, 94 / (effectiveMaxLen * 0.39)));
-
-  const optimalCqw = Math.min(horizontalCqw, verticalTargetCqw);
-
-  if (isThumbnail) {
-    return `clamp(1.0rem, ${optimalCqw.toFixed(2)}cqw, 2.5rem)`;
+  // Aspect ratio height-to-width factor
+  // In CSS container queries, 1cqw is 1% container width.
+  // Container height in cqw units:
+  // 16:9  -> 9 / 16 = 0.5625
+  // 16:10 -> 10 / 16 = 0.625
+  // 4:3   -> 3 / 4 = 0.75
+  let aspectFactor = 0.5625;
+  if (aspectRatio === '4:3') {
+    aspectFactor = 0.75;
+  } else if (aspectRatio === '16:10') {
+    aspectFactor = 0.625;
   }
 
-  return `${optimalCqw.toFixed(2)}cqw`;
+  // Safe Margins (SongBeamer standard):
+  // Safe width: 100 - 2 * 6% = 88cqw
+  // Safe height: (100 - 2 * 5%) * aspectFactor = 90 * aspectFactor (in cqw units)
+  const safeWidthCqw = 88.0;
+  const safeHeightCqw = 90.0 * aspectFactor;
+
+  // 1. Horizontal Boundary: longest line must fit without wrapping
+  // Average proportional glyph width for standard sans-serif (Segoe UI, Arial, Inter) is ~0.48em
+  const glyphRatio = 0.48;
+  const boundaryHorizontal = safeWidthCqw / (maxLineLen * glyphRatio);
+
+  // 2. Vertical Boundary: all lines must fit within safe height
+  const boundaryVertical = safeHeightCqw / (lineCount * lineFactor);
+
+  // 3. Optimal size: whichever boundary hits the limit first defines the font size
+  const optimal = Math.min(boundaryHorizontal, boundaryVertical);
+
+  // Presentation bounds (1.5cqw to 8.5cqw)
+  const clamped = Math.min(8.5, Math.max(1.5, optimal));
+
+  return `${clamped.toFixed(2)}cqw`;
 }

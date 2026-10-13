@@ -72,7 +72,7 @@
               <!-- Lyrics with accurate baseline alignment and linear responsive typography -->
               <div
                 class="w-full h-full flex flex-col items-center justify-center overflow-hidden font-sans select-none"
-                style="padding: 6cqh 8cqw; font-size: {calculateSlideFontSize(slide, presentation.showChords)}; line-height: 1.35;"
+                style="padding: 5cqh 6cqw; font-size: {calculateSlideFontSize(slide, presentation.showChords, presentation.aspectRatio)}; line-height: 1.35;"
               >
                 <div class="w-full flex flex-col items-center justify-center" style="gap: 0.2em;">
                   {#each slide.lines as line}
@@ -98,7 +98,7 @@
                           {/each}
                         </div>
                       {:else}
-                        <p class="font-bold tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                        <p class="font-bold tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible">
                           {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
                         </p>
                       {/if}

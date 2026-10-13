@@ -27,7 +27,7 @@ async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Prom
 }
 
 // Sample default song for instant preview
-const DEFAULT_SONG: Song = {
+export const DEFAULT_SONG: Song = {
   id: '11111111-1111-1111-1111-111111111111',
   metadata: {
     title: 'Lobe den Herrn, meine Seele',
@@ -287,6 +287,25 @@ class PresentationStore {
   // Cross-window channel for browser tabs / windows parity
   private beamerChannel: BroadcastChannel | null = null;
 
+  constructor() {
+    this.initCrossWindowSync();
+  }
+
+  private initCrossWindowSync() {
+    if (typeof window === 'undefined') return;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        this.beamerChannel = new BroadcastChannel('noah-beamer-channel');
+        this.beamerChannel.onmessage = (e) => {
+          if (e.data?.type === 'REQUEST_SYNC') {
+            this.syncAllToBeamer();
+          }
+        };
+      }
+      this.saveBeamerSnapshot();
+    } catch {}
+  }
+
   private emitBeamerEvent(event: Record<string, unknown>) {
     if (typeof window === 'undefined') return;
     try {
@@ -312,6 +331,7 @@ class PresentationStore {
           song: this.activeSong,
           slideIndex: this.activeSlideIndex,
           displayMode: this.displayMode,
+          aspectRatio: this.aspectRatio,
         })
       );
     } catch {}
@@ -323,6 +343,7 @@ class PresentationStore {
         type: 'SYNC_SONG',
         song: this.activeSong,
         slideIndex: this.activeSlideIndex,
+        aspectRatio: this.aspectRatio,
       });
       const slide = this.activeSong.slides[this.activeSlideIndex];
       if (slide) {
@@ -336,6 +357,10 @@ class PresentationStore {
     this.emitBeamerEvent({
       type: 'SET_BLANK',
       mode: this.displayMode,
+    });
+    this.emitBeamerEvent({
+      type: 'SET_ASPECT_RATIO',
+      aspectRatio: this.aspectRatio,
     });
     this.saveBeamerSnapshot();
   }
@@ -616,10 +641,16 @@ class PresentationStore {
       this.recalculateAutoAspectRatio();
     } else {
       this.aspectRatio = mode;
+      this.emitBeamerEvent({
+        type: 'SET_ASPECT_RATIO',
+        aspectRatio: this.aspectRatio,
+      });
+      this.saveBeamerSnapshot();
     }
   }
 
   recalculateAutoAspectRatio() {
+    const prev = this.aspectRatio;
     if (this.activeDisplay && this.activeDisplay.width > 0 && this.activeDisplay.height > 0) {
       const ratio = this.activeDisplay.width / this.activeDisplay.height;
       if (ratio >= 1.7) {
@@ -631,6 +662,13 @@ class PresentationStore {
       }
     } else {
       this.aspectRatio = '16:9';
+    }
+    if (this.aspectRatio !== prev) {
+      this.emitBeamerEvent({
+        type: 'SET_ASPECT_RATIO',
+        aspectRatio: this.aspectRatio,
+      });
+      this.saveBeamerSnapshot();
     }
   }
 
@@ -1002,11 +1040,14 @@ class PresentationStore {
         try {
           for (const file of Array.from(input.files)) {
             if (file.name.toLowerCase().endsWith('.sng')) {
-              const buffer = await file.arrayBuffer();
-              const bytes = Array.from(new Uint8Array(buffer));
-              const path = (file as unknown as { path?: string }).path ?? file.name;
-              await invokeTauri('parse_sng_bytes', { bytes, filePath: path });
-              count++;
+              try {
+                const buffer = await file.arrayBuffer();
+                const song = parseSng(new Uint8Array(buffer), file.name);
+                this.addSongToSchedule(song);
+                count++;
+              } catch (err) {
+                console.warn('Failed parsing song in directory:', file.name, err);
+              }
             }
           }
           this.scanSummary = {
@@ -1040,7 +1081,12 @@ class PresentationStore {
 
   async parseSongContent(content: string): Promise<Song | null> {
     const res = await invokeTauri<{ song: Song }>('parse_sng', { content });
-    return res?.song ?? null;
+    if (res?.song) return res.song;
+    try {
+      return parseSng(content, 'edited.sng');
+    } catch {
+      return null;
+    }
   }
 
   async transposeLyrics(text: string, semitones: number): Promise<string> {
