@@ -11,6 +11,7 @@ import type {
   ScanSummary,
   FileLoadResult,
 } from '$lib/types/models';
+import { parseSng } from '$lib/utils/sngParser';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
@@ -905,19 +906,14 @@ class PresentationStore {
 
   addSongToSchedule(song: Song) {
     const newItem: ScheduleItem = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'item-' + Date.now(),
       title: song.metadata.title,
       item_type: { kind: 'Song', payload: song },
       duration_seconds: 240,
     };
     this.schedule.push(newItem);
     this.activeScheduleIndex = this.schedule.length - 1;
-    this.activeSong = song;
-    this.activeSlideIndex = 0;
-    invokeTauri('sync_active_song', {
-      song,
-      slideIndex: 0,
-    });
+    this.setSong(song);
   }
 
   async addSongFromSearch(item: SongSearchResult) {
@@ -951,21 +947,33 @@ class PresentationStore {
       return;
     }
 
-    // 2. Webview HTML5 input fallback
+    // 2. Webview HTML5 input fallback (cross-platform browser and desktop)
     if (typeof document !== 'undefined') {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.sng';
+      input.accept = '.sng,.txt,.pro';
       input.multiple = true;
       input.onchange = async () => {
         if (!input.files || input.files.length === 0) return;
         for (const file of Array.from(input.files)) {
-          const buffer = await file.arrayBuffer();
-          const bytes = Array.from(new Uint8Array(buffer));
-          const path = (file as unknown as { path?: string }).path ?? file.name;
-          const res = await invokeTauri<{ song: Song }>('parse_sng_bytes', { bytes, filePath: path });
-          if (res?.song) {
-            this.addSongToSchedule(res.song);
+          try {
+            // First try native backend if available
+            if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+              const buffer = await file.arrayBuffer();
+              const bytes = Array.from(new Uint8Array(buffer));
+              const path = (file as unknown as { path?: string }).path ?? file.name;
+              const res = await invokeTauri<{ song: Song }>('parse_sng_bytes', { bytes, filePath: path });
+              if (res?.song) {
+                this.addSongToSchedule(res.song);
+                continue;
+              }
+            }
+            // Pure TypeScript fallback parser
+            const buffer = await file.arrayBuffer();
+            const song = parseSng(new Uint8Array(buffer), file.name);
+            this.addSongToSchedule(song);
+          } catch (err) {
+            console.error('Failed to parse selected song file:', file.name, err);
           }
         }
       };

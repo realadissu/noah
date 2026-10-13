@@ -41,37 +41,39 @@ export function getAudienceLines(slide: Slide | null): string[] {
  * Calculates optimal Container-Query font size for slides.
  *
  * Provides:
- * 1. Safe margins: ~4cqw left/right, ~3cqh top/bottom.
- * 2. Optimal space fill: 2-line verses scale up elegantly (~7-8cqw); 4-6 line verses fit comfortably (~4.5-5.5cqw).
- * 3. Legibility on thumbnails: preview cards use isThumbnail=true with a comfortable minimum floor (0.88rem / ~14px)
- *    so text on preview cards is bold, prominent, and comfortably readable, never tiny.
- * 4. Beamer prominence: full-screen audience output gets large, majestic presentation fonts.
+ * 1. Generous fill: Text occupies ~60-70% of slide area with comfortable safety margins.
+ * 2. 2-line verses scale up to ~8.5cqw; 4-line verses scale up to ~6.8-7.4cqw.
+ * 3. Legibility on thumbnails: preview cards use isThumbnail=true with clamp(1.0rem, optimalCqw, 2.5rem)
+ *    so preview text is bold, prominent, and fills the thumbnail cards.
+ * 4. Audience preview thumbnail in Column 3 uses pure container query cqw to avoid text overflow.
  */
 export function calculateSlideFontSize(
   slide: Slide | null,
   showChords: boolean = false,
   isThumbnail: boolean = false
 ): string {
-  if (!slide) return isThumbnail ? 'clamp(0.88rem, 4.8cqw, 2.0rem)' : '5.6cqw';
+  if (!slide) return isThumbnail ? 'clamp(1.0rem, 6.5cqw, 2.5rem)' : '6.8cqw';
   const lines = getAudienceLines(slide);
-  if (lines.length === 0) return isThumbnail ? 'clamp(0.88rem, 4.8cqw, 2.0rem)' : '5.6cqw';
+  if (lines.length === 0) return isThumbnail ? 'clamp(1.0rem, 6.5cqw, 2.5rem)' : '6.8cqw';
 
   const lineCount = lines.length;
   const maxLineLen = Math.max(...lines.map((l) => l.trim().length), 1);
 
   // Line-height multiplier
-  const lineFactor = showChords ? 2.1 : 1.32;
+  const lineFactor = showChords ? 1.95 : 1.26;
 
-  // Horizontal fitting: 92% available width with 0.46 proportional font glyph factor
-  const horizontalCqw = Math.min(8.8, Math.max(3.2, 92 / (maxLineLen * 0.46)));
+  // Target vertical fill: ~60-68% of 16:9 slide height (56.25cqw total height)
+  // Available vertical text height budget: ~36-38cqw
+  const verticalTargetCqw = Math.min(8.6, Math.max(3.8, 36.5 / (lineCount * lineFactor)));
 
-  // Vertical fitting: 86% available height converted to cqw equivalent (in 16:9, 1cqh = 0.5625cqw)
-  const verticalCqw = Math.min(9.5, Math.max(3.4, (86 / (lineCount * lineFactor)) * 0.5625));
+  // Horizontal fitting: allow natural wrapping for long lines (>36 chars) rather than shrinking all other lines
+  const effectiveMaxLen = Math.min(maxLineLen, Math.max(26, maxLineLen > 36 ? maxLineLen * 0.65 : maxLineLen));
+  const horizontalCqw = Math.min(8.6, Math.max(3.8, 94 / (effectiveMaxLen * 0.39)));
 
-  const optimalCqw = Math.min(horizontalCqw, verticalCqw);
+  const optimalCqw = Math.min(horizontalCqw, verticalTargetCqw);
 
   if (isThumbnail) {
-    return `clamp(0.88rem, ${optimalCqw.toFixed(2)}cqw, 2.0rem)`;
+    return `clamp(1.0rem, ${optimalCqw.toFixed(2)}cqw, 2.5rem)`;
   }
 
   return `${optimalCqw.toFixed(2)}cqw`;

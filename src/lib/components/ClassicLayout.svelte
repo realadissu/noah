@@ -54,15 +54,6 @@
     startIndex = index;
     draggingIndex = null;
     targetIndex = null;
-
-    const el = e.currentTarget as HTMLElement | null;
-    if (el) {
-      try {
-        el.setPointerCapture(e.pointerId);
-      } catch {
-        // Fallback
-      }
-    }
   }
 
   function handleSchedulePointerMove(e: PointerEvent) {
@@ -73,6 +64,12 @@
     if (!hasMoved && Math.abs(e.clientY - startY) > 5) {
       hasMoved = true;
       draggingIndex = startIndex;
+      const el = e.currentTarget as HTMLElement | null;
+      if (el) {
+        try {
+          el.setPointerCapture(e.pointerId);
+        } catch {}
+      }
     }
 
     if (draggingIndex !== null) {
@@ -102,7 +99,7 @@
     }
   }
 
-  function handleSchedulePointerUp() {
+  function handleSchedulePointerUp(e: PointerEvent) {
     if (!isPointerDown) return;
     isPointerDown = false;
 
@@ -117,6 +114,16 @@
       if (fromIdx !== toIdx) {
         presentation.reorderSchedule(fromIdx, toIdx);
       }
+    } else if (!hasMoved && startIndex !== null) {
+      // Normal click: select item immediately
+      presentation.selectScheduleItem(startIndex);
+    }
+
+    const el = e.currentTarget as HTMLElement | null;
+    if (el) {
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {}
     }
 
     draggingIndex = null;
@@ -125,8 +132,14 @@
     hasMoved = false;
   }
 
-  function handleSchedulePointerCancel() {
+  function handleSchedulePointerCancel(e: PointerEvent) {
     isPointerDown = false;
+    const el = e.currentTarget as HTMLElement | null;
+    if (el) {
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {}
+    }
     draggingIndex = null;
     targetIndex = null;
     startIndex = null;
@@ -784,10 +797,10 @@
                   <!-- Lyrics Text Preview (Prominent, bold, readable thumbnail parity) -->
                   <div
                     class="w-full text-center space-y-1 font-bold leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] px-1"
-                    style="font-size: {calculateSlideFontSize(slide, presentation.showChords, true)}; line-height: 1.32;"
+                    style="font-size: {calculateSlideFontSize(slide, presentation.showChords, true)}; line-height: 1.28;"
                   >
                     {#each getAudienceLines(slide) as line}
-                      <p class="truncate">{line}</p>
+                      <p class="leading-snug break-words whitespace-normal">{line}</p>
                     {/each}
                   </div>
                 </div>
@@ -837,10 +850,10 @@
           {:else if presentation.activeSlide}
             <div
               class="w-full text-center font-bold space-y-0.5 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] px-1"
-              style="font-size: {calculateSlideFontSize(presentation.activeSlide, false, true)}; line-height: 1.32;"
+              style="font-size: {calculateSlideFontSize(presentation.activeSlide, false, false)}; line-height: 1.28;"
             >
               {#each getAudienceLines(presentation.activeSlide) as line}
-                <p class="truncate">{line}</p>
+                <p class="leading-snug break-words whitespace-normal">{line}</p>
               {/each}
             </div>
           {/if}

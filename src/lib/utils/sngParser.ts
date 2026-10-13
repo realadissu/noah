@@ -1,0 +1,250 @@
+//! Pure TypeScript SongBeamer (.sng) parser.
+//! Works identically across Windows, macOS, Linux, and in pure browser mode without native backend dependencies.
+
+import type { Song, Slide, LyricLine, LyricToken, SectionType } from '$lib/types/models';
+
+/**
+ * Parses raw .sng text or binary Uint8Array into a Song model.
+ */
+export function parseSng(input: string | Uint8Array, fileName?: string): Song {
+  let text = '';
+  if (typeof input === 'string') {
+    text = input;
+  } else {
+    // Detect encoding: check for UTF-8 BOM (0xEF, 0xBB, 0xBF)
+    if (input.length >= 3 && input[0] === 0xef && input[1] === 0xbb && input[2] === 0xbf) {
+      text = new TextDecoder('utf-8').decode(input.subarray(3));
+    } else {
+      // Try UTF-8 first, fallback to windows-1252
+      try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(input);
+      } catch {
+        text = new TextDecoder('windows-1252').decode(input);
+      }
+    }
+  }
+
+  return parseSngText(text, fileName);
+}
+
+/**
+ * Parses decoded .sng text into domain Song model.
+ */
+export function parseSngText(content: string, fileName?: string): Song {
+  const lines = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+  const metadata: Record<string, string> = {};
+  const customTags: Record<string, string> = {};
+  const slideBlocks: string[][] = [];
+  let currentSlideLines: string[] = [];
+  let inHeader = true;
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+
+    if (inHeader) {
+      if (trimmed === '---') {
+        inHeader = false;
+        continue;
+      }
+
+      if (trimmed.startsWith('#')) {
+        const withoutHash = trimmed.slice(1);
+        const eqIdx = withoutHash.indexOf('=');
+        if (eqIdx !== -1) {
+          const key = withoutHash.slice(0, eqIdx).trim();
+          const val = withoutHash.slice(eqIdx + 1).trim();
+          metadata[key.toLowerCase()] = val;
+          customTags[key] = val;
+        }
+        continue;
+      }
+
+      // If line is non-empty and doesn't start with '#', headers are implicitly done
+      if (trimmed.length > 0) {
+        inHeader = false;
+        currentSlideLines.push(rawLine);
+      }
+    } else {
+      if (trimmed === '---') {
+        if (currentSlideLines.length > 0) {
+          slideBlocks.push([...currentSlideLines]);
+          currentSlideLines = [];
+        }
+      } else {
+        currentSlideLines.push(rawLine);
+      }
+    }
+  }
+
+  if (currentSlideLines.length > 0) {
+    slideBlocks.push(currentSlideLines);
+  }
+
+  // Derive title from #Title or fallback to filename or first line
+  const rawTitle = metadata['title'] ?? (fileName ? fileName.replace(/\.[^/.]+$/, '') : 'Unbekannter Song');
+  const title = rawTitle.trim() || 'Unbekannter Song';
+
+  const author = metadata['author'] ?? metadata['artist'] ?? '';
+  const musicalKey = metadata['key'] ?? metadata['tonart'] ?? '';
+  const verseOrder = metadata['verseorder']
+    ? metadata['verseorder'].split(',').map((v) => v.trim())
+    : [];
+
+  const songId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'song-' + Date.now();
+
+  const slides: Slide[] = [];
+
+  for (let idx = 0; idx < slideBlocks.length; idx++) {
+    const block = slideBlocks[idx];
+    if (block.length === 0) continue;
+
+    const firstLine = block[0].trim();
+    const sectionInfo = parseSectionTag(firstLine);
+
+    let label: string;
+    let section: SectionType | undefined;
+    let textLines: string[];
+
+    if (sectionInfo) {
+      label = sectionInfo.label;
+      section = sectionInfo.section;
+      textLines = block.slice(1);
+    } else {
+      label = `Slide ${idx + 1}`;
+      section = undefined;
+      textLines = block;
+    }
+
+    // Clean empty lines at start and end
+    while (textLines.length > 0 && textLines[0].trim().length === 0) {
+      textLines.shift();
+    }
+    while (textLines.length > 0 && textLines[textLines.length - 1].trim().length === 0) {
+      textLines.pop();
+    }
+
+    const slideLines: LyricLine[] = textLines.map((line) => parseLyricLine(line));
+
+    slides.push({
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `slide-${idx}-${Date.now()}`,
+      index: idx,
+      label,
+      section,
+      raw_content: textLines.join('\n'),
+      lines: slideLines,
+    });
+  }
+
+  return {
+    id: songId,
+    metadata: {
+      title,
+      author,
+      musical_key: musicalKey || undefined,
+      verse_order: verseOrder,
+      lang_count: 1,
+      custom_tags: customTags,
+    },
+    slides: slides.length > 0 ? slides : [
+      {
+        id: 'slide-fallback',
+        index: 0,
+        label: 'Slide 1',
+        raw_content: title,
+        lines: [parseLyricLine(title)],
+      },
+    ],
+  };
+}
+
+/**
+ * Parses section header strings like "Refrain", "Chorus", "Vers 1", "Verse 2", "Intro", "Bridge", etc.
+ */
+function parseSectionTag(firstLine: string): { label: string; section: SectionType } | null {
+  const norm = firstLine.trim().toLowerCase();
+
+  if (norm.startsWith('refrain') || norm.startsWith('chorus')) {
+    return { label: 'Refrain', section: { type: 'Chorus' } };
+  }
+
+  const verseMatch = norm.match(/^(?:vers|verse|strophe)\s*(\d+)?/i);
+  if (verseMatch) {
+    const num = verseMatch[1] ? parseInt(verseMatch[1], 10) : 1;
+    return { label: `Vers ${num}`, section: { type: 'Verse', value: num } };
+  }
+
+  if (norm.startsWith('bridge')) {
+    return { label: 'Bridge', section: { type: 'Bridge' } };
+  }
+
+  if (norm.startsWith('intro')) {
+    return { label: 'Intro', section: { type: 'Intro' } };
+  }
+
+  if (norm.startsWith('outro') || norm.startsWith('ending')) {
+    return { label: 'Outro', section: { type: 'Outro' } };
+  }
+
+  if (norm.startsWith('pre-chorus') || norm.startsWith('prechorus')) {
+    return { label: 'Pre-Chorus', section: { type: 'PreChorus' } };
+  }
+
+  // If line contains section-like indicators
+  if (/^(interlude|zwischenspiel|solo|coda)/i.test(norm)) {
+    return { label: firstLine.trim(), section: { type: 'Custom', value: firstLine.trim() } };
+  }
+
+  return null;
+}
+
+/**
+ * Parses chord brackets like "[D]Lobe den Herrn, [G]meine Seele" into structured LyricLine tokens.
+ */
+export function parseLyricLine(rawText: string): LyricLine {
+  const tokens: LyricToken[] = [];
+  const regex = /\[([^\]]*)\]/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(rawText)) !== null) {
+    const chord = match[1];
+    const matchStart = match.index;
+
+    // Any text preceding the chord
+    if (matchStart > lastIndex) {
+      const textBefore = rawText.slice(lastIndex, matchStart);
+      tokens.push({ kind: 'Text', text: textBefore });
+    }
+
+    lastIndex = regex.lastIndex;
+
+    // Look ahead to text following this chord until next chord or line end
+    const nextMatch = rawText.slice(lastIndex);
+    const nextBracket = nextMatch.indexOf('[');
+    const textAfter = nextBracket === -1 ? nextMatch : nextMatch.slice(0, nextBracket);
+
+    if (textAfter.length > 0) {
+      tokens.push({ kind: 'ChordAndText', chord, text: textAfter });
+      lastIndex += textAfter.length;
+      regex.lastIndex = lastIndex;
+    } else {
+      tokens.push({ kind: 'Chord', chord });
+    }
+  }
+
+  // Any remaining text after last chord
+  if (lastIndex < rawText.length) {
+    tokens.push({ kind: 'Text', text: rawText.slice(lastIndex) });
+  }
+
+  if (tokens.length === 0) {
+    tokens.push({ kind: 'Text', text: rawText });
+  }
+
+  return {
+    raw_text: rawText,
+    language_index: 0,
+    tokens,
+  };
+}

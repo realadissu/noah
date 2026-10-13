@@ -213,10 +213,10 @@
     {#if slideA}
       <div
         class="w-full text-center space-y-2 md:space-y-4 px-4"
-        style="font-size: {calculateSlideFontSize(slideA, false, false)}; line-height: 1.32;"
+        style="font-size: {calculateSlideFontSize(slideA, false, false)}; line-height: 1.28;"
       >
         {#each getAudienceLines(slideA) as line}
-          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">
+          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] break-words whitespace-normal">
             {line}
           </p>
         {/each}
@@ -232,10 +232,10 @@
     {#if slideB}
       <div
         class="w-full text-center space-y-2 md:space-y-4 px-4"
-        style="font-size: {calculateSlideFontSize(slideB, false, false)}; line-height: 1.32;"
+        style="font-size: {calculateSlideFontSize(slideB, false, false)}; line-height: 1.28;"
       >
         {#each getAudienceLines(slideB) as line}
-          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">
+          <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] break-words whitespace-normal">
             {line}
           </p>
         {/each}

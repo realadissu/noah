@@ -10,6 +10,7 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import SongEditorModal from '$lib/components/SongEditorModal.svelte';
   import type { Song, Slide, LyricLine } from '$lib/types/models';
+  import { parseSng } from '$lib/utils/sngParser';
 
   function getInitialWindowLabel(): string {
     if (typeof window !== 'undefined') {
@@ -185,18 +186,22 @@
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0];
-    if (file && (file.name.endsWith('.sng') || file.name.endsWith('.txt') || file.name.endsWith('.pro'))) {
-      const content = await file.text();
-      try {
-        if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
-          const { invoke } = await import('@tauri-apps/api/core');
-          const res = await invoke<{ song: Song; encoding: string }>('parse_sng', { content });
-          presentation.setSong(res.song, res.encoding);
-          return;
+    for (const file of Array.from(files)) {
+      if (file && (file.name.endsWith('.sng') || file.name.endsWith('.txt') || file.name.endsWith('.pro'))) {
+        try {
+          if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+            const content = await file.text();
+            const { invoke } = await import('@tauri-apps/api/core');
+            const res = await invoke<{ song: Song; encoding: string }>('parse_sng', { content });
+            presentation.addSongToSchedule(res.song);
+            continue;
+          }
+          const buffer = await file.arrayBuffer();
+          const song = parseSng(new Uint8Array(buffer), file.name);
+          presentation.addSongToSchedule(song);
+        } catch (err) {
+          console.warn('Failed to parse dropped file:', file.name, err);
         }
-      } catch (err) {
-        console.warn('Failed to parse dropped file via IPC:', err);
       }
     }
   }
