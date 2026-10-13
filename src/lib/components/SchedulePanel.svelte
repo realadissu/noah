@@ -250,10 +250,7 @@
       style="left: {pointerX}px; top: {pointerY}px; max-width: 280px;"
     >
       <span class="text-base shrink-0">{getItemIcon(draggedItem)}</span>
-      <span class="text-xs font-bold truncate max-w-[170px]">{draggedItem.title}</span>
-      <span class="text-[10px] px-1.5 py-0.5 rounded font-extrabold shrink-0 {presentation.theme === 'dark' ? 'bg-amber-500/25 text-amber-300' : 'bg-amber-100 text-amber-800'}">
-        {targetPosition === 'before' ? '↑ vor' : '↓ nach'}
-      </span>
+      <span class="text-xs font-bold truncate max-w-[220px]">{draggedItem.title}</span>
     </div>
   {/if}
 </aside>
