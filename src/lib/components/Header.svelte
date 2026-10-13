@@ -83,11 +83,11 @@
 
   <!-- 2. SongBeamer Classic Toolbar (Replicating SongBeamer 3.00 toolbar authentically) -->
   <header
-    class="h-11 px-2.5 flex items-center justify-between select-none gap-1 border-b overflow-x-auto {presentation.theme === 'dark'
+    class="relative z-50 h-11 px-2.5 flex items-center justify-between select-none gap-1 border-b overflow-visible {presentation.theme === 'dark'
       ? 'bg-[#1f2228] border-neutral-700 text-neutral-200'
       : 'bg-[#ece9d8] border-neutral-300 text-neutral-900'}"
   >
-    <div class="flex items-center space-x-0.5 shrink-0">
+    <div class="flex items-center space-x-0.5 shrink-0 overflow-x-auto max-w-[calc(100vw-280px)]">
       <!-- File Tools -->
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Neu">
         <SongBeamerIcon name="new" size={21} />
@@ -242,17 +242,38 @@
         />
 
         {#if showSearchResults && searchResults.length > 0}
-          <div class="absolute right-0 top-full mt-1 w-64 rounded-xl border shadow-2xl z-50 overflow-hidden max-h-56 overflow-y-auto {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-neutral-300 text-neutral-900 shadow-xl'}">
+          <div
+            role="listbox"
+            tabindex="-1"
+            class="absolute right-0 top-full mt-1.5 w-80 rounded-xl border shadow-2xl z-[999] overflow-hidden max-h-72 overflow-y-auto {presentation.theme === 'dark'
+              ? 'bg-[#1e2229] border-neutral-700 text-white shadow-black/90 ring-1 ring-white/10'
+              : 'bg-white border-neutral-300 text-neutral-900 shadow-2xl ring-1 ring-black/10'}"
+            onmousedown={(e) => e.preventDefault()}
+          >
             {#each searchResults as res}
               <button
                 type="button"
-                class="w-full text-left px-3 py-2 text-xs hover:bg-neutral-500/10 border-b border-neutral-500/10 last:border-0 cursor-pointer"
+                class="w-full text-left px-3.5 py-2.5 text-xs border-b last:border-0 cursor-pointer transition flex items-center justify-between gap-2 {presentation.theme === 'dark'
+                  ? 'hover:bg-neutral-800/80 border-neutral-800'
+                  : 'hover:bg-blue-50 border-neutral-100'}"
                 onclick={() => selectSearchResult(res)}
               >
-                <div class="font-semibold">{res.title}</div>
-                {#if res.author}
-                  <div class="text-[10px] opacity-70">{res.author}</div>
-                {/if}
+                <div class="min-w-0 flex-1">
+                  <div class="font-bold truncate text-sm {presentation.theme === 'dark' ? 'text-white' : 'text-slate-900'}">{res.title}</div>
+                  {#if res.author}
+                    <div class="text-[11px] truncate opacity-70 {presentation.theme === 'dark' ? 'text-neutral-400' : 'text-slate-500'}">{res.author}</div>
+                  {/if}
+                </div>
+                <div class="shrink-0 flex items-center gap-1.5 text-[10px]">
+                  {#if res.musical_key}
+                    <span class="px-1.5 py-0.5 rounded font-mono font-bold {presentation.theme === 'dark' ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'}">
+                      {res.musical_key}
+                    </span>
+                  {/if}
+                  <span class="opacity-50 font-medium">
+                    {res.slide_count} Folien
+                  </span>
+                </div>
               </button>
             {/each}
           </div>
@@ -281,7 +302,7 @@
 {:else}
   <!-- 2. Modern Studio Toolbar (Consistent modern vector icons & responsive layout) -->
   <header
-    class="h-12 px-3 flex items-center justify-between select-none gap-2 shrink-0 border-b transition-colors {presentation.theme === 'dark'
+    class="relative z-50 h-12 px-3 flex items-center justify-between select-none gap-2 shrink-0 border-b overflow-visible transition-colors {presentation.theme === 'dark'
       ? 'bg-neutral-900/90 border-neutral-800 text-neutral-100'
       : 'bg-white/95 border-slate-200 text-slate-900 shadow-xs'}"
   >
@@ -441,17 +462,38 @@
       {/if}
 
       {#if (showSearchResults || isMobileSearchOpen) && searchResults.length > 0}
-        <div class="absolute left-0 top-full mt-1 w-64 rounded-xl border shadow-2xl z-50 overflow-hidden max-h-56 overflow-y-auto {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-slate-200 text-slate-900'}">
+        <div
+          role="listbox"
+          tabindex="-1"
+          class="absolute left-0 top-full mt-1.5 w-80 rounded-xl border shadow-2xl z-[999] overflow-hidden max-h-72 overflow-y-auto {presentation.theme === 'dark'
+            ? 'bg-neutral-900 border-neutral-700 text-white shadow-black/90 ring-1 ring-white/10'
+            : 'bg-white border-slate-200 text-slate-900 shadow-2xl ring-1 ring-black/10'}"
+          onmousedown={(e) => e.preventDefault()}
+        >
           {#each searchResults as res}
             <button
               type="button"
-              class="w-full text-left px-3 py-2 text-xs hover:bg-neutral-500/10 border-b border-neutral-500/10 last:border-0"
+              class="w-full text-left px-3.5 py-2.5 text-xs border-b last:border-0 cursor-pointer transition flex items-center justify-between gap-2 {presentation.theme === 'dark'
+                ? 'hover:bg-neutral-800/80 border-neutral-800'
+                : 'hover:bg-blue-50 border-slate-100'}"
               onclick={() => selectSearchResult(res)}
             >
-              <div class="font-semibold">{res.title}</div>
-              {#if res.author}
-                <div class="text-[10px] opacity-70">{res.author}</div>
-              {/if}
+              <div class="min-w-0 flex-1">
+                <div class="font-bold truncate text-sm {presentation.theme === 'dark' ? 'text-white' : 'text-slate-900'}">{res.title}</div>
+                {#if res.author}
+                  <div class="text-[11px] truncate opacity-70 {presentation.theme === 'dark' ? 'text-neutral-400' : 'text-slate-500'}">{res.author}</div>
+                {/if}
+              </div>
+              <div class="shrink-0 flex items-center gap-1.5 text-[10px]">
+                {#if res.musical_key}
+                  <span class="px-1.5 py-0.5 rounded font-mono font-bold {presentation.theme === 'dark' ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'}">
+                    {res.musical_key}
+                  </span>
+                {/if}
+                <span class="opacity-50 font-medium">
+                  {res.slide_count} Folien
+                </span>
+              </div>
             </button>
           {/each}
         </div>

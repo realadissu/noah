@@ -217,10 +217,12 @@
     }}
     ondrop={handleFileDrop}
   >
-    <Header />
+    <div class="relative z-50 shrink-0">
+      <Header />
+    </div>
 
     <!-- SongBeamer Workspace: Ablaufplan + Folien + Optional Output Monitors -->
-    <main class="flex-1 flex overflow-hidden">
+    <main class="relative z-10 flex-1 flex overflow-hidden">
       <!-- 1. Left Column: Ablaufplan (Order of Service) -->
       <SchedulePanel />
 
