@@ -146,6 +146,9 @@ export function parseSngText(content: string, fileName?: string): Song {
     });
   }
 
+  // Expand slides according to verse_order if specified
+  const expandedSlides = expandSlidesByVerseOrder(slides, verseOrder);
+
   return {
     id: songId,
     metadata: {
@@ -156,7 +159,7 @@ export function parseSngText(content: string, fileName?: string): Song {
       lang_count: 1,
       custom_tags: customTags,
     },
-    slides: slides.length > 0 ? slides : [
+    slides: expandedSlides.length > 0 ? expandedSlides : [
       {
         id: 'slide-fallback',
         index: 0,
@@ -169,23 +172,90 @@ export function parseSngText(content: string, fileName?: string): Song {
 }
 
 /**
+ * Normalizes a section name for resilient matching between verse order and slide labels.
+ */
+function normalizeSectionKey(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/^kehrvers/, 'chorus')
+    .replace(/^refrain/, 'chorus')
+    .replace(/^chor/, 'chorus')
+    .replace(/^strophe/, 'vers')
+    .replace(/^verse/, 'vers')
+    .replace(/\s+/g, '');
+}
+
+/**
+ * Expands presentation slides according to the song's verse_order.
+ * If verse_order is empty or contains no matching sections, returns original slides.
+ */
+export function expandSlidesByVerseOrder(rawSlides: Slide[], verseOrder: string[]): Slide[] {
+  if (!verseOrder || verseOrder.length === 0 || rawSlides.length === 0) {
+    return rawSlides;
+  }
+
+  const expanded: Slide[] = [];
+
+  for (let voIdx = 0; voIdx < verseOrder.length; voIdx++) {
+    const item = verseOrder[voIdx].trim();
+    if (!item) continue;
+    const targetKey = normalizeSectionKey(item);
+
+    // Find all slides matching this section (could be multiple if slide had page breaks)
+    const matched = rawSlides.filter((slide) => {
+      const slideKey = normalizeSectionKey(slide.label);
+      if (slideKey === targetKey) return true;
+      // Allow 'vers' to match 'vers1' and vice-versa
+      if ((targetKey === 'vers' && slideKey === 'vers1') || (targetKey === 'vers1' && slideKey === 'vers')) return true;
+      if ((targetKey === 'chorus' && slideKey === 'chorus1') || (targetKey === 'chorus1' && slideKey === 'chorus')) return true;
+      return false;
+    });
+
+    if (matched.length > 0) {
+      for (const m of matched) {
+        expanded.push({
+          ...m,
+          id: `${m.id}-vo-${expanded.length}`,
+          index: expanded.length,
+        });
+      }
+    }
+  }
+
+  return expanded.length > 0 ? expanded : rawSlides;
+}
+
+/**
  * Parses section header strings like "Refrain", "Chorus", "Vers 1", "Verse 2", "Intro", "Bridge", etc.
  */
 function parseSectionTag(firstLine: string): { label: string; section: SectionType } | null {
   const norm = firstLine.trim().toLowerCase();
 
-  if (norm.startsWith('refrain') || norm.startsWith('chorus')) {
-    return { label: 'Refrain', section: { type: 'Chorus' } };
+  const chorusMatch = norm.match(/^(?:refrain|chorus|kehrvers)\s*(\d+)?/i);
+  if (chorusMatch) {
+    const num = chorusMatch[1] ? ` ${chorusMatch[1]}` : '';
+    const isChorus = norm.startsWith('chorus');
+    return {
+      label: isChorus ? `Chorus${num}` : `Refrain${num}`,
+      section: { type: 'Chorus' }
+    };
   }
 
   const verseMatch = norm.match(/^(?:vers|verse|strophe)\s*(\d+)?/i);
   if (verseMatch) {
-    const num = verseMatch[1] ? parseInt(verseMatch[1], 10) : 1;
-    return { label: `Vers ${num}`, section: { type: 'Verse', value: num } };
+    const num = verseMatch[1] ? ` ${verseMatch[1]}` : '';
+    const isVerse = norm.startsWith('verse');
+    return {
+      label: isVerse ? `Verse${num}` : (num ? `Vers${num}` : 'Vers'),
+      section: { type: 'Verse', value: verseMatch[1] ? parseInt(verseMatch[1], 10) : 1 }
+    };
   }
 
-  if (norm.startsWith('bridge')) {
-    return { label: 'Bridge', section: { type: 'Bridge' } };
+  const bridgeMatch = norm.match(/^bridge\s*(\d+)?/i);
+  if (bridgeMatch) {
+    const num = bridgeMatch[1] ? ` ${bridgeMatch[1]}` : '';
+    return { label: `Bridge${num}`, section: { type: 'Bridge' } };
   }
 
   if (norm.startsWith('intro')) {

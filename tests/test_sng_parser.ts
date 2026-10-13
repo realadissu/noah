@@ -69,4 +69,50 @@ assert.strictEqual(song5.metadata.title, 'Über den Wolken');
 assert.strictEqual(song5.slides[0].lines[0].raw_text, 'Für immer');
 console.log('✓ Test 5 passed (Windows-1252 German umlauts decoding)');
 
+// Test 6: Verse Order parsing and sequence expansion
+const verseOrderSng = `#Title=Herr du bist heilig
+#VerseOrder=Vers,Chorus 1,Chorus 2,Bridge,Chorus 2
+---
+Vers
+Herr du bist heilig
+---
+Chorus 1
+Deine Gnade währt ewig
+---
+Chorus 2
+Deine Güte bleibt bestehen
+---
+Bridge
+Groß und wunderbar bist du
+`;
+const song6 = parseSngText(verseOrderSng);
+assert.strictEqual(song6.metadata.verse_order.length, 5);
+assert.deepStrictEqual(song6.metadata.verse_order, ['Vers', 'Chorus 1', 'Chorus 2', 'Bridge', 'Chorus 2']);
+assert.strictEqual(song6.slides.length, 5);
+assert.strictEqual(song6.slides[0].label, 'Vers');
+assert.strictEqual(song6.slides[1].label, 'Chorus 1');
+assert.strictEqual(song6.slides[2].label, 'Chorus 2');
+assert.strictEqual(song6.slides[3].label, 'Bridge');
+assert.strictEqual(song6.slides[4].label, 'Chorus 2');
+console.log('✓ Test 6 passed (Verse Order sequencing & slide expansion)');
+
+// Test 7: Verse order case/number insensitivity (e.g. Vers vs Vers 1, Refrain vs Chorus)
+const resilientOrderSng = `#Title=Resilience Test
+#VerseOrder=Vers 1,Refrain,Vers 1,Refrain
+---
+Vers
+Strophe Text
+---
+Chorus
+Refrain Text
+`;
+const song7 = parseSngText(resilientOrderSng);
+assert.strictEqual(song7.slides.length, 4);
+assert.strictEqual(song7.slides[0].label, 'Vers');
+assert.strictEqual(song7.slides[1].label, 'Chorus');
+assert.strictEqual(song7.slides[2].label, 'Vers');
+assert.strictEqual(song7.slides[3].label, 'Chorus');
+console.log('✓ Test 7 passed (Resilient section matching between Vers/Strophe and Chorus/Refrain)');
+
 console.log('All TypeScript SNG parser tests passed successfully!');
+
