@@ -779,12 +779,12 @@
                   class="w-full aspect-video border rounded-none relative overflow-hidden flex items-center justify-center text-center {isLive
                     ? 'border-[#0000cc] dark:border-emerald-500 ring-2 ring-[#0000cc]/30 bg-black text-white'
                     : 'border-[#999999] dark:border-neutral-700 bg-neutral-900 text-white'}"
-                  style="container-type: size; padding: 6cqh 8cqw;"
+                  style="container-type: size; padding: 3cqh 4cqw;"
                 >
-                  <!-- Lyrics Text Preview (100% WYSIWYG Parity to Beamer Output) -->
+                  <!-- Lyrics Text Preview (Prominent, bold, readable thumbnail parity) -->
                   <div
-                    class="w-full text-center space-y-1 font-bold leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
-                    style="font-size: {calculateSlideFontSize(slide, presentation.showChords)}; line-height: 1.35;"
+                    class="w-full text-center space-y-1 font-bold leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] px-1"
+                    style="font-size: {calculateSlideFontSize(slide, presentation.showChords, true)}; line-height: 1.32;"
                   >
                     {#each getAudienceLines(slide) as line}
                       <p class="truncate">{line}</p>
@@ -820,7 +820,7 @@
 
         <div
           class="w-full aspect-video bg-black border border-[#7f9db9] rounded-none flex items-center justify-center text-center text-white relative"
-          style="container-type: size; padding: 6cqh 8cqw;"
+          style="container-type: size; padding: 3cqh 4cqw;"
         >
           {#if presentation.displayMode === 'black'}
             <div class="absolute inset-0 bg-black flex items-center justify-center">
@@ -836,8 +836,8 @@
             </div>
           {:else if presentation.activeSlide}
             <div
-              class="w-full text-center font-bold space-y-0.5 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
-              style="font-size: {calculateSlideFontSize(presentation.activeSlide)}; line-height: 1.35;"
+              class="w-full text-center font-bold space-y-0.5 leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] px-1"
+              style="font-size: {calculateSlideFontSize(presentation.activeSlide, false, true)}; line-height: 1.32;"
             >
               {#each getAudienceLines(presentation.activeSlide) as line}
                 <p class="truncate">{line}</p>

@@ -38,29 +38,41 @@ export function getAudienceLines(slide: Slide | null): string[] {
 }
 
 /**
- * Calculates optimal Container-Query font size (min(Xcqw, Ycqh)) for 1:1 WYSIWYG parity.
+ * Calculates optimal Container-Query font size for slides.
  *
- * Guarantees:
- * 1. Safe margins: ~8cqw left/right, ~6cqh top/bottom.
- * 2. Optimal space fill: 2-line verses scale up elegantly; 6-line verses fit without wrapping.
- * 3. Identical rendering: 1cqw is 1% of the 16:9 slide on both Beamer and thumbnail preview cards.
+ * Provides:
+ * 1. Safe margins: ~4cqw left/right, ~3cqh top/bottom.
+ * 2. Optimal space fill: 2-line verses scale up elegantly (~7-8cqw); 4-6 line verses fit comfortably (~4.5-5.5cqw).
+ * 3. Legibility on thumbnails: preview cards use isThumbnail=true with a comfortable minimum floor (0.88rem / ~14px)
+ *    so text on preview cards is bold, prominent, and comfortably readable, never tiny.
+ * 4. Beamer prominence: full-screen audience output gets large, majestic presentation fonts.
  */
-export function calculateSlideFontSize(slide: Slide | null, showChords: boolean = false): string {
-  if (!slide) return '5.2cqw';
+export function calculateSlideFontSize(
+  slide: Slide | null,
+  showChords: boolean = false,
+  isThumbnail: boolean = false
+): string {
+  if (!slide) return isThumbnail ? 'clamp(0.88rem, 4.8cqw, 2.0rem)' : '5.6cqw';
   const lines = getAudienceLines(slide);
-  if (lines.length === 0) return '5.2cqw';
+  if (lines.length === 0) return isThumbnail ? 'clamp(0.88rem, 4.8cqw, 2.0rem)' : '5.6cqw';
 
   const lineCount = lines.length;
   const maxLineLen = Math.max(...lines.map((l) => l.trim().length), 1);
 
-  // Line-height multiplier (more vertical headroom needed if chords are shown)
-  const lineFactor = showChords ? 2.2 : 1.35;
+  // Line-height multiplier
+  const lineFactor = showChords ? 2.1 : 1.32;
 
-  // Horizontal boundary: longest line fits inside ~84cqw safe width (0.52 average glyph aspect ratio)
-  const horizontalCqw = Math.min(8.2, Math.max(1.8, 84 / (maxLineLen * 0.52)));
+  // Horizontal fitting: 92% available width with 0.46 proportional font glyph factor
+  const horizontalCqw = Math.min(8.8, Math.max(3.2, 92 / (maxLineLen * 0.46)));
 
-  // Vertical boundary: lineCount lines fit inside ~76cqh safe height
-  const verticalCqh = Math.min(13.0, Math.max(2.4, 76 / (lineCount * lineFactor)));
+  // Vertical fitting: 86% available height converted to cqw equivalent (in 16:9, 1cqh = 0.5625cqw)
+  const verticalCqw = Math.min(9.5, Math.max(3.4, (86 / (lineCount * lineFactor)) * 0.5625));
 
-  return `min(${horizontalCqw.toFixed(2)}cqw, ${verticalCqh.toFixed(2)}cqh)`;
+  const optimalCqw = Math.min(horizontalCqw, verticalCqw);
+
+  if (isThumbnail) {
+    return `clamp(0.88rem, ${optimalCqw.toFixed(2)}cqw, 2.0rem)`;
+  }
+
+  return `${optimalCqw.toFixed(2)}cqw`;
 }

@@ -95,7 +95,57 @@
   onMount(() => {
     let unlisten: (() => void) | null = null;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let channel: BroadcastChannel | null = null;
 
+    // 1. Cross-window BroadcastChannel for browser tabs / windows parity
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel('noah-beamer-channel');
+        channel.onmessage = (e) => {
+          if (e.data && e.data.type) {
+            handleBeamerEvent(e.data as BeamerEvent);
+          }
+        };
+        // Request immediate sync from control window
+        channel.postMessage({ type: 'REQUEST_SYNC' });
+      } catch (err) {
+        console.warn('BroadcastChannel error:', err);
+      }
+    }
+
+    // 2. LocalStorage storage event fallback for cross-window communication in browsers
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'noah_beamer_sync' && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          if (data && data.type) {
+            handleBeamerEvent(data as BeamerEvent);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 3. Initial state restore from localStorage snapshot
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const snapRaw = localStorage.getItem('noah_beamer_snapshot');
+        if (snapRaw) {
+          const snap = JSON.parse(snapRaw);
+          if (snap.song) {
+            activeSong = snap.song;
+            displayMode = snap.displayMode || 'normal';
+            const slide = snap.song.slides[snap.slideIndex ?? 0] ?? null;
+            if (slide) {
+              slideA = slide;
+              currentLayer = 'A';
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 4. Tauri IPC initialization
     async function init() {
       if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
         try {
@@ -130,6 +180,8 @@
     return () => {
       if (unlisten) unlisten();
       if (pollInterval) clearInterval(pollInterval);
+      if (channel) channel.close();
+      window.removeEventListener('storage', handleStorage);
       window.removeEventListener('focus', handleFocus);
     };
   });
@@ -156,12 +208,12 @@
   <!-- Layer A -->
   <div
     class="absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-300 pointer-events-none"
-    style="opacity: {currentLayer === 'A' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'A' ? '10' : '5'}; padding: 6cqh 8cqw;"
+    style="opacity: {currentLayer === 'A' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'A' ? '10' : '5'}; padding: 5cqh 6cqw;"
   >
     {#if slideA}
       <div
-        class="w-full text-center space-y-2 md:space-y-4"
-        style="font-size: {calculateSlideFontSize(slideA)}; line-height: 1.35;"
+        class="w-full text-center space-y-2 md:space-y-4 px-4"
+        style="font-size: {calculateSlideFontSize(slideA, false, false)}; line-height: 1.32;"
       >
         {#each getAudienceLines(slideA) as line}
           <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">
@@ -175,12 +227,12 @@
   <!-- Layer B -->
   <div
     class="absolute inset-0 flex flex-col items-center justify-center text-center transition-opacity duration-300 pointer-events-none"
-    style="opacity: {currentLayer === 'B' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'B' ? '10' : '5'}; padding: 6cqh 8cqw;"
+    style="opacity: {currentLayer === 'B' && displayMode === 'normal' ? '1' : '0'}; z-index: {currentLayer === 'B' ? '10' : '5'}; padding: 5cqh 6cqw;"
   >
     {#if slideB}
       <div
-        class="w-full text-center space-y-2 md:space-y-4"
-        style="font-size: {calculateSlideFontSize(slideB)}; line-height: 1.35;"
+        class="w-full text-center space-y-2 md:space-y-4 px-4"
+        style="font-size: {calculateSlideFontSize(slideB, false, false)}; line-height: 1.32;"
       >
         {#each getAudienceLines(slideB) as line}
           <p class="font-bold leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">

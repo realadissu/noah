@@ -283,6 +283,62 @@ class PresentationStore {
   aspectRatio = $state<AspectRatio>('16:9');
   aspectRatioMode = $state<'auto' | AspectRatio>('auto');
 
+  // Cross-window channel for browser tabs / windows parity
+  private beamerChannel: BroadcastChannel | null = null;
+
+  private emitBeamerEvent(event: Record<string, unknown>) {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!this.beamerChannel && typeof BroadcastChannel !== 'undefined') {
+        this.beamerChannel = new BroadcastChannel('noah-beamer-channel');
+      }
+      this.beamerChannel?.postMessage(event);
+    } catch {}
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('noah_beamer_sync', JSON.stringify({ ...event, _t: Date.now() }));
+      }
+    } catch {}
+  }
+
+  saveBeamerSnapshot() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(
+        'noah_beamer_snapshot',
+        JSON.stringify({
+          song: this.activeSong,
+          slideIndex: this.activeSlideIndex,
+          displayMode: this.displayMode,
+        })
+      );
+    } catch {}
+  }
+
+  syncAllToBeamer() {
+    if (this.activeSong) {
+      this.emitBeamerEvent({
+        type: 'SYNC_SONG',
+        song: this.activeSong,
+        slideIndex: this.activeSlideIndex,
+      });
+      const slide = this.activeSong.slides[this.activeSlideIndex];
+      if (slide) {
+        this.emitBeamerEvent({
+          type: 'CHANGE_SLIDE',
+          slideId: slide.id,
+          transition: 'Crossfade',
+        });
+      }
+    }
+    this.emitBeamerEvent({
+      type: 'SET_BLANK',
+      mode: this.displayMode,
+    });
+    this.saveBeamerSnapshot();
+  }
+
   // Multi-language filter (SongBeamer parity: 'all', 1, 2, 3)
   activeLanguageFilter = $state<number | 'all'>('all');
 
@@ -357,13 +413,20 @@ class PresentationStore {
       }
       const savedScaleMode = localStorage.getItem('noah_ui_scale_mode');
       if (savedScaleMode === 'custom') {
-        this.uiScaleMode = 'custom';
         const savedUiScale = localStorage.getItem('noah_ui_scale');
         if (savedUiScale) {
           const parsed = parseFloat(savedUiScale);
-          if (!isNaN(parsed) && parsed >= 0.75 && parsed <= 2.5) {
+          // If custom scale was set to exact 1.0 in older session, upgrade to responsive auto-scale
+          if (!isNaN(parsed) && parsed !== 1.0 && parsed >= 0.75 && parsed <= 2.5) {
+            this.uiScaleMode = 'custom';
             this.uiScale = parsed;
+          } else {
+            this.uiScaleMode = 'auto';
+            this.updateAutoUiScale();
           }
+        } else {
+          this.uiScaleMode = 'auto';
+          this.updateAutoUiScale();
         }
       } else {
         this.uiScaleMode = 'auto';
@@ -380,15 +443,28 @@ class PresentationStore {
           this.updateAutoUiScale();
         }
       });
+
+      // Cross-window BroadcastChannel listener
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          this.beamerChannel = new BroadcastChannel('noah-beamer-channel');
+          this.beamerChannel.onmessage = (e) => {
+            if (e.data?.type === 'REQUEST_SYNC') {
+              this.syncAllToBeamer();
+            }
+          };
+        } catch {}
+      }
     }
 
-    // Automatically sync initial active song to Tauri backend so Beamer immediately has the song
+    // Automatically sync initial active song to Tauri backend and Beamer windows
     if (this.activeSong) {
       invokeTauri('sync_active_song', {
         song: this.activeSong,
         slideIndex: this.activeSlideIndex,
       });
       invokeTauri('set_display_mode', { mode: this.displayMode });
+      this.syncAllToBeamer();
     }
   }
 
@@ -396,19 +472,30 @@ class PresentationStore {
     if (typeof window === 'undefined') return;
     const h = window.innerHeight;
     const w = window.innerWidth;
+    const dpr = typeof window.devicePixelRatio === 'number' ? window.devicePixelRatio : 1;
 
     // Cross-platform ergonomic calibration (Windows, macOS, Linux):
-    // 4K UHD or UltraWide (h >= 1250 or w >= 2400) -> 1.35x
-    // QHD / High-density laptops (h >= 950 or w >= 1700) -> 1.15x
-    // Compact screens (h < 720 or w < 1150) -> 0.92x
-    // Standard 1080p full display -> 1.0x
-    let target = 1.0;
-    if (h >= 1250 || w >= 2400) {
-      target = 1.35;
-    } else if (h >= 950 || w >= 1700) {
-      target = 1.15;
-    } else if (h < 720 || w < 1150) {
-      target = 0.92;
+    // Standard Win32 Delphi SongBeamer UI uses 11-12px fonts and 24-28px buttons.
+    // In modern browser engines and high-density screens, 1.0x baseline makes 11px tiny.
+    // We calibrate so that default desktop viewing gives a comfortable, natural, readable size:
+    //
+    // 4K UHD or UltraWide screens:
+    // (w >= 2200 or h >= 1200 or (w >= 1600 && dpr >= 1.75)) -> 1.45x
+    //
+    // QHD or High-DPI laptops:
+    // (w >= 1400 or h >= 800 or dpr >= 1.25) -> 1.25x
+    //
+    // Standard 1080p desktop browser:
+    // (w >= 1100 or h >= 650) -> 1.18x
+    //
+    // Compact screens (w < 1100 or h < 650): -> 1.0x
+    let target = 1.18;
+    if (w >= 2200 || h >= 1200 || (w >= 1600 && dpr >= 1.75)) {
+      target = 1.45;
+    } else if (w >= 1400 || h >= 800 || dpr >= 1.25) {
+      target = 1.25;
+    } else if (w >= 1100 || h >= 650) {
+      target = 1.18;
     } else {
       target = 1.0;
     }
@@ -555,6 +642,20 @@ class PresentationStore {
       song,
       slideIndex: 0,
     });
+    this.emitBeamerEvent({
+      type: 'SYNC_SONG',
+      song,
+      slideIndex: 0,
+    });
+    const slide = song.slides[0];
+    if (slide) {
+      this.emitBeamerEvent({
+        type: 'CHANGE_SLIDE',
+        slideId: slide.id,
+        transition: 'Crossfade',
+      });
+    }
+    this.saveBeamerSnapshot();
   }
 
   selectScheduleItem(index: number) {
@@ -678,6 +779,16 @@ class PresentationStore {
           slideIndex: index,
           transitionMs: 300,
         });
+        this.emitBeamerEvent({
+          type: 'CHANGE_SLIDE',
+          slideId: slide.id,
+          transition: 'Crossfade',
+        });
+        this.emitBeamerEvent({
+          type: 'SET_BLANK',
+          mode: 'normal',
+        });
+        this.saveBeamerSnapshot();
       }
     }
   }
@@ -685,6 +796,11 @@ class PresentationStore {
   setDisplayMode(mode: DisplayMode) {
     this.displayMode = mode;
     invokeTauri('set_display_mode', { mode });
+    this.emitBeamerEvent({
+      type: 'SET_BLANK',
+      mode,
+    });
+    this.saveBeamerSnapshot();
   }
 
   toggleChords() {
@@ -731,9 +847,16 @@ class PresentationStore {
           });
         }
         await invokeTauri('set_display_mode', { mode: this.displayMode });
+        this.syncAllToBeamer();
+      } else if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
+        // Browser fallback: open secondary presentation window on external monitor
+        this.isBeamerActive = true;
+        window.open('/?window=beamer', 'NoahBeamer', 'popup=yes,width=1280,height=720,menubar=no,toolbar=no');
+        this.syncAllToBeamer();
       }
     } else {
       await invokeTauri('set_display_mode', { mode: this.displayMode });
+      this.emitBeamerEvent({ type: 'SET_BLANK', mode: this.displayMode });
     }
   }
 
@@ -741,6 +864,7 @@ class PresentationStore {
     if (this.isBeamerActive) {
       await invokeTauri('close_beamer_window');
       this.isBeamerActive = false;
+      this.emitBeamerEvent({ type: 'SET_BLANK', mode: 'black' });
     }
   }
 

@@ -234,11 +234,11 @@ async fn open_beamer_window(
     display_id: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<DisplayInfo, String> {
-    {
-        let mut lock = state.presentation.lock().await;
-        lock.display_mode = DisplayMode::Black;
-    }
-    let _ = app.emit("beamer-event", BeamerEvent::SetBlank { mode: DisplayMode::Black });
+    let current_display_mode = {
+        let lock = state.presentation.lock().await;
+        lock.display_mode
+    };
+    let _ = app.emit("beamer-event", BeamerEvent::SetBlank { mode: current_display_mode });
 
     let monitors = app
         .available_monitors()
@@ -304,9 +304,7 @@ async fn open_beamer_window(
         .ok_or_else(|| "Beamer window not configured in tauri.conf.json".to_string())?;
 
     if target_is_secondary {
-        let _ = beamer_window.set_fullscreen(false);
         let _ = beamer_window.set_decorations(false);
-        let _ = beamer_window.set_always_on_top(true);
         let _ = beamer_window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
             x: pos.x,
             y: pos.y,
@@ -315,6 +313,8 @@ async fn open_beamer_window(
             width: size.width,
             height: size.height,
         }));
+        let _ = beamer_window.set_fullscreen(true);
+        let _ = beamer_window.set_always_on_top(true);
     } else {
         // Single-monitor fallback: preview window
         let _ = beamer_window.set_fullscreen(false);
