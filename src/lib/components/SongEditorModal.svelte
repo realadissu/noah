@@ -38,7 +38,9 @@
   let isChordModalOpen = $state<boolean>(false);
   let isMarkeDropdownOpen = $state<boolean>(false);
   let newOrderPartInput = $state<string>('');
+  let verseOrderInput = $state<string>('');
   let selectedAblaufIdx = $state<number | null>(null);
+  let lastLoadedSongId = $state<string | null>(null);
 
   // Editor DOM elements
   let textareaEl = $state<HTMLTextAreaElement | null>(null);
@@ -320,31 +322,76 @@
     return detected;
   });
 
-  // Initialize fields from active editing song
+  // Initialize fields from active editing song (strictly guarded to never reset user edits)
   $effect(() => {
-    if (presentation.editingSong) {
-      const s = presentation.editingSong;
-      title = s.metadata.title;
-      editorText = songToText(s);
-      verseOrder = [...(s.metadata.verse_order ?? [])];
-      langCount = s.metadata.lang_count || 1;
-      author = s.metadata.author ?? '';
-      copyright = s.metadata.copyright ?? '';
-      ccli = s.metadata.ccli ?? '';
-      musicalKey = s.metadata.musical_key ?? '';
-      speed = s.metadata.speed;
-      transpose = s.metadata.transpose ?? 0;
-      titleLang2 = s.metadata.title_lang2 ?? '';
-      fontSize = s.metadata.font_size ?? 36;
-      categories = s.metadata.custom_tags['category']
-        ? s.metadata.custom_tags['category'].split(',').map((x) => x.trim())
-        : [];
-      audioFile = s.metadata.custom_tags['audiofile'] ?? '';
-      chordsheetFile = s.metadata.custom_tags['chordsheet'] ?? '';
-      selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
-      updateCurrentSectionFromCursor();
+    const s = presentation.editingSong;
+    if (presentation.isSongEditorOpen && s) {
+      if (s.id !== lastLoadedSongId) {
+        lastLoadedSongId = s.id;
+        initFromSong(s);
+      }
+    } else {
+      lastLoadedSongId = null;
     }
   });
+
+  function initFromSong(s: Song) {
+    title = s.metadata.title;
+    editorText = songToText(s);
+    verseOrder = [...(s.metadata.verse_order ?? [])];
+    verseOrderInput = verseOrder.join(', ');
+    langCount = s.metadata.lang_count || 1;
+    author = s.metadata.author ?? '';
+    copyright = s.metadata.copyright ?? '';
+    ccli = s.metadata.ccli ?? '';
+    musicalKey = s.metadata.musical_key ?? '';
+    speed = s.metadata.speed;
+    transpose = s.metadata.transpose ?? 0;
+    titleLang2 = s.metadata.title_lang2 ?? '';
+    fontSize = s.metadata.font_size ?? 36;
+    categories = s.metadata.custom_tags['category']
+      ? s.metadata.custom_tags['category'].split(',').map((x) => x.trim())
+      : [];
+    audioFile = s.metadata.custom_tags['audiofile'] ?? '';
+    chordsheetFile = s.metadata.custom_tags['chordsheet'] ?? '';
+    selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
+    updateCurrentSectionFromCursor();
+  }
+
+  // Synchronize verse order array and text line
+  function updateVerseOrder(items: string[]) {
+    verseOrder = items;
+    verseOrderInput = items.join(', ');
+  }
+
+  function handleVerseOrderInput() {
+    verseOrder = verseOrderInput
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (selectedAblaufIdx !== null && selectedAblaufIdx >= verseOrder.length) {
+      selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
+    }
+  }
+
+  // Jump to section in text editor on double-click
+  function jumpToSection(sec: string) {
+    if (!textareaEl) return;
+    const cleanSec = sec.trim().toLowerCase();
+    const lines = editorText.split('\n');
+    let charOffset = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const info = getSectionHeaderInfo(line);
+      if (info && info.label.trim().toLowerCase() === cleanSec) {
+        textareaEl.focus();
+        textareaEl.setSelectionRange(charOffset, charOffset + line.length);
+        currentSection = info.label;
+        return;
+      }
+      charOffset += line.length + 1;
+    }
+  }
 
   // Determine section at cursor position
   function updateCurrentSectionFromCursor() {
@@ -377,26 +424,26 @@
   function addCurrentSectionToAblauf() {
     updateCurrentSectionFromCursor();
     if (currentSection) {
-      verseOrder = [...verseOrder, currentSection];
+      updateVerseOrder([...verseOrder, currentSection]);
       selectedAblaufIdx = verseOrder.length - 1;
     }
   }
 
   function appendSectionToAblauf(sec: string) {
     if (!sec.trim()) return;
-    verseOrder = [...verseOrder, sec.trim()];
+    updateVerseOrder([...verseOrder, sec.trim()]);
     selectedAblaufIdx = verseOrder.length - 1;
   }
 
   function addCustomOrderPart(part: string) {
     if (!part.trim()) return;
-    verseOrder = [...verseOrder, part.trim()];
+    updateVerseOrder([...verseOrder, part.trim()]);
     newOrderPartInput = '';
     selectedAblaufIdx = verseOrder.length - 1;
   }
 
   function removeOrderPart(idx: number) {
-    verseOrder = verseOrder.filter((_, i) => i !== idx);
+    updateVerseOrder(verseOrder.filter((_, i) => i !== idx));
     if (selectedAblaufIdx !== null) {
       if (selectedAblaufIdx === idx) {
         selectedAblaufIdx = verseOrder.length > 0 ? Math.min(idx, verseOrder.length - 1) : null;
@@ -412,7 +459,7 @@
     const prev = items[selectedAblaufIdx - 1];
     items[selectedAblaufIdx - 1] = items[selectedAblaufIdx];
     items[selectedAblaufIdx] = prev;
-    verseOrder = items;
+    updateVerseOrder(items);
     selectedAblaufIdx -= 1;
   }
 
@@ -422,7 +469,7 @@
     const next = items[selectedAblaufIdx + 1];
     items[selectedAblaufIdx + 1] = items[selectedAblaufIdx];
     items[selectedAblaufIdx] = next;
-    verseOrder = items;
+    updateVerseOrder(items);
     selectedAblaufIdx += 1;
   }
 
@@ -453,9 +500,9 @@
         order.push(bridge);
         order.push(chorus);
       }
-      verseOrder = order;
+      updateVerseOrder(order);
     } else {
-      verseOrder = [...detected];
+      updateVerseOrder([...detected]);
     }
     selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
   }
@@ -483,7 +530,7 @@
       const items = [...verseOrder];
       const [moved] = items.splice(draggedAblaufIdx, 1);
       items.splice(idx, 0, moved);
-      verseOrder = items;
+      updateVerseOrder(items);
       selectedAblaufIdx = idx;
     }
     draggedAblaufIdx = null;
@@ -710,7 +757,7 @@
 {#if presentation.isSongEditorOpen && song}
   <!-- Backdrop -->
   <div
-    class="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 select-none font-sans"
+    class="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 font-sans"
     style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
     role="dialog"
     aria-modal="true"
@@ -817,7 +864,7 @@
       </div>
 
       <!-- Main Body Area -->
-      <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3 min-h-0">
+      <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3 min-h-0 select-text">
         {#if activeTab === 'text'}
           <!-- 1. Song Title Input & Top Action Buttons (OK, Abbrechen, Akkorde, Hintergrund) -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
@@ -837,6 +884,7 @@
             <!-- Top Right Action Buttons -->
             <div class="flex items-center gap-1.5 shrink-0 justify-end">
               <button
+                id="save-song-btn"
                 type="button"
                 class="px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
                   ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border-emerald-500/50'
@@ -847,6 +895,7 @@
                 <span>{t('editor.ok')}</span>
               </button>
               <button
+                id="cancel-song-btn"
                 type="button"
                 class="px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
                   ? 'bg-red-600/30 hover:bg-red-600/50 text-red-300 border-red-500/50'
@@ -1047,59 +1096,29 @@
               </div>
 
               <!-- Main text area with SongBeamer vertical red guideline at 48ch -->
-              <div class="relative flex-1 w-full h-full overflow-hidden">
+              <div class="relative flex-1 w-full h-full min-h-[300px] overflow-hidden flex flex-col bg-white dark:bg-neutral-950">
                 <!-- SongBeamer vertical red guideline (approx. 48 monospace characters width) -->
                 <div
                   class="absolute inset-y-0 border-r border-dotted border-red-500/60 dark:border-red-500/40 pointer-events-none z-10"
-                  style="left: calc(48ch + 16px);"
+                  style="left: calc(48ch + 14px);"
                   title={t('editor.lineLimitGuide')}
                   aria-hidden="true"
                 ></div>
 
-                <!-- Backdrop Layer: Automatic Section Header Banners & Red '---' styling -->
-                <div
-                  bind:this={backdropEl}
-                  class="absolute inset-0 p-3 overflow-hidden pointer-events-none font-mono text-xs leading-[22px] select-none z-0"
-                  aria-hidden="true"
-                >
-                  {#each editorText.split('\n') as line}
-                    {@const headerInfo = getSectionHeaderInfo(line)}
-                    {#if headerInfo}
-                      <div
-                        style="background-color: {headerInfo.hex};"
-                        class="w-full text-white font-bold px-2 rounded-xs h-[22px] flex items-center leading-none tracking-wide shadow-2xs"
-                      >
-                        {line}
-                      </div>
-                    {:else if line.trim() === '---' || line.trim() === '--'}
-                      <div class="text-red-600 font-bold font-mono tracking-widest h-[22px] flex items-center">
-                        {line}
-                      </div>
-                    {:else}
-                      <div class="h-[22px] text-neutral-900 dark:text-neutral-100 flex items-center whitespace-pre overflow-hidden">
-                        {line || ' '}
-                      </div>
-                    {/if}
-                  {/each}
-                </div>
-
-                <!-- Input Textarea: Fully Native Typing, Selection & Scrolling on Top -->
                 <textarea
+                  id="song-text-editor"
                   bind:this={textareaEl}
-                  value={editorText}
+                  bind:value={editorText}
                   oninput={handleTextareaInput}
                   onbeforeinput={handleTextareaBeforeInput}
-                  onkeydown={handleTextareaKeyDown}
-                  onscroll={handleScroll}
                   onclick={updateCurrentSectionFromCursor}
                   onkeyup={updateCurrentSectionFromCursor}
                   onselect={updateCurrentSectionFromCursor}
                   spellcheck="false"
                   autocomplete="off"
                   autocapitalize="off"
-                  data-gramm="false"
                   placeholder={t('editor.textPlaceholder')}
-                  class="absolute inset-0 w-full h-full p-3 font-mono text-xs leading-[22px] resize-none focus:outline-none bg-transparent text-transparent caret-neutral-900 dark:caret-white selection:bg-blue-500/35 selection:text-transparent whitespace-pre overflow-y-auto z-20"
+                  class="w-full flex-1 p-3 font-mono text-xs sm:text-sm leading-relaxed resize-none focus:outline-none bg-transparent text-neutral-900 dark:text-neutral-100 caret-blue-600 dark:caret-amber-400 selection:bg-blue-500/25 dark:selection:bg-blue-500/35 select-text whitespace-pre overflow-y-auto z-0"
                 ></textarea>
               </div>
 
@@ -1127,6 +1146,7 @@
                   </div>
                   <div class="flex items-center gap-1">
                     <button
+                      id="add-part-current-btn"
                       type="button"
                       class="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer transition shadow-2xs"
                       onclick={addCurrentSectionToAblauf}
@@ -1135,6 +1155,7 @@
                       {t('editor.addPart')}
                     </button>
                     <button
+                      id="auto-ablauf-btn"
                       type="button"
                       class="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer font-bold text-amber-500"
                       onclick={autoPopulateAblauf}
@@ -1167,6 +1188,7 @@
                         tabindex="0"
                         draggable="true"
                         onclick={() => (selectedAblaufIdx = idx)}
+                        ondblclick={() => jumpToSection(item)}
                         onkeydown={(e) => {
                           if (e.key === 'Enter') selectedAblaufIdx = idx;
                         }}
@@ -1209,6 +1231,7 @@
                 <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-neutral-300 dark:border-neutral-800">
                   <div class="flex items-center gap-1">
                     <button
+                      id="move-ablauf-up-btn"
                       type="button"
                       class="px-2 py-0.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
                         ? 'border-neutral-700 text-neutral-300'
@@ -1220,6 +1243,7 @@
                       ▲
                     </button>
                     <button
+                      id="move-ablauf-down-btn"
                       type="button"
                       class="px-2 py-0.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
                         ? 'border-neutral-700 text-neutral-300'
@@ -1232,6 +1256,7 @@
                     </button>
                   </div>
                   <button
+                    id="remove-ablauf-btn"
                     type="button"
                     class="px-2 py-0.5 rounded border text-red-500 hover:bg-red-500/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
                       ? 'border-neutral-700'
@@ -1288,6 +1313,22 @@
                     +
                   </button>
                 </div>
+                <!-- Direct VerseOrder text input line (matching SongBeamer AC_Edit line) -->
+                <div class="mt-2 pt-1 border-t border-neutral-300 dark:border-neutral-800 flex flex-col gap-0.5">
+                  <label for="verse-order-text-input" class="text-[10px] opacity-70 font-semibold block">
+                    {t('editor.verseOrder')} (#VerseOrder):
+                  </label>
+                  <input
+                    id="verse-order-text-input"
+                    type="text"
+                    bind:value={verseOrderInput}
+                    oninput={handleVerseOrderInput}
+                    placeholder="Refrain, Vers 1, Refrain, Vers 2..."
+                    class="px-2 py-1 text-xs rounded border font-mono focus:outline-none {presentation.theme === 'dark'
+                      ? 'bg-neutral-950 border-neutral-700 text-neutral-200 focus:border-amber-500'
+                      : 'bg-white border-neutral-300 text-neutral-900 focus:border-blue-600'}"
+                  />
+                </div>
               </div>
 
               <!-- Anzahl Sprachen -->
@@ -1296,24 +1337,48 @@
                   ? 'bg-neutral-900/60 border-neutral-700'
                   : 'bg-white border-neutral-400'}"
               >
-                <span class="font-bold">{t('editor.langCount')}</span>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold">{t('editor.langCount')}</span>
+                  <span class="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+                    {langCount} {langCount === 1 ? 'Sprache' : 'Sprachen'}
+                  </span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5 mt-0.5">
                   {#each [1, 2, 3, 4] as count}
-                    <label class="flex items-center gap-1 text-xs cursor-pointer">
-                      <input
-                        type="radio"
-                        name="langCountRadio"
-                        value={count}
-                        checked={langCount === count}
-                        onchange={() => (langCount = count)}
-                      />
-                      <span>{count}</span>
-                    </label>
+                    <button
+                      id="lang-count-{count}"
+                      type="button"
+                      class="py-1.5 rounded border text-center font-bold text-xs cursor-pointer transition {langCount === count
+                        ? 'border-blue-500 bg-blue-500/20 text-blue-600 dark:text-blue-300 font-extrabold ring-1 ring-blue-500/40'
+                        : presentation.theme === 'dark'
+                          ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                          : 'border-neutral-300 hover:bg-neutral-100 text-neutral-700'}"
+                      onclick={() => (langCount = count)}
+                    >
+                      {count}
+                    </button>
                   {/each}
                 </div>
                 <p class="text-[10px] opacity-70 leading-tight">
                   {t('editor.langCountHint')}
                 </p>
+
+                {#if langCount > 1}
+                  <div class="mt-1 pt-1 border-t border-neutral-300 dark:border-neutral-700 flex flex-col gap-1">
+                    <label for="title-lang2-quick" class="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                      {t('editor.titleLang2Label')}
+                    </label>
+                    <input
+                      id="title-lang2-quick"
+                      type="text"
+                      bind:value={titleLang2}
+                      placeholder={t('editor.titleLang2Placeholder')}
+                      class="px-2 py-1 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
+                        ? 'bg-neutral-950 border-neutral-700 text-white'
+                        : 'bg-white border-neutral-300 text-neutral-900'}"
+                    />
+                  </div>
+                {/if}
               </div>
 
               <!-- Yellow Button: Seiten mit --- trennen (at cursor position) -->
