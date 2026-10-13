@@ -2,7 +2,7 @@
   import { t } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import SongBeamerIcon from '$lib/components/icons/SongBeamerIcon.svelte';
-  import type { ScheduleItem, Slide, LyricLine } from '$lib/types/models';
+  import type { ScheduleItem, Slide, LyricLine, SongSearchResult } from '$lib/types/models';
 
   // --- Clock ---
   let currentTime = $state<string>('');
@@ -134,6 +134,26 @@
 
   // --- Dynamic Search Filter ---
   let searchQuery = $state('');
+  let searchResults = $state<SongSearchResult[]>([]);
+  let isSearchDropdownOpen = $state(false);
+
+  async function handleSearchInput(e: Event) {
+    const val = (e.target as HTMLInputElement).value;
+    searchQuery = val;
+    if (val.trim().length >= 1) {
+      searchResults = await presentation.searchSongs(val);
+      isSearchDropdownOpen = searchResults.length > 0;
+    } else {
+      searchResults = [];
+      isSearchDropdownOpen = false;
+    }
+  }
+
+  async function selectSearchResult(res: SongSearchResult) {
+    await presentation.addSongFromSearch(res);
+    isSearchDropdownOpen = false;
+    searchQuery = '';
+  }
 
   function getItemColorClass(item: ScheduleItem, isActive: boolean): string {
     if (isActive) {
@@ -146,19 +166,23 @@
     }
     return presentation.theme === 'dark' ? 'text-[#88b0ff] font-bold' : 'text-[#0000cc] font-bold';
   }
+
+  const iconPx = $derived(Math.max(14, Math.round(16 * presentation.uiScale)));
 </script>
 
-<!-- Outer Container: SongBeamer Classic Layout -->
+<!-- Outer Container: SongBeamer Classic Layout with Scalable UI Token -->
 <div
-  class="flex flex-col h-full w-full select-none overflow-hidden font-sans text-xs rounded-none {presentation.theme === 'dark'
+  class="flex flex-col h-full w-full select-none overflow-hidden font-sans rounded-none {presentation.theme === 'dark'
     ? 'bg-[#1e2227] text-neutral-200'
-    : 'bg-[#ece9d8] text-neutral-900'}"
+    : 'bg-[#f0f0f0] text-neutral-900'}"
+  style="--ui-scale: {presentation.uiScale};"
 >
   <!-- 1. Menubar: Compact 24px Win32 Classic Menu -->
   <nav
-    class="h-6 px-1 flex items-center space-x-1 border-b rounded-none shrink-0 text-xs {presentation.theme === 'dark'
+    class="px-1 flex items-center space-x-1 border-b rounded-none shrink-0 text-xs {presentation.theme === 'dark'
       ? 'bg-[#282c34] border-neutral-700 text-neutral-300'
       : 'bg-[#f4f4f4] border-[#d0d0d0] text-neutral-900'}"
+    style="height: calc(24px * var(--ui-scale)); font-size: calc(12px * var(--ui-scale));"
   >
     <!-- Docking Grip Dots -->
     <div class="flex flex-col gap-0.5 px-0.5 cursor-grab opacity-40 hover:opacity-80">
@@ -199,11 +223,12 @@
     </button>
   </nav>
 
-  <!-- 2. Toolbar: Fixed 26px Toolbar with 22x22px Buttons & 1px Separators -->
+  <!-- 2. Toolbar: SongBeamer 6.16f Toolbar with Exact Parity Icons & 1px Separators -->
   <header
-    class="h-[26px] px-1.5 flex items-center justify-between border-b rounded-none shrink-0 gap-1 overflow-x-auto {presentation.theme === 'dark'
+    class="px-1 flex items-center justify-between border-b rounded-none shrink-0 gap-1 overflow-x-auto {presentation.theme === 'dark'
       ? 'bg-[#21252b] border-neutral-700'
-      : 'bg-[#ece9d8] border-[#b0b0b0]'}"
+      : 'bg-[#f4f4f4] border-[#d0d0d0]'}"
+    style="height: calc(28px * var(--ui-scale));"
   >
     <div class="flex items-center space-x-0.5 shrink-0">
       <!-- Docking Grip Dots -->
@@ -213,188 +238,345 @@
         <div class="w-0.5 h-0.5 bg-black dark:bg-white"></div>
       </div>
 
-      <!-- File Actions -->
+      <!-- Schedule Tools -->
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.newSchedule')}
-        onclick={() => { presentation.schedule = []; }}
+        onclick={() => presentation.newSchedule()}
       >
-        <SongBeamerIcon name="new" size={16} />
+        <SongBeamerIcon name="schedule-new" size={iconPx} />
       </button>
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.openSchedule')}
+        onclick={() => presentation.openSongFileDialog()}
       >
-        <SongBeamerIcon name="open" size={16} />
+        <SongBeamerIcon name="schedule-open" size={iconPx} />
       </button>
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.saveSchedule')}
       >
-        <SongBeamerIcon name="save" size={16} />
+        <SongBeamerIcon name="schedule-save" size={iconPx} />
       </button>
 
       <!-- 1px Separator -->
-      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-1"></div>
+      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
 
-      <!-- Song Actions -->
+      <!-- Song Tools -->
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.newSong')}
-        onclick={() => presentation.openSongEditor()}
+        onclick={() => presentation.createNewSong()}
       >
-        <SongBeamerIcon name="song" size={16} />
+        <SongBeamerIcon name="song-new" size={iconPx} />
       </button>
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
-        title={t('toolbar.openSong')}
-        onclick={() => presentation.openSongFileDialog()}
-      >
-        <SongBeamerIcon name="open" size={16} />
-      </button>
-      <button
-        type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.editSong')}
         onclick={() => presentation.openSongEditor()}
       >
-        <SongBeamerIcon name="edit" size={16} />
+        <SongBeamerIcon name="song-edit" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.openSong')}
+        onclick={() => presentation.openSongFileDialog()}
+      >
+        <SongBeamerIcon name="song-open" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.search')}
+        onclick={() => {
+          const el = document.getElementById('sb-quick-search');
+          if (el) el.focus();
+        }}
+      >
+        <SongBeamerIcon name="song-search" size={iconPx} />
       </button>
 
       <!-- 1px Separator -->
-      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-1"></div>
+      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
 
-      <!-- Media & Scripture -->
+      <!-- Media & Scripture Tools -->
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.mediaImage')}
+      >
+        <SongBeamerIcon name="media-image" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.bible')}
       >
-        <SongBeamerIcon name="bible" size={16} />
+        <SongBeamerIcon name="media-bible" size={iconPx} />
       </button>
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
-        title={t('toolbar.media')}
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.mediaVideo')}
       >
-        <SongBeamerIcon name="video" size={16} />
+        <SongBeamerIcon name="media-video" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.mediaAudioCd')}
+      >
+        <SongBeamerIcon name="media-audio-cd" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.mediaMp3')}
+      >
+        <SongBeamerIcon name="media-mp3" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.mediaPpt')}
+      >
+        <SongBeamerIcon name="media-ppt" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.mediaCamera')}
+      >
+        <SongBeamerIcon name="media-camera" size={iconPx} />
       </button>
 
       <!-- 1px Separator -->
-      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-1"></div>
+      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
 
       <!-- Beamer Direct Controls in Toolbar -->
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border {presentation.displayMode === 'normal'
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.bgImage')}
+      >
+        <SongBeamerIcon name="bg-image" size={iconPx} />
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border {presentation.displayMode === 'normal'
           ? 'border-[#316ac5] bg-[#c2d5e8]'
           : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.normal')}
         onclick={() => presentation.setDisplayMode('normal')}
       >
-        <SongBeamerIcon name="slide-text" size={16} />
+        <SongBeamerIcon name="slide-text" size={iconPx} />
       </button>
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border {presentation.displayMode === 'clear_text'
+        class="flex items-center justify-center rounded-none border {presentation.displayMode === 'clear_text'
           ? 'border-[#316ac5] bg-[#c2d5e8]'
           : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.clear')}
         onclick={() => presentation.setDisplayMode('clear_text')}
       >
-        <SongBeamerIcon name="slide-clear" size={16} />
+        <SongBeamerIcon name="slide-clear" size={iconPx} />
       </button>
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border {presentation.displayMode === 'black'
+        class="flex items-center justify-center rounded-none border {presentation.displayMode === 'black'
           ? 'border-[#316ac5] bg-[#c2d5e8]'
           : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.black')}
         onclick={() => presentation.setDisplayMode('black')}
       >
-        <SongBeamerIcon name="screen-black" size={16} />
+        <SongBeamerIcon name="screen-black" size={iconPx} />
       </button>
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border {presentation.displayMode === 'logo'
-          ? 'border-[#316ac5] bg-[#c2d5e8]'
-          : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
-        title={t('toolbar.logo')}
-        onclick={() => presentation.setDisplayMode('logo')}
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.alert')}
       >
-        <span class="font-bold text-[11px] text-amber-600">N</span>
+        <SongBeamerIcon name="alert" size={iconPx} />
       </button>
-
-      <!-- 1px Separator -->
-      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-1"></div>
-
-      <!-- Chords Toggle Button -->
       <button
         type="button"
-        class="w-[22px] h-[22px] p-0.5 flex items-center justify-center rounded-none border {presentation.showChords
+        class="flex items-center justify-center rounded-none border {presentation.showChords
           ? 'border-[#316ac5] bg-[#c2d5e8]'
           : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.toggleChords')}
         onclick={() => presentation.toggleChords()}
       >
-        <SongBeamerIcon name="chords" size={16} />
+        <SongBeamerIcon name="chords" size={iconPx} />
       </button>
 
       <!-- 1px Separator -->
-      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-1"></div>
+      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
+
+      <!-- Play Presentation Button -->
+      <button
+        type="button"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
+        title={t('toolbar.openBeamer')}
+        onclick={() => presentation.toggleBeamer()}
+      >
+        <SongBeamerIcon name="play" size={iconPx} />
+      </button>
+
+      <!-- 1px Separator -->
+      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
 
       <!-- Quick Search Bar: "Song suchen:" -->
-      <div class="flex items-center gap-1 pl-1">
-        <label for="sb-quick-search" class="text-[11px] font-normal text-neutral-700 dark:text-neutral-300 shrink-0">
+      <div class="flex items-center gap-1 pl-0.5 relative">
+        <label for="sb-quick-search" class="font-normal text-neutral-700 dark:text-neutral-300 shrink-0" style="font-size: calc(11px * var(--ui-scale));">
           {t('search.label')}
         </label>
         <input
           id="sb-quick-search"
           type="text"
           bind:value={searchQuery}
-          class="h-5 w-28 px-1 text-[11px] border border-[#7f9db9] bg-white dark:bg-neutral-900 rounded-none focus:outline-none focus:border-[#316ac5]"
+          oninput={handleSearchInput}
+          class="border border-[#7f9db9] bg-white dark:bg-neutral-900 rounded-none focus:outline-none focus:border-[#316ac5] px-1"
+          style="height: calc(20px * var(--ui-scale)); width: calc(110px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         />
+
+        <!-- Search Autocomplete Dropdown -->
+        {#if isSearchDropdownOpen && searchResults.length > 0}
+          <div
+            class="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-neutral-900 border border-[#7f9db9] shadow-lg max-h-60 overflow-y-auto"
+            style="width: calc(240px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+          >
+            {#each searchResults as res}
+              <button
+                type="button"
+                class="w-full text-left px-2 py-1 hover:bg-[#316ac5] hover:text-white flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700"
+                onclick={() => selectSearchResult(res)}
+              >
+                <span class="font-semibold truncate">{res.title}</span>
+                {#if res.author}
+                  <span class="text-[10px] opacity-70 truncate ml-1">{res.author}</span>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+
+        <button
+          type="button"
+          class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9]"
+          style="width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale));"
+          title={t('toolbar.ccli')}
+        >
+          <SongBeamerIcon name="ccli" size={iconPx} />
+        </button>
+        <button
+          type="button"
+          class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9]"
+          style="width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale));"
+          title={t('toolbar.history')}
+        >
+          <SongBeamerIcon name="history" size={iconPx} />
+        </button>
       </div>
 
       <!-- 1px Separator -->
-      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-1"></div>
+      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
 
-      <!-- Languages Toolbar ("Sprachen" / "Alle" / "1" / "2") -->
+      <!-- Languages Toolbar ("Sprachen" / "Alle" / "1" / "2" / "3" / "4") -->
       <div class="flex items-center space-x-0.5">
-        <span class="text-[11px] font-normal text-neutral-600 dark:text-neutral-400 px-1">
+        <span class="font-normal text-neutral-600 dark:text-neutral-400 px-0.5" style="font-size: calc(11px * var(--ui-scale));">
           {t('toolbar.languages')}
         </span>
         <button
           type="button"
-          class="h-5 px-1.5 text-[11px] rounded-none border border-[#316ac5] bg-[#c2d5e8] text-neutral-900 font-semibold"
+          class="px-1 text-[11px] rounded-none border {presentation.activeLanguageFilter === 'all'
+            ? 'border-[#316ac5] bg-[#c2d5e8] font-bold text-neutral-900'
+            : 'border-transparent hover:border-[#7f9db9] text-neutral-800 dark:text-neutral-200'}"
+          style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+          onclick={() => (presentation.activeLanguageFilter = 'all')}
         >
           {t('toolbar.langAll')}
         </button>
-        <button
-          type="button"
-          class="h-5 px-1 text-[11px] rounded-none border border-transparent hover:border-[#7f9db9] text-neutral-800 dark:text-neutral-200"
-        >
-          1
-        </button>
-        <button
-          type="button"
-          class="h-5 px-1 text-[11px] rounded-none border border-transparent hover:border-[#7f9db9] text-neutral-800 dark:text-neutral-200"
-        >
-          2
-        </button>
+        {#each [1, 2, 3, 4] as langIdx}
+          <button
+            type="button"
+            class="px-1 text-[11px] rounded-none border {presentation.activeLanguageFilter === langIdx
+              ? 'border-[#316ac5] bg-[#c2d5e8] font-bold text-neutral-900'
+              : 'border-transparent hover:border-[#7f9db9] text-neutral-800 dark:text-neutral-200'}"
+            style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+            onclick={() => (presentation.activeLanguageFilter = langIdx)}
+          >
+            {langIdx}
+          </button>
+        {/each}
       </div>
     </div>
 
-    <!-- Right-aligned System & Mode Toggles -->
-    <div class="flex items-center space-x-1 shrink-0">
+    <!-- Right-aligned UI Scale / Zoom, Theme & Mode Controls -->
+    <div class="flex items-center space-x-0.5 shrink-0">
+      <!-- High-DPI UI Scale Zoom Controls -->
       <button
         type="button"
-        class="h-5 px-2 text-[11px] font-semibold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none flex items-center gap-1"
+        class="px-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none font-bold"
+        style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+        title={t('toolbar.zoomOut')}
+        onclick={() => presentation.zoomOut()}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        class="px-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none font-mono font-semibold"
+        style="height: calc(20px * var(--ui-scale)); font-size: calc(10px * var(--ui-scale));"
+        title={t('toolbar.zoomReset')}
+        onclick={() => presentation.resetZoom()}
+      >
+        {Math.round(presentation.uiScale * 100)}%
+      </button>
+      <button
+        type="button"
+        class="px-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none font-bold"
+        style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+        title={t('toolbar.zoomIn')}
+        onclick={() => presentation.zoomIn()}
+      >
+        +
+      </button>
+
+      <!-- 1px Separator -->
+      <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
+
+      <button
+        type="button"
+        class="px-1.5 font-semibold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none flex items-center"
+        style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         title={t('toolbar.toggleTheme')}
         onclick={() => presentation.toggleTheme()}
       >
@@ -402,11 +584,12 @@
       </button>
       <button
         type="button"
-        class="h-5 px-2 text-[11px] font-semibold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none"
+        class="px-1.5 font-semibold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none"
+        style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         title={t('toolbar.settings')}
         onclick={() => presentation.toggleSettings()}
       >
-        ⚙️ {t('toolbar.settings')}
+        ⚙️
       </button>
     </div>
   </header>
@@ -415,9 +598,10 @@
   <main class="flex-1 flex overflow-hidden">
     <!-- COLUMN 1: Ablaufplan (Schedule) - Fixed 250px Width, Dense Table View -->
     <aside
-      class="w-[250px] shrink-0 border-r flex flex-col h-full rounded-none overflow-hidden {presentation.theme === 'dark'
+      class="shrink-0 border-r flex flex-col h-full rounded-none overflow-hidden {presentation.theme === 'dark'
         ? 'border-neutral-700 bg-[#1e2227]'
         : 'border-[#b0b0b0] bg-[#f4f4f4]'}"
+      style="width: calc(250px * var(--ui-scale));"
     >
       <!-- Schedule Items Table -->
       <div
@@ -426,7 +610,7 @@
         class="flex-1 overflow-y-auto"
       >
         {#if presentation.schedule.length === 0}
-          <div class="p-4 text-center text-xs text-neutral-500">
+          <div class="p-4 text-center text-neutral-500" style="font-size: calc(11px * var(--ui-scale));">
             {t('schedule.empty')}
           </div>
         {:else}
@@ -439,9 +623,10 @@
               role="button"
               tabindex="0"
               data-classic-schedule-idx={idx}
-              class="w-full h-6 px-1.5 flex items-center justify-center border-b border-[#d6d6d6] dark:border-neutral-700 rounded-none cursor-pointer transition-none select-none relative {isDragging
+              class="w-full px-1.5 flex items-center justify-center border-b border-[#d6d6d6] dark:border-neutral-700 rounded-none cursor-pointer transition-none select-none relative {isDragging
                 ? 'opacity-40 bg-amber-100'
                 : ''} {getItemColorClass(item, isActive)}"
+              style="height: calc(24px * var(--ui-scale)); font-size: calc(12px * var(--ui-scale));"
               onpointerdown={(e) => handleSchedulePointerDown(e, idx)}
               onpointermove={handleSchedulePointerMove}
               onpointerup={handleSchedulePointerUp}
@@ -453,45 +638,116 @@
                 }
               }}
               onkeydown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  presentation.selectScheduleItem(idx);
-                }
+                if (e.key === 'Enter') presentation.selectScheduleItem(idx);
               }}
             >
-              <!-- Drop indicator line -->
-              {#if isDropTarget && targetPosition === 'before'}
-                <div class="absolute -top-px left-0 right-0 h-[2px] bg-[#316ac5] z-30 pointer-events-none"></div>
-              {/if}
-              {#if isDropTarget && targetPosition === 'after'}
-                <div class="absolute -bottom-px left-0 right-0 h-[2px] bg-[#316ac5] z-30 pointer-events-none"></div>
+              {#if isDropTarget}
+                <div
+                  class="absolute left-0 right-0 h-0.5 bg-blue-600 pointer-events-none z-10 {targetPosition === 'before'
+                    ? 'top-0'
+                    : 'bottom-0'}"
+                ></div>
               {/if}
 
-              <!-- Centered Bold Title (Exact SongBeamer Look) -->
-              <span class="truncate text-[12px] font-bold text-center pointer-events-none">
+              <span class="truncate text-center w-full select-none">
                 {item.title}
               </span>
             </div>
           {/each}
         {/if}
       </div>
+
+      <!-- Schedule Toolbar (Bottom of column 1) -->
+      <div
+        class="border-t border-[#b0b0b0] dark:border-neutral-700 px-1.5 flex items-center justify-between shrink-0 {presentation.theme === 'dark'
+          ? 'bg-[#21252b]'
+          : 'bg-[#f4f4f4]'}"
+        style="height: calc(24px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+      >
+        <span class="text-neutral-500 font-mono">
+          {presentation.schedule.length} {presentation.schedule.length === 1 ? 'Eintrag' : 'Einträge'}
+        </span>
+        <div class="flex items-center space-x-1">
+          <button
+            type="button"
+            class="px-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-none"
+            title={t('schedule.moveUp')}
+            onclick={() => {
+              if (presentation.activeScheduleIndex > 0) {
+                presentation.reorderSchedule(
+                  presentation.activeScheduleIndex,
+                  presentation.activeScheduleIndex - 1
+                );
+              }
+            }}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            class="px-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-none"
+            title={t('schedule.moveDown')}
+            onclick={() => {
+              if (presentation.activeScheduleIndex < presentation.schedule.length - 1) {
+                presentation.reorderSchedule(
+                  presentation.activeScheduleIndex,
+                  presentation.activeScheduleIndex + 1
+                );
+              }
+            }}
+          >
+            ▼
+          </button>
+          <button
+            type="button"
+            class="px-1 text-red-600 hover:bg-red-100 rounded-none"
+            title={t('schedule.remove')}
+            onclick={() => {
+              if (presentation.activeScheduleIndex >= 0) {
+                presentation.removeFromSchedule(presentation.activeScheduleIndex);
+              }
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
     </aside>
 
-    <!-- COLUMN 2: Folienübersicht (Slide Deck) - 2-Column Aspect-Ratio Slide Grid -->
+    <!-- COLUMN 2: Folien-Deck (SongBeamer 2-Column Aspect-Ratio Slide Deck) -->
     <section
-      class="flex-1 min-w-0 flex flex-col h-full overflow-hidden rounded-none {presentation.theme === 'dark'
+      class="flex-1 min-w-0 flex flex-col h-full rounded-none overflow-hidden {presentation.theme === 'dark'
         ? 'bg-[#181a1f]'
-        : 'bg-[#f0f0f0]'}"
+        : 'bg-[#ffffff]'}"
     >
+      <!-- Slide Deck Header -->
+      <div
+        class="px-2 border-b border-[#b0b0b0] dark:border-neutral-700 flex items-center justify-between shrink-0 {presentation.theme === 'dark'
+          ? 'bg-[#21252b]'
+          : 'bg-[#f4f4f4]'}"
+        style="height: calc(24px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+      >
+        <span class="font-bold text-neutral-800 dark:text-neutral-200 truncate">
+          {presentation.activeSong?.metadata.title ?? t('song.noSongLoaded')}
+        </span>
+        <span class="font-mono text-neutral-500">
+          {presentation.activeSong?.slides.length ?? 0} {t('section.slide')}n
+        </span>
+      </div>
+
+      <!-- Slide Deck Scroll Area -->
       <div class="flex-1 overflow-y-auto p-2">
-        {#if presentation.activeSong && presentation.activeSong.slides.length > 0}
-          <div class="grid grid-cols-2 gap-2 max-w-6xl mx-auto">
+        {#if presentation.activeSong}
+          <div class="grid grid-cols-2 gap-2 max-w-full">
             {#each presentation.activeSong.slides as slide, idx}
               {@const isLive = presentation.activeSlideIndex === idx}
+
               <div
                 role="button"
                 tabindex="0"
-                class="flex flex-col cursor-pointer rounded-none"
+                class="flex flex-col border rounded-none cursor-pointer transition-none select-none {isLive
+                  ? 'border-[#0000cc] bg-[#edf2fc] dark:bg-[#202738] dark:border-[#528bff] shadow-sm'
+                  : 'border-[#b0b0b0] dark:border-neutral-700 bg-white dark:bg-[#21252b] hover:bg-neutral-50 dark:hover:bg-[#282c34]'}"
                 onclick={() => presentation.selectSlide(idx)}
                 onkeydown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -501,8 +757,8 @@
                 }}
               >
                 <!-- Slide Header: Blue Section Label on Left, Red Slide Number on Right -->
-                <div class="flex items-center justify-between px-1 py-0.5 text-xs font-bold">
-                  <span class="text-[#0000cc] dark:text-[#70a0ff] font-bold tracking-tight">
+                <div class="flex items-center justify-between px-1.5 py-0.5 font-bold" style="font-size: calc(11px * var(--ui-scale));">
+                  <span class="text-[#0000cc] dark:text-[#70a0ff] tracking-tight">
                     {slide.label}
                   </span>
                   <div class="flex items-center gap-1.5">
@@ -511,20 +767,21 @@
                         ● LIVE
                       </span>
                     {/if}
-                    <span class="text-[#cc0000] font-bold font-mono text-xs">
+                    <span class="text-[#cc0000] font-bold font-mono">
                       {idx + 1}
                     </span>
                   </div>
                 </div>
 
-                <!-- Slide Thumbnail Container: 16:9 Aspect Ratio with 1px Border -->
+                <!-- Slide Thumbnail Container: 16:9 Aspect Ratio with Container Query for dynamic lyrics scaling -->
                 <div
-                  class="w-full aspect-video border rounded-none relative overflow-hidden flex items-center justify-center text-center p-3 {isLive
+                  class="w-full aspect-video border rounded-none relative overflow-hidden flex items-center justify-center text-center p-2.5 {isLive
                     ? 'border-[#0000cc] dark:border-emerald-500 ring-2 ring-[#0000cc]/30 bg-black text-white'
                     : 'border-[#999999] dark:border-neutral-700 bg-neutral-900 text-white'}"
+                  style="container-type: inline-size;"
                 >
-                  <!-- Lyrics Text Preview -->
-                  <div class="w-full text-center space-y-1 font-semibold text-xs leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                  <!-- Lyrics Text Preview (Scales dynamically with slide container size) -->
+                  <div class="w-full text-center space-y-1 font-semibold leading-snug drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] slide-lyrics-preview">
                     {#each slide.lines as line}
                       <p class="truncate">{getAudienceText(line)}</p>
                     {/each}
@@ -543,20 +800,24 @@
 
     <!-- COLUMN 3: Vorschau-Bereich & Beamer-Kontrollbuttons (Rechts / Unten) -->
     <aside
-      class="w-[280px] border-l flex flex-col h-full rounded-none shrink-0 overflow-hidden select-none {presentation.theme === 'dark'
+      class="border-l flex flex-col h-full rounded-none shrink-0 overflow-hidden select-none {presentation.theme === 'dark'
         ? 'border-neutral-700 bg-[#1e2227]'
-        : 'border-[#b0b0b0] bg-[#ece9d8]'}"
+        : 'border-[#b0b0b0] bg-[#f4f4f4]'}"
+      style="width: calc(280px * var(--ui-scale));"
     >
       <!-- Top Half: Live Audience Beamer Preview (Exact Replica) -->
       <div class="p-2 border-b border-[#b0b0b0] dark:border-neutral-700 flex flex-col gap-1.5">
-        <div class="flex items-center justify-between text-[11px] font-bold text-neutral-700 dark:text-neutral-300">
+        <div class="flex items-center justify-between font-bold text-neutral-700 dark:text-neutral-300" style="font-size: calc(11px * var(--ui-scale));">
           <span>{t('slide.audienceView')}</span>
-          <span class="text-[10px] text-neutral-500">
+          <span class="text-[10px] text-neutral-500 font-mono">
             {presentation.activeSlide ? `${presentation.activeSlide.label} (${presentation.activeSlideIndex + 1}/${presentation.activeSong?.slides.length ?? 0})` : ''}
           </span>
         </div>
 
-        <div class="w-full aspect-video bg-black border border-[#7f9db9] rounded-none flex items-center justify-center p-2 text-center text-white relative">
+        <div
+          class="w-full aspect-video bg-black border border-[#7f9db9] rounded-none flex items-center justify-center p-2 text-center text-white relative"
+          style="container-type: inline-size;"
+        >
           {#if presentation.displayMode === 'black'}
             <div class="absolute inset-0 bg-black flex items-center justify-center">
               <span class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">BLACK</span>
@@ -570,7 +831,7 @@
               <span class="text-xl font-bold text-amber-500">Noah</span>
             </div>
           {:else if presentation.activeSlide}
-            <div class="text-center font-bold text-xs space-y-0.5 leading-tight">
+            <div class="text-center font-bold space-y-0.5 leading-tight slide-lyrics-preview">
               {#each presentation.activeSlide.lines as line}
                 <p class="truncate">{getAudienceText(line)}</p>
               {/each}
@@ -581,45 +842,49 @@
 
       <!-- Center Control Buttons: Primary Beamer Controls (Black, Clear, Logo, Normal) -->
       <div class="p-2 border-b border-[#b0b0b0] dark:border-neutral-700 flex flex-col gap-1.5">
-        <div class="text-[11px] font-bold text-neutral-700 dark:text-neutral-300">
+        <div class="font-bold text-neutral-700 dark:text-neutral-300" style="font-size: calc(11px * var(--ui-scale));">
           {t('toolbar.quickControls')}
         </div>
         <div class="grid grid-cols-2 gap-1">
           <button
             type="button"
-            class="h-7 px-2 border rounded-none font-semibold text-xs flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'normal'
+            class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'normal'
               ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
               : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+            style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('normal')}
           >
-            <SongBeamerIcon name="slide-text" size={14} />
+            <SongBeamerIcon name="slide-text" size={iconPx} />
             <span>F4 Text</span>
           </button>
           <button
             type="button"
-            class="h-7 px-2 border rounded-none font-semibold text-xs flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'black'
+            class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'black'
               ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
               : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+            style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('black')}
           >
-            <SongBeamerIcon name="screen-black" size={14} />
+            <SongBeamerIcon name="screen-black" size={iconPx} />
             <span>F5 Black</span>
           </button>
           <button
             type="button"
-            class="h-7 px-2 border rounded-none font-semibold text-xs flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'clear_text'
+            class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'clear_text'
               ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
               : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+            style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('clear_text')}
           >
-            <SongBeamerIcon name="slide-clear" size={14} />
+            <SongBeamerIcon name="slide-clear" size={iconPx} />
             <span>F6 Clear</span>
           </button>
           <button
             type="button"
-            class="h-7 px-2 border rounded-none font-semibold text-xs flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'logo'
+            class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'logo'
               ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
               : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+            style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('logo')}
           >
             <span class="font-bold text-amber-600">N</span>
@@ -631,13 +896,13 @@
       <!-- Bottom Half: Stage Confidence Monitor (Next Slide + Clock) -->
       <div class="flex-1 p-2 flex flex-col justify-between overflow-hidden">
         <div>
-          <div class="flex items-center justify-between text-[11px] font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+          <div class="flex items-center justify-between font-bold text-neutral-700 dark:text-neutral-300 mb-1" style="font-size: calc(11px * var(--ui-scale));">
             <span>{t('toolbar.stageConfidence')}</span>
-            <span class="font-mono text-[11px] text-neutral-500">{currentTime}</span>
+            <span class="font-mono text-neutral-500">{currentTime}</span>
           </div>
 
           {#if nextSlide}
-            <div class="border border-[#7f9db9] bg-white dark:bg-neutral-900 p-2 text-xs rounded-none">
+            <div class="border border-[#7f9db9] bg-white dark:bg-neutral-900 p-2 rounded-none" style="font-size: calc(11px * var(--ui-scale));">
               <span class="text-[10px] font-bold text-amber-600 block mb-0.5">{t('deck.nextSlideHint')}</span>
               <p class="truncate text-neutral-800 dark:text-neutral-200">
                 {nextSlide.lines.map((l) => getAudienceText(l)).join(' / ')}
@@ -650,14 +915,16 @@
         <div class="flex items-center gap-1 mt-2">
           <button
             type="button"
-            class="flex-1 h-7 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 font-bold text-xs rounded-none hover:bg-[#e0edf9]"
+            class="flex-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 font-bold rounded-none hover:bg-[#e0edf9]"
+            style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.prevSlide()}
           >
             ← {t('slide.prev')}
           </button>
           <button
             type="button"
-            class="flex-1 h-7 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 font-bold text-xs rounded-none hover:bg-[#e0edf9]"
+            class="flex-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 font-bold rounded-none hover:bg-[#e0edf9]"
+            style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.nextSlide()}
           >
             {t('slide.next')} →
@@ -669,9 +936,10 @@
 
   <!-- 4. Status Bar: Compact 20px Win32 Status Bar -->
   <footer
-    class="h-5 px-2 flex items-center justify-between border-t rounded-none shrink-0 text-[11px] {presentation.theme === 'dark'
+    class="px-2 flex items-center justify-between border-t rounded-none shrink-0 {presentation.theme === 'dark'
       ? 'bg-[#181a1f] border-neutral-700 text-neutral-400'
       : 'bg-[#f0f0f0] border-[#b0b0b0] text-neutral-700'}"
+    style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
   >
     <div class="flex items-center gap-3">
       <span class="flex items-center gap-1">
@@ -679,7 +947,7 @@
         {presentation.isBeamerActive ? t('status.beamerReady') : t('status.beamerDisconnected')}
       </span>
       {#if presentation.activeSong}
-        <span class="border-l border-neutral-400 pl-3 font-semibold text-neutral-800 dark:text-neutral-200">
+        <span class="border-l border-neutral-400 pl-3 font-semibold text-neutral-800 dark:text-neutral-200 truncate">
           {presentation.activeSong.metadata.title}
         </span>
       {/if}
@@ -700,3 +968,11 @@
     </div>
   {/if}
 </div>
+
+<style>
+  /* Dynamic container query font sizing for slide preview cards and confidence preview */
+  .slide-lyrics-preview {
+    font-size: clamp(0.7rem, 3.2cqw, 1.8rem);
+    line-height: 1.35;
+  }
+</style>

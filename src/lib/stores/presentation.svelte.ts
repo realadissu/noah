@@ -263,6 +263,7 @@ class PresentationStore {
   showChords = $state<boolean>(false);
   detectedEncoding = $state<string>('UTF-8');
   fontScale = $state<number>(1.0);
+  uiScale = $state<number>(1.0);
 
   // Appearance & Themes
   theme = $state<'dark' | 'light'>('light');
@@ -353,6 +354,17 @@ class PresentationStore {
         this.songsDirectory = savedSongsDir;
         this.scanSongsDirectory(savedSongsDir);
       }
+      const savedUiScale = localStorage.getItem('noah_ui_scale');
+      if (savedUiScale) {
+        const parsed = parseFloat(savedUiScale);
+        if (!isNaN(parsed) && parsed >= 0.75 && parsed <= 2.5) {
+          this.uiScale = parsed;
+        }
+      } else if (typeof window !== 'undefined') {
+        if (window.innerWidth >= 2560 || (window.devicePixelRatio && window.devicePixelRatio >= 1.75)) {
+          this.uiScale = 1.25;
+        }
+      }
     }
 
     // Automatically sync initial active song to Tauri backend so Beamer immediately has the song
@@ -363,6 +375,63 @@ class PresentationStore {
       });
       invokeTauri('set_display_mode', { mode: this.displayMode });
     }
+  }
+
+  setUiScale(scale: number) {
+    this.uiScale = Math.min(2.5, Math.max(0.75, Math.round(scale * 100) / 100));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_ui_scale', this.uiScale.toString());
+    }
+  }
+
+  zoomIn() {
+    this.setUiScale(this.uiScale + 0.1);
+  }
+
+  zoomOut() {
+    this.setUiScale(this.uiScale - 0.1);
+  }
+
+  resetZoom() {
+    this.setUiScale(1.0);
+  }
+
+  newSchedule() {
+    this.schedule = [];
+    this.activeScheduleIndex = -1;
+    this.activeSong = null;
+    this.activeSlideIndex = 0;
+  }
+
+  createNewSong() {
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'song-' + Date.now();
+    const newSong: Song = {
+      id,
+      metadata: {
+        title: 'Neues Lied',
+        author: '',
+        verse_order: ['Vers 1'],
+        lang_count: 1,
+        custom_tags: {},
+      },
+      slides: [
+        {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'slide-' + Date.now(),
+          index: 0,
+          label: 'Vers 1',
+          section: { type: 'Verse', value: 1 },
+          raw_content: 'Text hier eingeben...',
+          lines: [
+            {
+              raw_text: 'Text hier eingeben...',
+              language_index: 0,
+              tokens: [{ kind: 'Text', text: 'Text hier eingeben...' }],
+            },
+          ],
+        },
+      ],
+    };
+    this.openSongEditor(newSong);
   }
 
   toggleTheme() {
@@ -457,6 +526,10 @@ class PresentationStore {
         this.activeScheduleIndex = Math.max(0, this.schedule.length - 1);
       }
     }
+  }
+
+  removeFromSchedule(index: number) {
+    this.removeScheduleItem(index);
   }
 
   reorderSchedule(fromIndex: number, toIndex: number, position: 'before' | 'after' = 'after') {

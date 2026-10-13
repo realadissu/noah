@@ -65,6 +65,34 @@
       return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
+      e.preventDefault();
+      if (e.shiftKey) {
+        presentation.createNewSong();
+      } else {
+        presentation.newSchedule();
+      }
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+      e.preventDefault();
+      presentation.zoomIn();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === '_')) {
+      e.preventDefault();
+      presentation.zoomOut();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && (e.key === '0')) {
+      e.preventDefault();
+      presentation.resetZoom();
+      return;
+    }
+
     switch (e.key) {
       case 'F7':
         e.preventDefault();
