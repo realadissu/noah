@@ -568,11 +568,11 @@ class PresentationStore {
     }
   }
 
-  async toggleBeamer(displayId?: string) {
-    if (this.isBeamerActive) {
-      await invokeTauri('close_beamer_window');
-      this.isBeamerActive = false;
-    } else {
+  async startBeamer(displayId?: string, mode?: DisplayMode) {
+    if (mode) {
+      this.displayMode = mode;
+    }
+    if (!this.isBeamerActive) {
       const target = await invokeTauri<DisplayInfo>('open_beamer_window', { displayId });
       if (target) {
         this.activeDisplay = target;
@@ -589,6 +589,23 @@ class PresentationStore {
         }
         await invokeTauri('set_display_mode', { mode: this.displayMode });
       }
+    } else {
+      await invokeTauri('set_display_mode', { mode: this.displayMode });
+    }
+  }
+
+  async closeBeamer() {
+    if (this.isBeamerActive) {
+      await invokeTauri('close_beamer_window');
+      this.isBeamerActive = false;
+    }
+  }
+
+  async toggleBeamer(displayId?: string) {
+    if (this.isBeamerActive) {
+      await this.closeBeamer();
+    } else {
+      await this.startBeamer(displayId);
     }
   }
 }

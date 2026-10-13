@@ -123,6 +123,7 @@ fn list_displays(app: AppHandle) -> Result<Vec<DisplayInfo>, String> {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_lines)]
 async fn open_beamer_window(
     app: AppHandle,
     display_id: Option<String>,
@@ -369,8 +370,10 @@ pub fn run() {
         }
     };
 
-    let mut initial_presentation = PresentationState::default();
-    initial_presentation.display_mode = DisplayMode::Black;
+    let initial_presentation = PresentationState {
+        display_mode: DisplayMode::Black,
+        ..Default::default()
+    };
 
     let initial_state = AppState {
         presentation: Mutex::new(initial_presentation),

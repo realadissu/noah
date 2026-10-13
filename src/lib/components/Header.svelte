@@ -10,8 +10,16 @@
   let showSearchResults = $state<boolean>(false);
   let isMobileSearchOpen = $state<boolean>(false);
 
-  function setMode(mode: DisplayMode) {
-    presentation.setDisplayMode(mode);
+  async function setMode(mode: DisplayMode) {
+    if (!presentation.isBeamerActive) {
+      await presentation.startBeamer(undefined, mode);
+    } else {
+      presentation.setDisplayMode(mode);
+    }
+  }
+
+  async function handleCloseBeamer() {
+    await presentation.closeBeamer();
   }
 
   function handleAspectRatioChange(e: Event) {
@@ -146,41 +154,54 @@
       </button>
       <div class="w-px h-5 bg-neutral-400/40 mx-1"></div>
 
-      <!-- THE 3 PRIMARY SONGBEAMER PRESENTATION MODE BUTTONS -->
-      <!-- 1. Folie mit Text anzeigen (F4) -->
+      <!-- THE 4 PRESENTATION CONTROL BUTTONS -->
+      <!-- 1. Folie mit Text anzeigen (F4) - Startet Beamer automatisch -->
       <button
         type="button"
-        class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.displayMode === 'normal'
+        class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.isBeamerActive && presentation.displayMode === 'normal'
           ? 'bg-blue-600/20 border-blue-600 ring-1 ring-blue-500/50 shadow-inner'
           : 'border-transparent hover:bg-black/10'}"
         onclick={() => setMode('normal')}
-        title={t('toolbar.normal')}
+        title="{t('toolbar.normal')} (F4)"
       >
         <SongBeamerIcon name="slide-text" size={19} />
       </button>
 
-      <!-- 2. Folie ohne Text anzeigen (F6) -->
+      <!-- 2. Folie ohne Text anzeigen (F6) - Startet Beamer automatisch -->
       <button
         type="button"
-        class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.displayMode === 'clear_text'
+        class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.isBeamerActive && presentation.displayMode === 'clear_text'
           ? 'bg-blue-600/20 border-blue-600 ring-1 ring-blue-500/50 shadow-inner'
           : 'border-transparent hover:bg-black/10'}"
         onclick={() => setMode('clear_text')}
-        title={t('toolbar.clear')}
+        title="{t('toolbar.clear')} (F6)"
       >
         <SongBeamerIcon name="slide-clear" size={19} />
       </button>
 
-      <!-- 3. Schwarzes Bild (F5) -->
+      <!-- 3. Schwarzes Bild (F5) - Startet Beamer automatisch -->
       <button
         type="button"
-        class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.displayMode === 'black'
+        class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.isBeamerActive && presentation.displayMode === 'black'
           ? 'bg-neutral-900 border-neutral-600 text-white ring-1 ring-neutral-500 shadow-inner'
           : 'border-transparent hover:bg-black/10'}"
         onclick={() => setMode('black')}
-        title={t('toolbar.black')}
+        title="{t('toolbar.black')} (F5)"
       >
         <SongBeamerIcon name="screen-black" size={19} />
+      </button>
+
+      <!-- 4. Bildschirm freigeben (Beamer beenden) -->
+      <button
+        type="button"
+        class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.isBeamerActive
+          ? 'border-red-500/50 bg-red-500/10 hover:bg-red-500/20 text-red-600 ring-1 ring-red-500/40'
+          : 'border-transparent opacity-40 cursor-not-allowed'}"
+        onclick={() => handleCloseBeamer()}
+        disabled={!presentation.isBeamerActive}
+        title={presentation.isBeamerActive ? "Zweiten Bildschirm freigeben (Beamer beenden)" : "Keine Präsentation aktiv"}
+      >
+        <SongBeamerIcon name="screen-close" size={19} />
       </button>
 
       <div class="w-px h-5 bg-neutral-400/40 mx-1"></div>
@@ -317,7 +338,24 @@
         <ModernIcon name="screen-black" size={17} />
       </button>
 
-      <!-- 4. Logo (F7) -->
+      <!-- 4. Bildschirm freigeben (Beamer beenden) - Neben den 3 Modi-Buttons -->
+      <button
+        type="button"
+        class="w-8 h-8 rounded-lg flex items-center justify-center transition border {presentation.isBeamerActive
+          ? 'bg-red-500/15 border-red-500/60 hover:bg-red-500/25 text-red-400 ring-2 ring-red-500/30'
+          : presentation.theme === 'dark'
+            ? 'opacity-30 border-neutral-800 text-neutral-500 cursor-not-allowed'
+            : 'opacity-30 border-slate-200 text-slate-400 cursor-not-allowed'}"
+        onclick={() => handleCloseBeamer()}
+        disabled={!presentation.isBeamerActive}
+        title={presentation.isBeamerActive ? "Zweiten Bildschirm freigeben (Beamer beenden)" : "Keine Präsentation aktiv"}
+      >
+        <ModernIcon name="screen-close" size={17} />
+      </button>
+
+      <div class="w-px h-5 bg-neutral-300/40 dark:bg-neutral-700 mx-0.5"></div>
+
+      <!-- 5. Logo (F7) -->
       <button
         type="button"
         class="w-8 h-8 rounded-lg flex items-center justify-center transition border {presentation.displayMode === 'logo'
@@ -331,7 +369,7 @@
         <ModernIcon name="logo" size={17} />
       </button>
 
-      <!-- 5. Freeze (F8) -->
+      <!-- 6. Freeze (F8) -->
       <button
         type="button"
         class="w-8 h-8 rounded-lg flex items-center justify-center transition border {presentation.displayMode === 'frozen'

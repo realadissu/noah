@@ -67,19 +67,38 @@
         break;
       case 'F4':
         e.preventDefault();
-        presentation.setDisplayMode('normal');
+        if (!presentation.isBeamerActive) {
+          presentation.startBeamer(undefined, 'normal');
+        } else {
+          presentation.setDisplayMode('normal');
+        }
         break;
       case 'F5':
       case 'b':
       case 'B':
         e.preventDefault();
-        presentation.setDisplayMode(presentation.displayMode === 'black' ? 'normal' : 'black');
+        if (!presentation.isBeamerActive) {
+          presentation.startBeamer(undefined, 'black');
+        } else {
+          presentation.setDisplayMode(presentation.displayMode === 'black' ? 'normal' : 'black');
+        }
         break;
       case 'F6':
       case 'c':
       case 'C':
         e.preventDefault();
-        presentation.setDisplayMode(presentation.displayMode === 'clear_text' ? 'normal' : 'clear_text');
+        if (!presentation.isBeamerActive) {
+          presentation.startBeamer(undefined, 'clear_text');
+        } else {
+          presentation.setDisplayMode(presentation.displayMode === 'clear_text' ? 'normal' : 'clear_text');
+        }
+        break;
+      case 'F12':
+      case 'Escape':
+        if (presentation.isBeamerActive) {
+          e.preventDefault();
+          presentation.closeBeamer();
+        }
         break;
       case 'F7':
       case 'l':

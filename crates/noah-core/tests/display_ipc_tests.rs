@@ -156,3 +156,43 @@ fn test_resilient_arbitrary_string_identifiers_deserialization() {
     assert_ne!(song.slides[0].id.0, uuid::Uuid::nil());
 }
 
+#[test]
+fn test_deterministic_id_hashing_consistency() {
+    // Repeated parsing of identical non-UUID strings must yield strictly identical UUIDs
+    let id1: noah_core::models::SongId = serde_json::from_str(r#""song-sample-1""#).expect("Must parse");
+    let id2: noah_core::models::SongId = serde_json::from_str(r#""song-sample-1""#).expect("Must parse");
+    assert_eq!(id1, id2, "Deterministic ID hashing must be consistent across calls");
+
+    let slide1: noah_core::models::SlideId = serde_json::from_str(r#""slide-42""#).expect("Must parse");
+    let slide2: noah_core::models::SlideId = serde_json::from_str(r#""slide-42""#).expect("Must parse");
+    assert_eq!(slide1, slide2, "Slide ID hashing must be strictly consistent");
+}
+
+#[test]
+fn test_schedule_and_item_ids_resilience() {
+    let item_id: noah_core::models::ScheduleItemId =
+        serde_json::from_str(r#""item-psalm-103""#).expect("Must parse");
+    assert_ne!(item_id.0, uuid::Uuid::nil());
+
+    let sched_id: noah_core::models::ScheduleId =
+        serde_json::from_str(r#""sunday-service-2026-10-18""#).expect("Must parse");
+    assert_ne!(sched_id.0, uuid::Uuid::nil());
+}
+
+#[test]
+fn test_display_activation_and_blanking_transition_contract() {
+    // Verify all transition events from live projection to black and release
+    let unblank = BeamerEvent::SetBlank { mode: DisplayMode::Normal };
+    let json_unblank = serde_json::to_string(&unblank).expect("Must serialize");
+    assert!(json_unblank.contains(r#""mode":"normal""#));
+
+    let blank = BeamerEvent::SetBlank { mode: DisplayMode::Black };
+    let json_blank = serde_json::to_string(&blank).expect("Must serialize");
+    assert!(json_blank.contains(r#""mode":"black""#));
+
+    let clear = BeamerEvent::SetBlank { mode: DisplayMode::ClearText };
+    let json_clear = serde_json::to_string(&clear).expect("Must serialize");
+    assert!(json_clear.contains(r#""mode":"clear_text""#));
+}
+
+

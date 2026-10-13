@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
-  import type { AspectRatio } from '$lib/types/models';
+  import type { AspectRatio, Slide } from '$lib/types/models';
 
   function getAspectRatioClass(ratio: AspectRatio): string {
     switch (ratio) {
@@ -17,6 +17,28 @@
 
   function handleSlideClick(index: number) {
     presentation.selectSlide(index);
+  }
+
+  // Linear scaling calculation matching the audience beamer projection (REQ-SONG-03)
+  // Uses CSS Container Query Units (cqw / cqh) so font and spacing scale 100% linearly with preview size
+  function calculateSlideFontSize(slide: Slide): string {
+    const lines = slide.lines
+      .map((l) => l.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join(''))
+      .filter((l) => l.trim().length > 0);
+
+    const lineCount = Math.max(lines.length, 1);
+    const maxLineLen = Math.max(...lines.map((l) => l.trim().length), 1);
+
+    // Headroom for chords
+    const verticalFactor = presentation.showChords ? 2.3 : 1.45;
+
+    // Horizontal limit: ensure longest line fits in 90% of slide container width
+    const cqw = Math.min(10.0, Math.max(1.8, 88 / (maxLineLen * 0.54)));
+
+    // Vertical limit: ensure all lines with line-height fit in 82% of slide container height
+    const cqh = Math.min(12.5, Math.max(2.0, 80 / (lineCount * verticalFactor)));
+
+    return `min(${cqw.toFixed(2)}cqw, ${cqh.toFixed(2)}cqh)`;
   }
 </script>
 
@@ -57,9 +79,10 @@
               </div>
             </div>
 
-            <!-- Slide Box matching aspect ratio -->
+            <!-- Slide Box matching aspect ratio with Container Query context -->
             <div
-              class="w-full {getAspectRatioClass(presentation.aspectRatio)} rounded-xl border-2 transition-all duration-150 overflow-hidden relative shadow-md flex items-center justify-center p-4 text-center {isLive
+              style="container-type: size;"
+              class="w-full {getAspectRatioClass(presentation.aspectRatio)} rounded-xl border-2 transition-all duration-150 overflow-hidden relative shadow-md flex items-center justify-center text-center {isLive
                 ? 'border-emerald-500 ring-4 ring-emerald-500/25 shadow-lg shadow-emerald-500/15 bg-gradient-to-b from-sky-950 via-neutral-950 to-black text-white'
                 : presentation.uiMode === 'classic' && presentation.theme === 'light'
                   ? 'border-neutral-400 bg-gradient-to-b from-[#608ebf] via-[#4a7aa8] to-[#3a6691] text-white'
@@ -67,37 +90,42 @@
                     ? 'border-neutral-800 hover:border-neutral-700 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200'
                     : 'border-slate-300 hover:border-slate-400 bg-slate-950 text-white shadow-sm'}"
             >
-              <!-- Lyrics with accurate baseline alignment (Fixed chord layout) -->
-              <div class="w-full max-w-full space-y-1.5 overflow-hidden font-sans">
-                {#each slide.lines as line}
-                  <div class="text-center">
-                    {#if presentation.showChords}
-                      <div class="inline-flex flex-wrap items-end justify-center leading-normal">
-                        {#each line.tokens as token}
-                          {#if token.kind === 'Chord'}
-                            <span class="inline-flex flex-col items-center justify-end mr-1">
-                              <span class="text-[11px] font-mono font-bold text-amber-400 leading-tight h-4 select-none">{token.chord}</span>
-                              <span class="h-0 select-none">&nbsp;</span>
-                            </span>
-                          {:else}
-                            <span class="inline-flex flex-col items-start justify-end">
-                              <span class="text-[11px] font-mono font-bold text-amber-400 leading-tight h-4 select-none">
-                                {token.kind === 'ChordAndText' ? token.chord : '\u00A0'}
+              <!-- Lyrics with accurate baseline alignment and linear responsive typography -->
+              <div
+                class="w-full h-full flex flex-col items-center justify-center overflow-hidden font-sans select-none"
+                style="padding: 2.5cqw 3cqw; font-size: {calculateSlideFontSize(slide)}; line-height: 1.25;"
+              >
+                <div class="w-full flex flex-col items-center justify-center" style="gap: 0.2em;">
+                  {#each slide.lines as line}
+                    <div class="text-center w-full">
+                      {#if presentation.showChords}
+                        <div class="inline-flex flex-wrap items-end justify-center leading-normal">
+                          {#each line.tokens as token}
+                            {#if token.kind === 'Chord'}
+                              <span class="inline-flex flex-col items-center justify-end mr-[0.3em]">
+                                <span style="font-size: 0.72em;" class="font-mono font-bold text-amber-400 leading-none select-none">{token.chord}</span>
+                                <span class="h-0 select-none">&nbsp;</span>
                               </span>
-                              <span class="font-bold text-sm md:text-base leading-snug whitespace-pre text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
-                                {token.text}
+                            {:else}
+                              <span class="inline-flex flex-col items-start justify-end">
+                                <span style="font-size: 0.72em;" class="font-mono font-bold text-amber-400 leading-none select-none">
+                                  {token.kind === 'ChordAndText' ? token.chord : '\u00A0'}
+                                </span>
+                                <span class="font-bold whitespace-pre text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
+                                  {token.text}
+                                </span>
                               </span>
-                            </span>
-                          {/if}
-                        {/each}
-                      </div>
-                    {:else}
-                      <p class="font-bold text-sm md:text-base leading-snug tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
-                        {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
-                      </p>
-                    {/if}
-                  </div>
-                {/each}
+                            {/if}
+                          {/each}
+                        </div>
+                      {:else}
+                        <p class="font-bold tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                          {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
+                        </p>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@
     | 'slide-text'
     | 'slide-clear'
     | 'screen-black'
+    | 'screen-close'
     | 'logo'
     | 'freeze'
     | 'projector'
@@ -50,6 +51,12 @@
     <!-- Solid black / blank screen -->
     <rect x="2" y="3" width="20" height="15" rx="3" fill="currentColor" fill-opacity="0.9" />
     <path d="M9 21h6" />
+  {:else if name === 'screen-close'}
+    <!-- Screen with X (close / release presentation screen) -->
+    <rect x="2" y="3" width="20" height="15" rx="3" fill="#000000" fill-opacity="0.75" />
+    <path d="M9 21h6" />
+    <line x1="8" y1="7" x2="16" y2="14" stroke="#ef4444" stroke-width="2.2" />
+    <line x1="16" y1="7" x2="8" y2="14" stroke="#ef4444" stroke-width="2.2" />
   {:else if name === 'logo'}
     <!-- Noah emblem -->
     <path d="M12 2L2 7l10 5 10-5-10-5z" />

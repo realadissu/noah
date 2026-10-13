@@ -15,6 +15,7 @@
     | 'slide-text'
     | 'slide-clear'
     | 'screen-black'
+    | 'screen-close'
     | 'play'
     | 'prev'
     | 'next';
@@ -54,6 +55,16 @@
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
       <rect x="1" y="2" width="18" height="14" rx="1.5" fill="#222222" stroke="#444444" stroke-width="1.2" />
       <rect x="2.5" y="3.5" width="15" height="11" fill="#000000" />
+      <!-- Base stand -->
+      <path d="M7 16h6M10 16v2.5M6 18.5h8" stroke="#555" stroke-width="1" />
+    </svg>
+  {:else if name === 'screen-close'}
+    <!-- SongBeamer Bildschirm freigeben: Monitor with solid black screen and prominent red X -->
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
+      <rect x="1" y="2" width="18" height="14" rx="1.5" fill="#1e1e1e" stroke="#444444" stroke-width="1.2" />
+      <rect x="2.5" y="3.5" width="15" height="11" fill="#000000" />
+      <line x1="5.5" y1="5.5" x2="14.5" y2="12.5" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" />
+      <line x1="14.5" y1="5.5" x2="5.5" y2="12.5" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" />
       <!-- Base stand -->
       <path d="M7 16h6M10 16v2.5M6 18.5h8" stroke="#555" stroke-width="1" />
     </svg>

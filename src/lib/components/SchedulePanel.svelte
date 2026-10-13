@@ -3,9 +3,12 @@
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { ScheduleItem } from '$lib/types/models';
 
-  let draggedIndex = $state<number | null>(null);
-  let dragOverIndex = $state<number | null>(null);
-  let dropPosition = $state<'before' | 'after' | null>(null);
+  let draggingIndex = $state<number | null>(null);
+  let targetIndex = $state<number | null>(null);
+  let targetPosition = $state<'before' | 'after'>('after');
+  let isPointerDown = false;
+  let startY = 0;
+  let hasMoved = false;
 
   function getItemIcon(item: ScheduleItem): string {
     switch (item.item_type.kind) {
@@ -23,85 +26,94 @@
   }
 
   function handleSelect(index: number) {
-    presentation.selectScheduleItem(index);
-  }
-
-  function handleDragStart(e: DragEvent, index: number) {
-    e.stopPropagation();
-    draggedIndex = index;
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('application/x-noah-schedule', String(index));
-      e.dataTransfer.setData('text/plain', String(index));
+    if (!hasMoved) {
+      presentation.selectScheduleItem(index);
     }
   }
 
-  function handleDragOver(e: DragEvent, index: number) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'move';
-    }
-    const target = e.currentTarget as HTMLElement | null;
-    if (target) {
-      const rect = target.getBoundingClientRect();
-      const mid = rect.top + rect.height / 2;
-      dropPosition = e.clientY < mid ? 'before' : 'after';
-      dragOverIndex = index;
-    }
-  }
+  let startIndex = $state<number | null>(null);
 
-  function handleDragEnter(e: DragEvent, index: number) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'move';
-    }
-    dragOverIndex = index;
-  }
+  function handlePointerDown(e: PointerEvent, index: number) {
+    if (e.button !== 0) return;
+    isPointerDown = true;
+    hasMoved = false;
+    startY = e.clientY;
+    startIndex = index;
+    draggingIndex = null;
+    targetIndex = null;
 
-  function handleDragLeave(e: DragEvent, index: number) {
-    e.stopPropagation();
-    const related = e.relatedTarget as Node | null;
-    const current = e.currentTarget as Node | null;
-    if (current && related && current.contains(related)) {
-      return;
-    }
-    if (dragOverIndex === index) {
-      dragOverIndex = null;
-      dropPosition = null;
-    }
-  }
-
-  function handleDrop(e: DragEvent, index: number) {
-    e.preventDefault();
-    e.stopPropagation();
-    let from = draggedIndex;
-    if (from === null && e.dataTransfer) {
-      const stored = e.dataTransfer.getData('application/x-noah-schedule') || e.dataTransfer.getData('text/plain');
-      if (stored) {
-        const parsed = parseInt(stored, 10);
-        if (!isNaN(parsed)) from = parsed;
+    const el = e.currentTarget as HTMLElement | null;
+    if (el) {
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        // Fallback
       }
     }
-    if (from !== null && from !== index) {
-      presentation.reorderSchedule(from, index, dropPosition ?? 'after');
-    }
-    draggedIndex = null;
-    dragOverIndex = null;
-    dropPosition = null;
   }
 
-  function handleDragEnd(e: DragEvent) {
-    e.stopPropagation();
-    draggedIndex = null;
-    dragOverIndex = null;
-    dropPosition = null;
+  function handlePointerMove(e: PointerEvent, _index: number) {
+    if (!isPointerDown) return;
+
+    if (!hasMoved && Math.abs(e.clientY - startY) > 5) {
+      hasMoved = true;
+      draggingIndex = startIndex;
+    }
+
+    if (draggingIndex !== null) {
+      const items = Array.from(document.querySelectorAll<HTMLElement>('[data-schedule-idx]'));
+      if (items.length === 0) return;
+
+      const firstRect = items[0].getBoundingClientRect();
+      const lastRect = items[items.length - 1].getBoundingClientRect();
+
+      if (e.clientY < firstRect.top) {
+        targetIndex = 0;
+        targetPosition = 'before';
+      } else if (e.clientY > lastRect.bottom) {
+        targetIndex = items.length - 1;
+        targetPosition = 'after';
+      } else {
+        for (const itemEl of items) {
+          const rect = itemEl.getBoundingClientRect();
+          if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            const idx = parseInt(itemEl.getAttribute('data-schedule-idx') ?? '0', 10);
+            targetIndex = idx;
+            targetPosition = e.clientY < (rect.top + rect.height / 2) ? 'before' : 'after';
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  function handlePointerUp(_e: PointerEvent) {
+    if (!isPointerDown) return;
+    isPointerDown = false;
+
+    if (hasMoved && draggingIndex !== null && targetIndex !== null && draggingIndex !== targetIndex) {
+      presentation.reorderSchedule(draggingIndex, targetIndex, targetPosition);
+    }
+
+    draggingIndex = null;
+    targetIndex = null;
+    startIndex = null;
+    setTimeout(() => {
+      hasMoved = false;
+    }, 50);
+  }
+
+  function handlePointerCancel() {
+    isPointerDown = false;
+    draggingIndex = null;
+    targetIndex = null;
+    startIndex = null;
+    hasMoved = false;
   }
 </script>
 
 <aside
-  class="w-64 md:w-72 lg:w-80 border-r flex flex-col h-full shrink-0 transition-colors {presentation.theme === 'dark'
+  class="w-64 md:w-72 lg:w-80 border-r flex flex-col h-full shrink-0 transition-colors select-none {presentation.theme === 'dark'
     ? 'border-neutral-800 bg-neutral-950/90 text-neutral-100'
     : presentation.uiMode === 'classic'
       ? 'border-neutral-300 bg-white text-neutral-900'
@@ -132,13 +144,6 @@
     role="region"
     aria-label="Schedule items"
     class="flex-1 overflow-y-auto {presentation.uiMode === 'classic' ? 'p-0.5 space-y-0.5' : 'p-2 space-y-1.5'}"
-    ondragover={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = 'move';
-      }
-    }}
   >
     {#if presentation.schedule.length === 0}
       <div class="p-6 text-center text-xs text-neutral-500">
@@ -147,14 +152,14 @@
     {:else}
       {#each presentation.schedule as item, idx}
         {@const isActive = presentation.activeScheduleIndex === idx}
-        {@const isDragging = draggedIndex === idx}
-        {@const isDropTarget = dragOverIndex === idx && draggedIndex !== idx}
+        {@const isDragging = draggingIndex === idx}
+        {@const isDropTarget = targetIndex === idx && draggingIndex !== null && draggingIndex !== idx}
 
         <div
           role="button"
           tabindex="0"
-          draggable="true"
-          class="w-full text-left transition cursor-pointer flex items-center gap-2 group relative select-none {isDragging ? 'opacity-30 border-dashed border-amber-500' : ''} {isDropTarget ? (dropPosition === 'before' ? 'border-t-2 !border-t-amber-400' : 'border-b-2 !border-b-amber-400') : ''} {presentation.uiMode === 'classic'
+          data-schedule-idx={idx}
+          class="w-full text-left transition flex items-center gap-2 group relative select-none touch-none {isDragging ? 'opacity-40 border-dashed border-amber-500 scale-[0.98]' : ''} {isDropTarget ? (targetPosition === 'before' ? 'border-t-2 !border-t-amber-400' : 'border-b-2 !border-b-amber-400') : ''} {draggingIndex !== null ? 'cursor-grabbing' : 'cursor-grab'} {presentation.uiMode === 'classic'
             ? `px-2 py-1 border-b last:border-b-0 ${
                 isActive
                   ? presentation.theme === 'dark'
@@ -173,6 +178,10 @@
                     ? 'bg-neutral-900/60 hover:bg-neutral-800/60 border-neutral-800/70 text-neutral-300'
                     : 'bg-white/80 hover:bg-white border-slate-200/90 text-slate-700 hover:text-slate-900 shadow-xs'
               }`}"
+          onpointerdown={(e) => handlePointerDown(e, idx)}
+          onpointermove={(e) => handlePointerMove(e, idx)}
+          onpointerup={handlePointerUp}
+          onpointercancel={handlePointerCancel}
           onclick={() => handleSelect(idx)}
           onkeydown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -180,16 +189,10 @@
               handleSelect(idx);
             }
           }}
-          ondragstart={(e) => handleDragStart(e, idx)}
-          ondragover={(e) => handleDragOver(e, idx)}
-          ondragenter={(e) => handleDragEnter(e, idx)}
-          ondragleave={(e) => handleDragLeave(e, idx)}
-          ondrop={(e) => handleDrop(e, idx)}
-          ondragend={handleDragEnd}
         >
           <!-- Drag handle indicator -->
           <span
-            class="text-[11px] opacity-40 group-hover:opacity-80 cursor-grab shrink-0 select-none pointer-events-none {presentation.uiMode === 'classic' ? 'text-neutral-500' : 'text-slate-400'}"
+            class="text-[11px] opacity-40 group-hover:opacity-80 shrink-0 select-none pointer-events-none {presentation.uiMode === 'classic' ? 'text-neutral-500' : 'text-slate-400'}"
             title="Drag to reorder"
           >
             ⠿

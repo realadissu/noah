@@ -52,10 +52,7 @@ impl FromStr for SongId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Uuid::parse_str(s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
-        }
+        Ok(Uuid::parse_str(s).map_or_else(|_| Self(deterministic_uuid_from_str(s)), Self))
     }
 }
 
@@ -65,10 +62,7 @@ impl<'de> Deserialize<'de> for SongId {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        match Uuid::parse_str(&s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
-        }
+        Ok(Uuid::parse_str(&s).map_or_else(|_| Self(deterministic_uuid_from_str(&s)), Self))
     }
 }
 
@@ -101,10 +95,7 @@ impl FromStr for SlideId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Uuid::parse_str(s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
-        }
+        Ok(Uuid::parse_str(s).map_or_else(|_| Self(deterministic_uuid_from_str(s)), Self))
     }
 }
 
@@ -114,10 +105,7 @@ impl<'de> Deserialize<'de> for SlideId {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        match Uuid::parse_str(&s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
-        }
+        Ok(Uuid::parse_str(&s).map_or_else(|_| Self(deterministic_uuid_from_str(&s)), Self))
     }
 }
 
@@ -173,10 +161,7 @@ impl FromStr for ScheduleItemId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Uuid::parse_str(s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
-        }
+        Ok(Uuid::parse_str(s).map_or_else(|_| Self(deterministic_uuid_from_str(s)), Self))
     }
 }
 
@@ -186,10 +171,7 @@ impl<'de> Deserialize<'de> for ScheduleItemId {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        match Uuid::parse_str(&s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
-        }
+        Ok(Uuid::parse_str(&s).map_or_else(|_| Self(deterministic_uuid_from_str(&s)), Self))
     }
 }
 
@@ -222,10 +204,7 @@ impl FromStr for ScheduleId {
     type Err = NoahError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Uuid::parse_str(s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(s))),
-        }
+        Ok(Uuid::parse_str(s).map_or_else(|_| Self(deterministic_uuid_from_str(s)), Self))
     }
 }
 
@@ -235,9 +214,6 @@ impl<'de> Deserialize<'de> for ScheduleId {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        match Uuid::parse_str(&s) {
-            Ok(uuid) => Ok(Self(uuid)),
-            Err(_) => Ok(Self(deterministic_uuid_from_str(&s))),
-        }
+        Ok(Uuid::parse_str(&s).map_or_else(|_| Self(deterministic_uuid_from_str(&s)), Self))
     }
 }
