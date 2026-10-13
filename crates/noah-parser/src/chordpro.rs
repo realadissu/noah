@@ -80,9 +80,72 @@ pub fn parse_chord_parts(chord: &str) -> Option<(&str, &str, Option<&str>)> {
     });
 
     let root = main_part.get(..root_len)?;
+    if note_to_semitone(root).is_none() {
+        return None;
+    }
+
     let suffix = main_part.get(root_len..)?;
+    if !suffix.is_empty() && !is_valid_chord_suffix(suffix) {
+        return None;
+    }
 
     Some((root, suffix, bass_part))
+}
+
+fn is_valid_chord_suffix(suffix: &str) -> bool {
+    let s = suffix.trim();
+    if s.is_empty() || s.len() > 8 {
+        return false;
+    }
+    let lower = s.to_ascii_lowercase();
+    matches!(
+        lower.as_str(),
+        "m" | "min"
+            | "maj"
+            | "maj7"
+            | "maj9"
+            | "maj11"
+            | "maj13"
+            | "sus"
+            | "sus2"
+            | "sus4"
+            | "dim"
+            | "dim7"
+            | "aug"
+            | "add"
+            | "add9"
+            | "add2"
+            | "add4"
+            | "7"
+            | "9"
+            | "11"
+            | "13"
+            | "2"
+            | "4"
+            | "5"
+            | "6"
+            | "m7"
+            | "m9"
+            | "m11"
+            | "m6"
+            | "m7b5"
+            | "7sus4"
+            | "7b5"
+            | "7#9"
+            | "7b9"
+            | "7#5"
+            | "+"
+            | "-"
+            | "o"
+            | "ø"
+            | "°"
+    ) || lower.starts_with('m')
+        || lower.starts_with("maj")
+        || lower.starts_with("sus")
+        || lower.starts_with("dim")
+        || lower.starts_with("aug")
+        || lower.starts_with("add")
+        || (lower.starts_with(|c: char| c.is_ascii_digit()) && lower.chars().all(|c| c.is_ascii_alphanumeric() || c == '#' || c == 'b' || c == '+' || c == '-'))
 }
 
 /// Transposes an entire chord string (e.g., "D", "Am7", "F#/Bb") by `semitones`.
@@ -176,4 +239,145 @@ pub fn parse_lyric_line(raw_line: &str, language_index: u8) -> LyricLine {
     }
 
     LyricLine::new(tokens, raw_line.to_string(), language_index)
+}
+
+/// Transposes all bracketed chords (e.g. `[D]`, `[Am7/G]`) in `text` by `semitones`.
+#[must_use]
+pub fn transpose_text(text: &str, semitones: i32) -> String {
+    if semitones == 0 {
+        return text.to_string();
+    }
+
+    let mut result = String::with_capacity(text.len());
+    let mut cursor = 0;
+    let len = text.len();
+
+    while cursor < len {
+        if let Some(open_rel) = text.get(cursor..).and_then(|s| s.find('[')) {
+            let open_pos = cursor + open_rel;
+            if open_pos > cursor {
+                if let Some(preceding) = text.get(cursor..open_pos) {
+                    result.push_str(preceding);
+                }
+            }
+
+            if let Some(close_rel) = text.get(open_pos..).and_then(|s| s.find(']')) {
+                let close_pos = open_pos + close_rel;
+                let chord_str = text.get(open_pos + 1..close_pos).unwrap_or("").trim();
+                if !chord_str.is_empty() {
+                    let transposed = transpose_chord(chord_str, semitones);
+                    result.push('[');
+                    result.push_str(&transposed);
+                    result.push(']');
+                } else {
+                    result.push_str("[]");
+                }
+                cursor = close_pos + 1;
+            } else {
+                // Malformed / unclosed bracket: keep remaining
+                if let Some(remaining) = text.get(open_pos..) {
+                    result.push_str(remaining);
+                }
+                break;
+            }
+        } else {
+            if let Some(remaining) = text.get(cursor..) {
+                result.push_str(remaining);
+            }
+            break;
+        }
+    }
+
+    result
+}
+
+/// Strips all bracketed chords (e.g. `[D]`) from `text`, leaving clean lyrics.
+#[must_use]
+pub fn strip_chords_from_text(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let mut cursor = 0;
+    let len = text.len();
+
+    while cursor < len {
+        if let Some(open_rel) = text.get(cursor..).and_then(|s| s.find('[')) {
+            let open_pos = cursor + open_rel;
+            if open_pos > cursor {
+                if let Some(preceding) = text.get(cursor..open_pos) {
+                    result.push_str(preceding);
+                }
+            }
+
+            if let Some(close_rel) = text.get(open_pos..).and_then(|s| s.find(']')) {
+                let close_pos = open_pos + close_rel;
+                let inner = text.get(open_pos + 1..close_pos).unwrap_or("").trim();
+                if parse_chord_parts(inner).is_some() {
+                    // Skip chord
+                } else {
+                    // Non-chord bracket: keep as is
+                    result.push('[');
+                    result.push_str(inner);
+                    result.push(']');
+                }
+                cursor = close_pos + 1;
+            } else {
+                if let Some(remaining) = text.get(open_pos..) {
+                    result.push_str(remaining);
+                }
+                break;
+            }
+        } else {
+            if let Some(remaining) = text.get(cursor..) {
+                result.push_str(remaining);
+            }
+            break;
+        }
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transpose_text_basic_and_slash() {
+        let input = "Jesus [D]deine Liebe [G/B]zieht uns [A]hin";
+        let transposed = transpose_text(input, 2);
+        assert_eq!(transposed, "Jesus [E]deine Liebe [A/C#]zieht uns [B]hin");
+    }
+
+    #[test]
+    fn test_transpose_text_negative_semitones() {
+        let input = "[C]Grosser [F]Gott [G]wir loben";
+        let transposed = transpose_text(input, -2);
+        assert_eq!(transposed, "[A#]Grosser [D#]Gott [F]wir loben");
+    }
+
+    #[test]
+    fn test_transpose_text_zero_semitones_identity() {
+        let input = "No change [Em7]here";
+        assert_eq!(transpose_text(input, 0), input);
+    }
+
+    #[test]
+    fn test_transpose_text_malformed_unclosed_bracket() {
+        let input = "Text with [broken bracket and no end";
+        assert_eq!(transpose_text(input, 2), input);
+    }
+
+    #[test]
+    fn test_strip_chords_from_text() {
+        let input = "Jesus, [D]deine Liebe [G]zieht uns hin zur [A]dir";
+        assert_eq!(
+            strip_chords_from_text(input),
+            "Jesus, deine Liebe zieht uns hin zur dir"
+        );
+    }
+
+    #[test]
+    fn test_strip_chords_preserves_non_chord_brackets() {
+        let input = "[Denn] heute [D]ist der Tag [1]";
+        assert_eq!(strip_chords_from_text(input), "[Denn] heute ist der Tag [1]");
+    }
 }

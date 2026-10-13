@@ -15,7 +15,10 @@ use models::{
     Song, SongSearchResult,
 };
 use noah_core::storage::SongDatabase;
-use noah_parser::{parse_sng_bytes_with_info, serialize_sng, DetectedEncoding};
+use noah_parser::{
+    parse_sng_bytes_with_info, serialize_sng, strip_chords_from_text, transpose_text,
+    DetectedEncoding,
+};
 use scanner::{load_sng_file_from_disk, scan_and_index_directory, FileLoadResult, ScanSummary};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::Mutex;
@@ -125,6 +128,51 @@ async fn index_song(
         .upsert_song(&song, path_ref)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+async fn save_song_to_disk(
+    song: Song,
+    file_path: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let serialized = serialize_sng(&song);
+
+    if let Some(path_str) = &file_path {
+        let path = std::path::Path::new(path_str);
+        if let Some(parent) = path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Failed to create parent directory for {path_str}: {e}"))?;
+            }
+        }
+        std::fs::write(path, serialized.as_bytes())
+            .map_err(|e| format!("Failed to write song file to {path_str}: {e}"))?;
+    }
+
+    let path_ref = file_path.as_deref().map(std::path::Path::new);
+    state
+        .db
+        .upsert_song(&song, path_ref)
+        .map_err(|e| e.to_string())?;
+
+    let mut lock = state.active_song.lock().await;
+    *lock = Some(song);
+
+    Ok(serialized)
+}
+
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+fn transpose_lyrics(text: String, semitones: i32) -> String {
+    transpose_text(&text, semitones)
+}
+
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+fn strip_chords(text: String) -> String {
+    strip_chords_from_text(&text)
+}
+
 
 #[tauri::command]
 async fn get_presentation_state(state: State<'_, AppState>) -> Result<PresentationState, String> {
@@ -450,6 +498,9 @@ pub fn run() {
             export_sng,
             search_songs,
             index_song,
+            save_song_to_disk,
+            transpose_lyrics,
+            strip_chords,
             get_presentation_state,
             get_beamer_state,
             set_display_mode,
