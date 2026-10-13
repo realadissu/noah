@@ -30,35 +30,18 @@
   async function handleSearch(e: Event) {
     const val = (e.target as HTMLInputElement).value;
     searchQuery = val;
-    if (val.trim().length >= 2) {
-      if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          const res = await invoke<SongSearchResult[]>('search_songs', { query: val });
-          searchResults = res || [];
-          showSearchResults = true;
-        } catch {
-          searchResults = [];
-        }
-      }
+    if (val.trim().length >= 1) {
+      const res = await presentation.searchSongs(val);
+      searchResults = res;
+      showSearchResults = res.length > 0;
     } else {
       searchResults = [];
       showSearchResults = false;
     }
   }
 
-  function selectSearchResult(result: SongSearchResult) {
-    if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
-      import('@tauri-apps/api/core').then(({ invoke }) => {
-        invoke<{ song: any; encoding: string }>('parse_sng', { content: result.preview_snippet }).then(
-          (res) => {
-            if (res && res.song) {
-              presentation.setSong(res.song, res.encoding);
-            }
-          }
-        );
-      });
-    }
+  async function selectSearchResult(result: SongSearchResult) {
+    await presentation.addSongFromSearch(result);
     showSearchResults = false;
     isMobileSearchOpen = false;
     searchQuery = '';
@@ -109,7 +92,12 @@
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Neu">
         <SongBeamerIcon name="new" size={21} />
       </button>
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Öffnen">
+      <button
+        type="button"
+        class="p-1 hover:bg-black/10 rounded transition cursor-pointer"
+        onclick={() => presentation.openSongFileDialog()}
+        title="Öffnen (Strg/Cmd+O)"
+      >
         <SongBeamerIcon name="open" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Speichern">
@@ -133,7 +121,12 @@
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Audio">
         <SongBeamerIcon name="audio" size={21} />
       </button>
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Lied">
+      <button
+        type="button"
+        class="p-1 hover:bg-black/10 rounded transition cursor-pointer"
+        onclick={() => presentation.openSongFileDialog()}
+        title="Lieddatei (.sng) hinzufügen"
+      >
         <SongBeamerIcon name="song" size={21} />
       </button>
       <button
@@ -235,15 +228,36 @@
     <!-- Right: Search + Settings -->
     <div class="flex items-center space-x-1.5 shrink-0 text-xs">
       <span class="text-[11px] font-medium hidden sm:inline">{t('search.label')}</span>
-      <input
-        type="text"
-        bind:value={searchQuery}
-        oninput={handleSearch}
-        placeholder={t('search.placeholder')}
-        class="w-28 sm:w-36 px-1.5 py-0.5 rounded text-xs border focus:outline-none {presentation.theme === 'dark'
-          ? 'bg-neutral-900 border-neutral-700 text-white'
-          : 'bg-white border-neutral-400 text-neutral-900'}"
-      />
+      <div class="relative">
+        <input
+          type="text"
+          bind:value={searchQuery}
+          oninput={handleSearch}
+          onfocus={() => { if (searchResults.length > 0) showSearchResults = true; }}
+          onblur={() => setTimeout(() => { showSearchResults = false; }, 200)}
+          placeholder={t('search.placeholder')}
+          class="w-28 sm:w-36 px-1.5 py-0.5 rounded text-xs border focus:outline-none {presentation.theme === 'dark'
+            ? 'bg-neutral-900 border-neutral-700 text-white'
+            : 'bg-white border-neutral-400 text-neutral-900'}"
+        />
+
+        {#if showSearchResults && searchResults.length > 0}
+          <div class="absolute right-0 top-full mt-1 w-64 rounded-xl border shadow-2xl z-50 overflow-hidden max-h-56 overflow-y-auto {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-neutral-300 text-neutral-900 shadow-xl'}">
+            {#each searchResults as res}
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 text-xs hover:bg-neutral-500/10 border-b border-neutral-500/10 last:border-0 cursor-pointer"
+                onclick={() => selectSearchResult(res)}
+              >
+                <div class="font-semibold">{res.title}</div>
+                {#if res.author}
+                  <div class="text-[10px] opacity-70">{res.author}</div>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <!-- Settings / UI Mode / Theme toggles -->
       <button
@@ -446,6 +460,19 @@
 
     <!-- Right: Auxiliary & Settings Tools -->
     <div class="flex items-center space-x-1 shrink-0">
+      <!-- Open File Button -->
+      <button
+        type="button"
+        class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
+          : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'}"
+        onclick={() => presentation.openSongFileDialog()}
+        title="Lieddatei (.sng) öffnen (Strg/Cmd+O)"
+      >
+        <span>📂</span>
+        <span class="hidden md:inline">Öffnen</span>
+      </button>
+
       <!-- Aspect Ratio Selector -->
       <div class="hidden sm:flex items-center gap-1 border rounded-lg px-2 py-1 text-xs {presentation.theme === 'dark' ? 'bg-neutral-950 border-neutral-700 text-neutral-300' : 'bg-slate-50 border-slate-200 text-slate-700'}">
         <ModernIcon name="aspect-ratio" size={14} class="opacity-70" />

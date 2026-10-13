@@ -207,6 +207,64 @@
           ></div>
         </button>
       </div>
+
+      <!-- 6. Songs Directory / Lieder-Verzeichnis -->
+      <div class="pt-3 border-t {presentation.theme === 'dark' ? 'border-neutral-800' : 'border-neutral-200'}">
+        <div class="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
+          📁 Lieder-Verzeichnis (SongBeamer Archiv)
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              readonly
+              value={presentation.songsDirectory || 'Kein Ordner konfiguriert'}
+              class="flex-1 p-2.5 rounded-xl border text-xs font-mono truncate {presentation.theme === 'dark' ? 'bg-neutral-950 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-300 text-neutral-700'}"
+            />
+            <button
+              type="button"
+              class="px-3 py-2.5 rounded-xl text-xs font-bold transition border cursor-pointer shrink-0 {presentation.theme === 'dark'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-600 text-white'
+                : 'bg-white hover:bg-neutral-100 border-neutral-300 text-neutral-800 shadow-xs'}"
+              onclick={() => presentation.openSongFolderDialog()}
+            >
+              Ordner wählen...
+            </button>
+          </div>
+
+          {#if presentation.songsDirectory}
+            <div class="flex items-center justify-between text-xs pt-1">
+              <span class="text-neutral-400">
+                {#if presentation.isScanning}
+                  <span class="inline-flex items-center gap-1.5 text-amber-500 font-semibold animate-pulse">
+                    <span>⏳</span> Indiziere Liederarchiv...
+                  </span>
+                {:else if presentation.scanSummary}
+                  <span class="text-emerald-500 font-semibold">
+                    ✓ {presentation.scanSummary.indexed_count} Lieder indiziert
+                  </span>
+                  <span class="opacity-70">
+                    ({presentation.scanSummary.total_scanned} gescannt{#if presentation.scanSummary.error_count > 0}, {presentation.scanSummary.error_count} Fehler{/if})
+                  </span>
+                {:else}
+                  <span>Suchindex bereit</span>
+                {/if}
+              </span>
+
+              <button
+                type="button"
+                disabled={presentation.isScanning}
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer {presentation.theme === 'dark'
+                  ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300'
+                  : 'border-neutral-300 hover:bg-neutral-100 text-neutral-700'}"
+                onclick={() => presentation.scanSongsDirectory()}
+              >
+                Neu scannen
+              </button>
+            </div>
+          {/if}
+        </div>
+      </div>
     </div>
 
     <!-- Modal Footer -->

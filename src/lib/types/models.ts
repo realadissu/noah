@@ -124,7 +124,23 @@ export interface SongSearchResult {
   id: string;
   title: string;
   author?: string;
-  preview_snippet: string;
+  musical_key?: string;
+  file_path?: string;
+  slide_count: number;
+  snippet?: string;
+}
+
+export interface ScanSummary {
+  total_scanned: number;
+  indexed_count: number;
+  error_count: number;
+  directory: string;
+}
+
+export interface FileLoadResult {
+  song: Song;
+  encoding: string;
+  file_path: string;
 }
 
 

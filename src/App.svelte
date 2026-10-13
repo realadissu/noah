@@ -51,6 +51,12 @@
       return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'O')) {
+      e.preventDefault();
+      presentation.openSongFileDialog();
+      return;
+    }
+
     switch (e.key) {
       case ' ':
       case 'PageDown':

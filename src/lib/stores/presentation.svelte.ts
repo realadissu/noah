@@ -7,6 +7,9 @@ import type {
   DisplayInfo,
   ScheduleItem,
   AspectRatio,
+  SongSearchResult,
+  ScanSummary,
+  FileLoadResult,
 } from '$lib/types/models';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
@@ -317,6 +320,11 @@ class PresentationStore {
   connectedDisplays = $state<DisplayInfo[]>([]);
   activeDisplay = $state<DisplayInfo | null>(null);
 
+  // Songs archive & library state
+  songsDirectory = $state<string>('');
+  isScanning = $state<boolean>(false);
+  scanSummary = $state<ScanSummary | null>(null);
+
   activeSlide = $derived<Slide | null>(
     this.activeSong?.slides[this.activeSlideIndex] ?? null
   );
@@ -334,6 +342,11 @@ class PresentationStore {
       const savedUiMode = localStorage.getItem('noah_ui_mode');
       if (savedUiMode === 'classic' || savedUiMode === 'modern') {
         this.uiMode = savedUiMode;
+      }
+      const savedSongsDir = localStorage.getItem('noah_songs_dir');
+      if (savedSongsDir) {
+        this.songsDirectory = savedSongsDir;
+        this.scanSongsDirectory(savedSongsDir);
       }
     }
 
@@ -606,6 +619,145 @@ class PresentationStore {
       await this.closeBeamer();
     } else {
       await this.startBeamer(displayId);
+    }
+  }
+
+  setSongsDirectory(path: string) {
+    this.songsDirectory = path;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_songs_dir', path);
+    }
+  }
+
+  async scanSongsDirectory(path?: string): Promise<ScanSummary | null> {
+    const dir = path ?? this.songsDirectory;
+    if (!dir) return null;
+    this.isScanning = true;
+    try {
+      const summary = await invokeTauri<ScanSummary>('scan_songs_directory', { dirPath: dir });
+      if (summary) {
+        this.scanSummary = summary;
+      }
+      return summary;
+    } finally {
+      this.isScanning = false;
+    }
+  }
+
+  async searchSongs(query: string, limit = 20): Promise<SongSearchResult[]> {
+    const results = await invokeTauri<SongSearchResult[]>('search_songs', { query, limit });
+    return results ?? [];
+  }
+
+  addSongToSchedule(song: Song) {
+    const newItem: ScheduleItem = {
+      id: crypto.randomUUID(),
+      title: song.metadata.title,
+      item_type: { kind: 'Song', payload: song },
+      duration_seconds: 240,
+    };
+    this.schedule.push(newItem);
+    this.activeScheduleIndex = this.schedule.length - 1;
+    this.activeSong = song;
+    this.activeSlideIndex = 0;
+    invokeTauri('sync_active_song', {
+      song,
+      slideIndex: 0,
+    });
+  }
+
+  async addSongFromSearch(item: SongSearchResult) {
+    if (item.file_path) {
+      const loaded = await invokeTauri<FileLoadResult>('load_sng_file', { path: item.file_path });
+      if (loaded?.song) {
+        this.addSongToSchedule(loaded.song);
+        return;
+      }
+    }
+    // If no path or unreadable, check if existing in current schedule
+    const existing = this.schedule.find(
+      (s) => s.title.toLowerCase() === item.title.toLowerCase()
+    );
+    if (existing && existing.item_type.kind === 'Song') {
+      const idx = this.schedule.indexOf(existing);
+      this.selectScheduleItem(idx);
+    }
+  }
+
+  async openSongFileDialog() {
+    // 1. Try native dialog first
+    const nativePaths = await invokeTauri<string[]>('pick_sng_files');
+    if (nativePaths && nativePaths.length > 0) {
+      for (const path of nativePaths) {
+        const loaded = await invokeTauri<FileLoadResult>('load_sng_file', { path });
+        if (loaded?.song) {
+          this.addSongToSchedule(loaded.song);
+        }
+      }
+      return;
+    }
+
+    // 2. Webview HTML5 input fallback
+    if (typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.sng';
+      input.multiple = true;
+      input.onchange = async () => {
+        if (!input.files || input.files.length === 0) return;
+        for (const file of Array.from(input.files)) {
+          const buffer = await file.arrayBuffer();
+          const bytes = Array.from(new Uint8Array(buffer));
+          const path = (file as unknown as { path?: string }).path ?? file.name;
+          const res = await invokeTauri<{ song: Song }>('parse_sng_bytes', { bytes, filePath: path });
+          if (res?.song) {
+            this.addSongToSchedule(res.song);
+          }
+        }
+      };
+      input.click();
+    }
+  }
+
+  async openSongFolderDialog() {
+    // 1. Try native folder picker first
+    const nativeFolder = await invokeTauri<string | null>('pick_songs_folder');
+    if (nativeFolder) {
+      this.setSongsDirectory(nativeFolder);
+      await this.scanSongsDirectory(nativeFolder);
+      return;
+    }
+
+    // 2. Webview HTML5 directory input fallback
+    if (typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.setAttribute('webkitdirectory', '');
+      input.onchange = async () => {
+        if (!input.files || input.files.length === 0) return;
+        this.isScanning = true;
+        let count = 0;
+        try {
+          for (const file of Array.from(input.files)) {
+            if (file.name.toLowerCase().endsWith('.sng')) {
+              const buffer = await file.arrayBuffer();
+              const bytes = Array.from(new Uint8Array(buffer));
+              const path = (file as unknown as { path?: string }).path ?? file.name;
+              await invokeTauri('parse_sng_bytes', { bytes, filePath: path });
+              count++;
+            }
+          }
+          this.scanSummary = {
+            total_scanned: count,
+            indexed_count: count,
+            error_count: 0,
+            directory: 'Browser-Ordner',
+          };
+        } finally {
+          this.isScanning = false;
+        }
+      };
+      input.click();
     }
   }
 }
