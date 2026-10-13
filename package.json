@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "node --experimental-strip-types tests/test_sng_parser.ts && node tests/test_wysiwyg_parity_suite.js",
+    "test:e2e": "node tests/e2e_ui_test.js",
     "tauri": "tauri"
   },
   "dependencies": {

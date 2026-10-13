@@ -83,8 +83,8 @@ export function calculateSlideFontSize(
   const safeHeightCqw = 90.0 * aspectFactor;
 
   // 1. Horizontal Boundary: longest line must fit without wrapping
-  // Average proportional glyph width for standard sans-serif (Segoe UI, Arial, Inter) is ~0.48em
-  const glyphRatio = 0.48;
+  // Average proportional glyph width for standard sans-serif (Segoe UI, Arial, Inter) is ~0.47em
+  const glyphRatio = 0.47;
   const boundaryHorizontal = safeWidthCqw / (maxLineLen * glyphRatio);
 
   // 2. Vertical Boundary: all lines must fit within safe height
@@ -93,8 +93,8 @@ export function calculateSlideFontSize(
   // 3. Optimal size: whichever boundary hits the limit first defines the font size
   const optimal = Math.min(boundaryHorizontal, boundaryVertical);
 
-  // Presentation bounds (1.5cqw to 8.5cqw)
-  const clamped = Math.min(8.5, Math.max(1.5, optimal));
+  // Presentation bounds (1.8cqw to 14.0cqw)
+  const clamped = Math.min(14.0, Math.max(1.8, optimal));
 
   return `${clamped.toFixed(2)}cqw`;
 }
