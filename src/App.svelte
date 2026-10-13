@@ -7,6 +7,7 @@
   import SlideDeck from '$lib/components/SlideDeck.svelte';
   import BeamerView from '$lib/components/BeamerView.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
+  import SongEditorModal from '$lib/components/SongEditorModal.svelte';
   import type { Song, Slide, LyricLine } from '$lib/types/models';
 
   function getInitialWindowLabel(): string {
@@ -57,7 +58,17 @@
       return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+      e.preventDefault();
+      presentation.openSongEditor();
+      return;
+    }
+
     switch (e.key) {
+      case 'F7':
+        e.preventDefault();
+        presentation.openSongEditor();
+        break;
       case ' ':
       case 'PageDown':
       case 'ArrowDown':
@@ -346,6 +357,10 @@
 
     {#if presentation.isSettingsOpen}
       <SettingsModal />
+    {/if}
+
+    {#if presentation.isSongEditorOpen}
+      <SongEditorModal />
     {/if}
   </div>
 

@@ -269,6 +269,11 @@ class PresentationStore {
   uiMode = $state<'classic' | 'modern'>('classic');
   isSettingsOpen = $state<boolean>(false);
 
+  // Song Editor Modal State (SongBeamer parity)
+  isSongEditorOpen = $state<boolean>(false);
+  editingSong = $state<Song | null>(null);
+  editingSongFilePath = $state<string | null>(null);
+
   // Right Column Drawer visibility (hidden by default per user requirement)
   isRightPanelOpen = $state<boolean>(false);
 
@@ -759,6 +764,61 @@ class PresentationStore {
       };
       input.click();
     }
+  }
+
+  openSongEditor(song?: Song, filePath?: string) {
+    const target = song ?? this.activeSong;
+    if (target) {
+      this.editingSong = JSON.parse(JSON.stringify(target));
+      this.editingSongFilePath = filePath ?? null;
+      this.isSongEditorOpen = true;
+    }
+  }
+
+  closeSongEditor() {
+    this.isSongEditorOpen = false;
+    this.editingSong = null;
+    this.editingSongFilePath = null;
+  }
+
+  async parseSongContent(content: string): Promise<Song | null> {
+    const res = await invokeTauri<{ song: Song }>('parse_sng', { content });
+    return res?.song ?? null;
+  }
+
+  async transposeLyrics(text: string, semitones: number): Promise<string> {
+    const res = await invokeTauri<string>('transpose_lyrics', { text, semitones });
+    return res ?? text;
+  }
+
+  async stripChords(text: string): Promise<string> {
+    const res = await invokeTauri<string>('strip_chords', { text });
+    return res ?? text;
+  }
+
+  async saveEditedSong(song: Song, filePath?: string) {
+    this.activeSong = song;
+
+    // Synchronize schedule item
+    const schedItem = this.schedule.find(
+      (item) => item.item_type.kind === 'Song' && (item.item_type.payload.id === song.id || item.title === song.metadata.title)
+    );
+    if (schedItem && schedItem.item_type.kind === 'Song') {
+      schedItem.title = song.metadata.title;
+      schedItem.item_type.payload = song;
+    }
+
+    const path = filePath ?? this.editingSongFilePath;
+    await invokeTauri('save_song_to_disk', { song, filePath: path });
+
+    if (this.isBeamerActive) {
+      await invokeTauri('sync_active_song', {
+        song,
+        slideIndex: this.activeSlideIndex < song.slides.length ? this.activeSlideIndex : 0,
+      });
+    }
+
+    this.closeSongEditor();
   }
 }
 

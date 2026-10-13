@@ -106,7 +106,12 @@
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Drucken">
         <SongBeamerIcon name="print" size={21} />
       </button>
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Bearbeiten">
+      <button
+        type="button"
+        class="p-1 hover:bg-black/10 rounded transition cursor-pointer"
+        onclick={() => presentation.openSongEditor()}
+        title="Song bearbeiten (Strg/Cmd+E)"
+      >
         <SongBeamerIcon name="edit" size={21} />
       </button>
       <div class="w-px h-6 bg-neutral-400/40 mx-0.5"></div>
@@ -513,6 +518,19 @@
       >
         <span>📂</span>
         <span class="hidden md:inline">Öffnen</span>
+      </button>
+
+      <!-- Edit Song Button -->
+      <button
+        type="button"
+        class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
+          : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'}"
+        onclick={() => presentation.openSongEditor()}
+        title="Lied bearbeiten (Strg/Cmd+E)"
+      >
+        <span>✏️</span>
+        <span class="hidden md:inline">Bearbeiten</span>
       </button>
 
       <!-- Aspect Ratio Selector -->

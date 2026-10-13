@@ -194,6 +194,11 @@
           onpointerup={handlePointerUp}
           onpointercancel={handlePointerCancel}
           onclick={() => handleSelect(idx)}
+          ondblclick={() => {
+            if (item.item_type.kind === 'Song') {
+              presentation.openSongEditor(item.item_type.payload);
+            }
+          }}
           onkeydown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
