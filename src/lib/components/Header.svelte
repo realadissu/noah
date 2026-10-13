@@ -100,41 +100,41 @@
 
   <!-- 2. SongBeamer Classic Toolbar (Replicating SongBeamer 3.00 toolbar authentically) -->
   <header
-    class="h-10 px-2 flex items-center justify-between select-none gap-1 border-b overflow-x-auto {presentation.theme === 'dark'
+    class="h-11 px-2.5 flex items-center justify-between select-none gap-1 border-b overflow-x-auto {presentation.theme === 'dark'
       ? 'bg-[#1f2228] border-neutral-700 text-neutral-200'
       : 'bg-[#ece9d8] border-neutral-300 text-neutral-900'}"
   >
     <div class="flex items-center space-x-0.5 shrink-0">
       <!-- File Tools -->
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Neu">
-        <SongBeamerIcon name="new" size={17} />
+        <SongBeamerIcon name="new" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Öffnen">
-        <SongBeamerIcon name="open" size={17} />
+        <SongBeamerIcon name="open" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Speichern">
-        <SongBeamerIcon name="save" size={17} />
+        <SongBeamerIcon name="save" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Drucken">
-        <SongBeamerIcon name="print" size={17} />
+        <SongBeamerIcon name="print" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Bearbeiten">
-        <SongBeamerIcon name="edit" size={17} />
+        <SongBeamerIcon name="edit" size={21} />
       </button>
-      <div class="w-px h-5 bg-neutral-400/40 mx-0.5"></div>
+      <div class="w-px h-6 bg-neutral-400/40 mx-0.5"></div>
 
       <!-- Media Insertion Tools -->
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Bibelstelle">
-        <SongBeamerIcon name="bible" size={17} />
+        <SongBeamerIcon name="bible" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Video">
-        <SongBeamerIcon name="video" size={17} />
+        <SongBeamerIcon name="video" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Audio">
-        <SongBeamerIcon name="audio" size={17} />
+        <SongBeamerIcon name="audio" size={21} />
       </button>
       <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Lied">
-        <SongBeamerIcon name="song" size={17} />
+        <SongBeamerIcon name="song" size={21} />
       </button>
       <button
         type="button"
@@ -142,41 +142,40 @@
         onclick={() => presentation.toggleChords()}
         title={t('toolbar.toggleChords')}
       >
-        <SongBeamerIcon name="chords" size={17} />
+        <SongBeamerIcon name="chords" size={21} />
       </button>
       <button
         type="button"
-        class="p-1 hover:bg-black/10 rounded transition {presentation.isBeamerActive ? 'bg-emerald-500/20' : ''}"
-        onclick={() => presentation.toggleBeamer()}
-        title={presentation.isBeamerActive ? t('toolbar.closeBeamer') : t('toolbar.openBeamer')}
+        class="p-1 hover:bg-black/10 rounded transition opacity-80 hover:opacity-100"
+        title="Live-Video (Kamera-Eingang)"
       >
-        <SongBeamerIcon name="beamer" size={17} />
+        <SongBeamerIcon name="camera" size={21} />
       </button>
-      <div class="w-px h-5 bg-neutral-400/40 mx-1"></div>
+      <div class="w-px h-6 bg-neutral-400/40 mx-1"></div>
 
       <!-- THE 4 PRESENTATION CONTROL BUTTONS -->
       <!-- 1. Folie mit Text anzeigen (F4) - Startet Beamer automatisch -->
       <button
         type="button"
         class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.isBeamerActive && presentation.displayMode === 'normal'
-          ? 'bg-blue-600/20 border-blue-600 ring-1 ring-blue-500/50 shadow-inner'
+          ? 'bg-blue-600/25 border-blue-600 ring-1 ring-blue-500/50 shadow-inner'
           : 'border-transparent hover:bg-black/10'}"
         onclick={() => setMode('normal')}
         title="{t('toolbar.normal')} (F4)"
       >
-        <SongBeamerIcon name="slide-text" size={19} />
+        <SongBeamerIcon name="slide-text" size={23} />
       </button>
 
       <!-- 2. Folie ohne Text anzeigen (F6) - Startet Beamer automatisch -->
       <button
         type="button"
         class="px-1.5 py-0.5 rounded flex items-center gap-1 border transition {presentation.isBeamerActive && presentation.displayMode === 'clear_text'
-          ? 'bg-blue-600/20 border-blue-600 ring-1 ring-blue-500/50 shadow-inner'
+          ? 'bg-blue-600/25 border-blue-600 ring-1 ring-blue-500/50 shadow-inner'
           : 'border-transparent hover:bg-black/10'}"
         onclick={() => setMode('clear_text')}
         title="{t('toolbar.clear')} (F6)"
       >
-        <SongBeamerIcon name="slide-clear" size={19} />
+        <SongBeamerIcon name="slide-clear" size={23} />
       </button>
 
       <!-- 3. Schwarzes Bild (F5) - Startet Beamer automatisch -->
@@ -188,7 +187,7 @@
         onclick={() => setMode('black')}
         title="{t('toolbar.black')} (F5)"
       >
-        <SongBeamerIcon name="screen-black" size={19} />
+        <SongBeamerIcon name="screen-black" size={23} />
       </button>
 
       <!-- 4. Bildschirm freigeben (Beamer beenden) -->
@@ -201,10 +200,10 @@
         disabled={!presentation.isBeamerActive}
         title={presentation.isBeamerActive ? "Zweiten Bildschirm freigeben (Beamer beenden)" : "Keine Präsentation aktiv"}
       >
-        <SongBeamerIcon name="screen-close" size={19} />
+        <SongBeamerIcon name="screen-close" size={23} />
       </button>
 
-      <div class="w-px h-5 bg-neutral-400/40 mx-1"></div>
+      <div class="w-px h-6 bg-neutral-400/40 mx-1"></div>
 
       <!-- Play & Slide Navigation -->
       <button
@@ -213,7 +212,7 @@
         onclick={() => presentation.nextSlide()}
         title="Weiter / Play"
       >
-        <SongBeamerIcon name="play" size={16} />
+        <SongBeamerIcon name="play" size={19} />
       </button>
       <button
         type="button"
@@ -221,7 +220,7 @@
         onclick={() => presentation.prevSlide()}
         title="Vorherige Folie"
       >
-        <SongBeamerIcon name="prev" size={16} />
+        <SongBeamerIcon name="prev" size={19} />
       </button>
       <button
         type="button"
@@ -229,7 +228,7 @@
         onclick={() => presentation.nextSlide()}
         title="Nächste Folie"
       >
-        <SongBeamerIcon name="next" size={16} />
+        <SongBeamerIcon name="next" size={19} />
       </button>
     </div>
 
@@ -478,21 +477,7 @@
         <span class="hidden xl:inline">{t('toolbar.toggleMonitors')}</span>
       </button>
 
-      <!-- Beamer Output Launch Button -->
-      <button
-        type="button"
-        class="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-xs border {presentation.isBeamerActive
-          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
-          : presentation.theme === 'dark'
-            ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
-            : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'}"
-        onclick={() => presentation.toggleBeamer()}
-        title={presentation.isBeamerActive ? t('toolbar.closeBeamer') : t('toolbar.openBeamer')}
-      >
-        <span class="w-2 h-2 rounded-full {presentation.isBeamerActive ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-400'}"></span>
-        <ModernIcon name="projector" size={16} />
-        <span class="hidden md:inline">{presentation.isBeamerActive ? t('toolbar.beamerActive') : t('toolbar.openBeamer')}</span>
-      </button>
+
 
       <!-- Chords Toggle -->
       <button

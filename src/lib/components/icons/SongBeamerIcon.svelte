@@ -11,6 +11,7 @@
     | 'audio'
     | 'song'
     | 'chords'
+    | 'camera'
     | 'beamer'
     | 'slide-text'
     | 'slide-clear'
@@ -140,8 +141,8 @@
       <circle cx="7.5" cy="10" r="1.5" fill="#dc2626" />
       <circle cx="10.5" cy="6" r="1.5" fill="#dc2626" />
     </svg>
-  {:else if name === 'beamer'}
-    <!-- Blue projector emitting light -->
+  {:else if name === 'camera' || name === 'beamer'}
+    <!-- Blue camera: Live-Video / External Camera Input in SongBeamer -->
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
       <rect x="2" y="7" width="13" height="8" rx="1.5" fill="#2563eb" stroke="#1d4ed8" stroke-width="1" />
       <circle cx="6" cy="11" r="2" fill="#ffffff" />

@@ -8,7 +8,7 @@
   let targetPosition = $state<'before' | 'after'>('after');
   let isPointerDown = false;
   let startY = 0;
-  let hasMoved = false;
+  let hasMoved = $state(false);
 
   function getItemIcon(item: ScheduleItem): string {
     switch (item.item_type.kind) {
@@ -32,12 +32,20 @@
   }
 
   let startIndex = $state<number | null>(null);
+  let pointerX = $state<number>(0);
+  let pointerY = $state<number>(0);
+
+  const draggedItem = $derived<ScheduleItem | null>(
+    draggingIndex !== null ? presentation.schedule[draggingIndex] ?? null : null
+  );
 
   function handlePointerDown(e: PointerEvent, index: number) {
     if (e.button !== 0) return;
     isPointerDown = true;
     hasMoved = false;
     startY = e.clientY;
+    pointerX = e.clientX;
+    pointerY = e.clientY;
     startIndex = index;
     draggingIndex = null;
     targetIndex = null;
@@ -54,6 +62,9 @@
 
   function handlePointerMove(e: PointerEvent, _index: number) {
     if (!isPointerDown) return;
+
+    pointerX = e.clientX;
+    pointerY = e.clientY;
 
     if (!hasMoved && Math.abs(e.clientY - startY) > 5) {
       hasMoved = true;
@@ -159,7 +170,7 @@
           role="button"
           tabindex="0"
           data-schedule-idx={idx}
-          class="w-full text-left transition flex items-center gap-2 group relative select-none touch-none {isDragging ? 'opacity-40 border-dashed border-amber-500 scale-[0.98]' : ''} {isDropTarget ? (targetPosition === 'before' ? 'border-t-2 !border-t-amber-400' : 'border-b-2 !border-b-amber-400') : ''} {draggingIndex !== null ? 'cursor-grabbing' : 'cursor-grab'} {presentation.uiMode === 'classic'
+          class="w-full text-left transition flex items-center gap-2 group relative select-none touch-none {isDragging ? 'opacity-30 border-dashed border-amber-500 scale-[0.98]' : ''} {draggingIndex !== null ? 'cursor-grabbing' : 'cursor-grab'} {presentation.uiMode === 'classic'
             ? `px-2 py-1 border-b last:border-b-0 ${
                 isActive
                   ? presentation.theme === 'dark'
@@ -190,6 +201,20 @@
             }
           }}
         >
+          <!-- Insertion drop line indicator: Top -->
+          {#if isDropTarget && targetPosition === 'before'}
+            <div class="absolute -top-[2px] left-0 right-0 h-[3px] bg-amber-400 z-30 pointer-events-none flex items-center shadow-sm">
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-500 -ml-1 border-2 border-white dark:border-neutral-900"></div>
+            </div>
+          {/if}
+
+          <!-- Insertion drop line indicator: Bottom -->
+          {#if isDropTarget && targetPosition === 'after'}
+            <div class="absolute -bottom-[2px] left-0 right-0 h-[3px] bg-amber-400 z-30 pointer-events-none flex items-center shadow-sm">
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-500 -ml-1 border-2 border-white dark:border-neutral-900"></div>
+            </div>
+          {/if}
+
           <!-- Drag handle indicator -->
           <span
             class="text-[11px] opacity-40 group-hover:opacity-80 shrink-0 select-none pointer-events-none {presentation.uiMode === 'classic' ? 'text-neutral-500' : 'text-slate-400'}"
@@ -215,4 +240,20 @@
       {/each}
     {/if}
   </div>
+
+  <!-- Floating Drag Ghost Badge following the pointer -->
+  {#if hasMoved && draggingIndex !== null && draggedItem}
+    <div
+      class="fixed pointer-events-none z-50 px-3 py-1.5 rounded-xl shadow-2xl border flex items-center gap-2 select-none -translate-x-1/2 -translate-y-1/2 {presentation.theme === 'dark'
+        ? 'bg-neutral-800/95 border-amber-500 text-white shadow-black/90 ring-2 ring-amber-500/50 backdrop-blur-md'
+        : 'bg-white/95 border-amber-500 text-slate-900 shadow-xl shadow-slate-900/25 ring-2 ring-amber-500/50 backdrop-blur-md'}"
+      style="left: {pointerX}px; top: {pointerY}px; max-width: 280px;"
+    >
+      <span class="text-base shrink-0">{getItemIcon(draggedItem)}</span>
+      <span class="text-xs font-bold truncate max-w-[170px]">{draggedItem.title}</span>
+      <span class="text-[10px] px-1.5 py-0.5 rounded font-extrabold shrink-0 {presentation.theme === 'dark' ? 'bg-amber-500/25 text-amber-300' : 'bg-amber-100 text-amber-800'}">
+        {targetPosition === 'before' ? '↑ vor' : '↓ nach'}
+      </span>
+    </div>
+  {/if}
 </aside>
