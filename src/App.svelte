@@ -324,11 +324,11 @@
             <div class="flex-1 flex items-center justify-center p-4 relative overflow-hidden text-center">
               {#if presentation.displayMode === 'black'}
                 <div class="absolute inset-0 bg-black flex items-center justify-center">
-                  <span class="text-[10px] font-mono text-neutral-700 tracking-widest uppercase">BLACK OUT</span>
+                  <span class="text-[10px] font-mono text-neutral-500 tracking-widest uppercase">{t('status.black')}</span>
                 </div>
               {:else if presentation.displayMode === 'clear_text'}
                 <div class="absolute inset-0 bg-neutral-950 flex items-center justify-center">
-                  <span class="text-[10px] font-mono text-neutral-600 tracking-widest uppercase">TEXT CLEARED</span>
+                  <span class="text-[10px] font-mono text-neutral-500 tracking-widest uppercase">{t('status.clear')}</span>
                 </div>
               {:else if presentation.displayMode === 'logo'}
                 <div class="absolute inset-0 bg-neutral-950 flex flex-col items-center justify-center">

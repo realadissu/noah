@@ -68,7 +68,7 @@
           ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white'
           : 'hover:bg-neutral-200 text-neutral-600 hover:text-black'}"
         onclick={() => { presentation.isSettingsOpen = false; }}
-        title="Schließen"
+        title={t('settings.closeTitle')}
       >
         ✕
       </button>
@@ -211,14 +211,14 @@
       <!-- 6. Songs Directory / Lieder-Verzeichnis -->
       <div class="pt-3 border-t {presentation.theme === 'dark' ? 'border-neutral-800' : 'border-neutral-200'}">
         <div class="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
-          📁 Lieder-Verzeichnis (SongBeamer Archiv)
+          📁 {t('settings.libraryTitle')}
         </div>
         <div class="space-y-2">
           <div class="flex items-center gap-2">
             <input
               type="text"
               readonly
-              value={presentation.songsDirectory || 'Kein Ordner konfiguriert'}
+              value={presentation.songsDirectory || t('settings.noFolderConfigured')}
               class="flex-1 p-2.5 rounded-xl border text-xs font-mono truncate {presentation.theme === 'dark' ? 'bg-neutral-950 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-300 text-neutral-700'}"
             />
             <button
@@ -228,7 +228,7 @@
                 : 'bg-white hover:bg-neutral-100 border-neutral-300 text-neutral-800 shadow-xs'}"
               onclick={() => presentation.openSongFolderDialog()}
             >
-              Ordner wählen...
+              {t('settings.chooseFolder')}
             </button>
           </div>
 
@@ -237,17 +237,17 @@
               <span class="text-neutral-400">
                 {#if presentation.isScanning}
                   <span class="inline-flex items-center gap-1.5 text-amber-500 font-semibold animate-pulse">
-                    <span>⏳</span> Indiziere Liederarchiv...
+                    <span>⏳</span> {t('settings.indexingArchive')}
                   </span>
                 {:else if presentation.scanSummary}
                   <span class="text-emerald-500 font-semibold">
-                    ✓ {presentation.scanSummary.indexed_count} Lieder indiziert
+                    ✓ {t('settings.songsIndexed', { count: presentation.scanSummary.indexed_count })}
                   </span>
                   <span class="opacity-70">
-                    ({presentation.scanSummary.total_scanned} gescannt{#if presentation.scanSummary.error_count > 0}, {presentation.scanSummary.error_count} Fehler{/if})
+                    {t('settings.scannedDetails', { total: presentation.scanSummary.total_scanned, errors: presentation.scanSummary.error_count > 0 ? t('settings.errorCount', { count: presentation.scanSummary.error_count }) : '' })}
                   </span>
                 {:else}
-                  <span>Suchindex bereit</span>
+                  <span>{t('settings.searchIndexReady')}</span>
                 {/if}
               </span>
 
@@ -259,7 +259,7 @@
                   : 'border-neutral-300 hover:bg-neutral-100 text-neutral-700'}"
                 onclick={() => presentation.scanSongsDirectory()}
               >
-                Neu scannen
+                {t('settings.rescan')}
               </button>
             </div>
           {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, i18n } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { Song } from '$lib/types/models';
 
@@ -42,14 +43,14 @@
   // Editor DOM elements
   let textareaEl = $state<HTMLTextAreaElement | null>(null);
   let backdropEl = $state<HTMLDivElement | null>(null);
-  let currentSection = $state<string>('Vers 1');
+  let currentSection = $state<string>(i18n.locale === 'de' ? 'Vers 1' : 'Verse 1');
 
   // Drag & drop state for Ablauf box
   let draggedAblaufIdx = $state<number | null>(null);
   let targetAblaufIdx = $state<number | null>(null);
 
   // Marker options for quick insertion
-  const MARKE_OPTIONS = [
+  const MARKE_OPTIONS_DE = [
     'Vers 1',
     'Vers 2',
     'Vers 3',
@@ -68,6 +69,58 @@
     'Zwischenspiel',
     'Schluss',
   ];
+
+  const MARKE_OPTIONS_EN = [
+    'Verse 1',
+    'Verse 2',
+    'Verse 3',
+    'Verse 4',
+    'Verse 5',
+    'Verse 6',
+    'Verse 7',
+    'Verse 8',
+    'Chorus',
+    'Chorus 1',
+    'Chorus 2',
+    'Bridge',
+    'Pre-Chorus',
+    'Intro',
+    'Outro',
+    'Interlude',
+    'Ending',
+  ];
+
+  const markeOptions = $derived<string[]>(i18n.locale === 'de' ? MARKE_OPTIONS_DE : MARKE_OPTIONS_EN);
+
+  const STANDARD_CATEGORIES_DE = [
+    'Lobpreis & Anbetung',
+    'Dank',
+    'Kreuz & Gnade',
+    'Glaube',
+    'Gemeinde',
+    'Abendmahl',
+    'Taufe',
+    'Ostern',
+    'Weihnachten',
+    'Kinderlieder',
+  ];
+
+  const STANDARD_CATEGORIES_EN = [
+    'Praise & Worship',
+    'Thanksgiving',
+    'Cross & Grace',
+    'Faith',
+    'Church',
+    'Communion',
+    'Baptism',
+    'Easter',
+    'Christmas',
+    'Children',
+  ];
+
+  const standardCategories = $derived<string[]>(
+    i18n.locale === 'de' ? STANDARD_CATEGORIES_DE : STANDARD_CATEGORIES_EN
+  );
 
   // Multilingual section keyword map
   const SECTION_KEYWORD_MAP: Record<string, { kind: string; hex: string; defaultLabel: string }> = {
@@ -183,13 +236,18 @@
 
     for (const slide of s.slides) {
       let sectionTag = '';
-      if (slide.section) {
+      if (slide.label && !slide.label.startsWith('Slide ')) {
+        sectionTag = slide.label;
+      } else if (slide.section) {
+        const isDe = i18n.locale === 'de';
         switch (slide.section.type) {
           case 'Verse':
-            sectionTag = `Vers ${slide.section.value}`;
+            sectionTag = isDe ? `Vers ${slide.section.value}` : `Verse ${slide.section.value}`;
             break;
           case 'Chorus':
-            sectionTag = slide.section.value ? `Refrain ${slide.section.value}` : 'Refrain';
+            sectionTag = isDe
+              ? (slide.section.value ? `Refrain ${slide.section.value}` : 'Refrain')
+              : (slide.section.value ? `Chorus ${slide.section.value}` : 'Chorus');
             break;
           case 'Bridge':
             sectionTag = slide.section.value ? `Bridge ${slide.section.value}` : 'Bridge';
@@ -201,23 +259,21 @@
             sectionTag = 'Intro';
             break;
           case 'Outro':
-            sectionTag = 'Outro';
+            sectionTag = isDe ? 'Schluss' : 'Outro';
             break;
           case 'Coda':
             sectionTag = 'Coda';
             break;
           case 'Interlude':
-            sectionTag = 'Zwischenspiel';
+            sectionTag = isDe ? 'Zwischenspiel' : 'Interlude';
             break;
           case 'Ending':
-            sectionTag = 'Schluss';
+            sectionTag = isDe ? 'Schluss' : 'Ending';
             break;
           case 'Custom':
             sectionTag = slide.section.value;
             break;
         }
-      } else if (slide.label && slide.label !== `Slide ${slide.index + 1}`) {
-        sectionTag = slide.label;
       }
 
       const lineStrings = slide.lines.map((line) => {
@@ -314,7 +370,7 @@
         return;
       }
     }
-    currentSection = 'Vers 1';
+    currentSection = i18n.locale === 'de' ? 'Vers 1' : 'Verse 1';
   }
 
   // Ablauf: add section currently under cursor to the end
@@ -386,7 +442,7 @@
     ) {
       const order: string[] = [];
       const verses = detected.filter((s) => s.toLowerCase().startsWith('vers') || s.toLowerCase().startsWith('strophe'));
-      const chorus = detected.find((s) => s.toLowerCase().startsWith('refrain') || s.toLowerCase().startsWith('chorus')) || 'Refrain';
+      const chorus = detected.find((s) => s.toLowerCase().startsWith('refrain') || s.toLowerCase().startsWith('chorus')) || (i18n.locale === 'de' ? 'Refrain' : 'Chorus');
       const bridge = detected.find((s) => s.toLowerCase().startsWith('bridge'));
 
       for (const v of verses) {
@@ -587,7 +643,7 @@
   // Save changes
   async function handleSave() {
     if (!title.trim()) {
-      alert('Bitte geben Sie einen Songtitel ein.');
+      alert(t('editor.enterTitleAlert'));
       return;
     }
 
@@ -642,7 +698,7 @@
       }
       await presentation.saveEditedSong(parsed);
     } else {
-      alert('Fehler beim Analysieren des Songs.');
+      alert(t('editor.parseErrorAlert'));
     }
   }
 
@@ -658,7 +714,7 @@
     style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh;"
     role="dialog"
     aria-modal="true"
-    aria-label="Song bearbeiten"
+    aria-label={t('editor.title')}
   >
     <!-- Modal Window (Replicating SongBeamer "Song bearbeiten" Window authentically) -->
     <div
@@ -674,13 +730,13 @@
       >
         <div class="flex items-center gap-2">
           <span>🎵</span>
-          <span>Song bearbeiten - {title || 'Neuer Song'}</span>
+          <span>{t('editor.editSong', { title: title || t('editor.newSong') })}</span>
         </div>
         <button
           type="button"
           class="w-6 h-6 rounded flex items-center justify-center hover:bg-red-600 hover:text-white transition cursor-pointer"
           onclick={handleCancel}
-          title="Schließen"
+          title={t('settings.closeTitle')}
         >
           ✕
         </button>
@@ -701,7 +757,7 @@
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'}"
           onclick={() => (activeTab = 'text')}
         >
-          Text
+          {t('editor.tabs.text')}
         </button>
         <button
           type="button"
@@ -712,7 +768,7 @@
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'}"
           onclick={() => (activeTab = 'format')}
         >
-          Formatierung
+          {t('editor.tabs.format')}
         </button>
         <button
           type="button"
@@ -723,7 +779,7 @@
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'}"
           onclick={() => (activeTab = 'background')}
         >
-          Hintergrund
+          {t('editor.tabs.background')}
         </button>
         <button
           type="button"
@@ -734,7 +790,7 @@
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'}"
           onclick={() => (activeTab = 'categories')}
         >
-          Kategorien
+          {t('editor.tabs.categories')}
         </button>
         <button
           type="button"
@@ -745,7 +801,7 @@
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'}"
           onclick={() => (activeTab = 'media')}
         >
-          Medien
+          {t('editor.tabs.media')}
         </button>
         <button
           type="button"
@@ -756,7 +812,7 @@
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300'}"
           onclick={() => (activeTab = 'copyrights')}
         >
-          Copyrights
+          {t('editor.tabs.copyrights')}
         </button>
       </div>
 
@@ -766,12 +822,12 @@
           <!-- 1. Song Title Input & Top Action Buttons (OK, Abbrechen, Akkorde, Hintergrund) -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
             <div class="flex-1 flex items-center gap-2">
-              <label for="song-title-input" class="text-xs font-bold shrink-0">Titel:</label>
+              <label for="song-title-input" class="text-xs font-bold shrink-0">{t('editor.titleLabel')}</label>
               <input
                 id="song-title-input"
                 type="text"
                 bind:value={title}
-                placeholder="Songtitel eingeben..."
+                placeholder={t('editor.titlePlaceholder')}
                 class="flex-1 px-2.5 py-1 text-sm rounded border focus:outline-none {presentation.theme === 'dark'
                   ? 'bg-neutral-900 border-neutral-700 text-white focus:border-amber-500'
                   : 'bg-white border-neutral-400 text-neutral-900 focus:border-blue-600'}"
@@ -788,7 +844,7 @@
                 onclick={handleSave}
               >
                 <span>✓</span>
-                <span>OK</span>
+                <span>{t('editor.ok')}</span>
               </button>
               <button
                 type="button"
@@ -798,7 +854,7 @@
                 onclick={handleCancel}
               >
                 <span>✕</span>
-                <span>Abbrechen</span>
+                <span>{t('editor.cancel')}</span>
               </button>
               <button
                 type="button"
@@ -806,10 +862,10 @@
                   ? 'bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border-neutral-700'
                   : 'bg-white hover:bg-neutral-100 text-emerald-700 border-neutral-400'}"
                 onclick={() => (isChordModalOpen = !isChordModalOpen)}
-                title="Akkorde bearbeiten & transponieren"
+                title={t('editor.chordsBtn')}
               >
                 <span class="font-bold">C#</span>
-                <span>Akkorde...</span>
+                <span>{t('editor.chordsBtn')}</span>
               </button>
               <button
                 type="button"
@@ -818,7 +874,7 @@
                   : 'bg-white hover:bg-neutral-100 text-neutral-800 border-neutral-400'}"
                 onclick={() => (activeTab = 'background')}
               >
-                Hintergrund...
+                {t('editor.bgBtn')}
               </button>
             </div>
           </div>
@@ -830,50 +886,50 @@
                 ? 'bg-neutral-900 border-neutral-700 text-white'
                 : 'bg-white border-neutral-400 text-neutral-900'}"
             >
-              <span class="font-bold">Akkorde transponieren:</span>
+              <span class="font-bold">{t('editor.transposeTitle')}</span>
               <button
                 type="button"
                 class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
                 onclick={() => transposeBy(1)}
               >
-                +1 Halbton
+                {t('editor.transposePlus1')}
               </button>
               <button
                 type="button"
                 class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
                 onclick={() => transposeBy(-1)}
               >
-                -1 Halbton
+                {t('editor.transposeMinus1')}
               </button>
               <button
                 type="button"
                 class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
                 onclick={() => transposeBy(2)}
               >
-                +2 (Ganzton)
+                {t('editor.transposePlus2')}
               </button>
               <button
                 type="button"
                 class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
                 onclick={() => transposeBy(-2)}
               >
-                -2 (Ganzton)
+                {t('editor.transposeMinus2')}
               </button>
               <div class="w-px h-5 bg-neutral-500/40 mx-1"></div>
               <button
                 type="button"
                 class="px-2 py-0.5 rounded border text-red-500 hover:bg-red-500/10 cursor-pointer"
                 onclick={stripAllChords}
-                title="Alle Akkorde aus dem Liedtext entfernen"
+                title={t('editor.stripChordsTooltip')}
               >
-                ✂️ Akkorde entfernen
+                {t('editor.stripChordsFull')}
               </button>
               <button
                 type="button"
                 class="ml-auto text-xs opacity-60 hover:opacity-100 cursor-pointer"
                 onclick={() => (isChordModalOpen = false)}
               >
-                Fertig
+                {t('editor.done')}
               </button>
             </div>
           {/if}
@@ -901,9 +957,9 @@
                         ? 'border-neutral-700 text-neutral-200'
                         : 'border-neutral-300 text-neutral-800'}"
                       onclick={() => (isMarkeDropdownOpen = !isMarkeDropdownOpen)}
-                      title="Abschnittsmarke an Cursorposition einfügen"
+                      title={t('editor.markerTooltip')}
                     >
-                      <span>🏷️ Marke</span>
+                      <span>🏷️ {t('editor.marker')}</span>
                       <span class="text-[10px]">▼</span>
                     </button>
 
@@ -913,7 +969,7 @@
                           ? 'bg-neutral-900 border-neutral-700 text-neutral-200'
                           : 'bg-white border-neutral-400 text-neutral-900'}"
                       >
-                        {#each MARKE_OPTIONS as opt}
+                        {#each markeOptions as opt}
                           <button
                             type="button"
                             class="w-full text-left px-3 py-1 hover:bg-blue-600 hover:text-white cursor-pointer transition flex items-center gap-2"
@@ -937,9 +993,9 @@
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
                     onclick={insertSlideSeparator}
-                    title="Neue Folie mit '---' trennen"
+                    title={t('editor.slideBreakTooltip')}
                   >
-                    --- Folie
+                    {t('editor.slideBreak')}
                   </button>
 
                   <!-- Block break continuation (--) -->
@@ -949,9 +1005,9 @@
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
                     onclick={insertContinuationBreak}
-                    title="Folienumbruch mit '--' (gleiche Marke fortführen)"
+                    title={t('editor.lineBreakTooltip')}
                   >
-                    -- Umbruch
+                    {t('editor.lineBreak')}
                   </button>
                 </div>
 
@@ -963,9 +1019,9 @@
                       ? 'border-neutral-700 text-emerald-400'
                       : 'border-neutral-300 text-emerald-700'}"
                     onclick={() => transposeBy(1)}
-                    title="Akkorde +1 Halbton transponieren"
+                    title={t('editor.transposeHalfUpTooltip')}
                   >
-                    # +1
+                    {t('editor.transposeHalfUp')}
                   </button>
                   <button
                     type="button"
@@ -973,9 +1029,9 @@
                       ? 'border-neutral-700 text-emerald-400'
                       : 'border-neutral-300 text-emerald-700'}"
                     onclick={() => transposeBy(-1)}
-                    title="Akkorde -1 Halbton transponieren"
+                    title={t('editor.transposeHalfDownTooltip')}
                   >
-                    b -1
+                    {t('editor.transposeHalfDown')}
                   </button>
                   <button
                     type="button"
@@ -983,9 +1039,9 @@
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
                     onclick={stripAllChords}
-                    title="Alle Akkorde aus dem Text entfernen"
+                    title={t('editor.stripChordsTooltip')}
                   >
-                    ✂️ Akkorde
+                    ✂️ {t('editor.stripChords')}
                   </button>
                 </div>
               </div>
@@ -996,7 +1052,7 @@
                 <div
                   class="absolute inset-y-0 border-r border-dotted border-red-500/60 dark:border-red-500/40 pointer-events-none z-10"
                   style="left: calc(48ch + 16px);"
-                  title="SongBeamer Zeilenbegrenzungslinie (48 Zeichen)"
+                  title={t('editor.lineLimitGuide')}
                   aria-hidden="true"
                 ></div>
 
@@ -1042,7 +1098,7 @@
                   autocomplete="off"
                   autocapitalize="off"
                   data-gramm="false"
-                  placeholder="Songtext hier eingeben... Überschriften wie Vers 1, Refrain, Bridge etc. werden automatisch als Banner erkannt. Folien mit --- trennen."
+                  placeholder={t('editor.textPlaceholder')}
                   class="absolute inset-0 w-full h-full p-3 font-mono text-xs leading-[22px] resize-none focus:outline-none bg-transparent text-transparent caret-neutral-900 dark:caret-white selection:bg-blue-500/35 selection:text-transparent whitespace-pre overflow-y-auto z-20"
                 ></textarea>
               </div>
@@ -1062,9 +1118,9 @@
                 <!-- Ablauf Header with Actions -->
                 <div class="flex items-center justify-between font-bold mb-1.5">
                   <div class="flex items-center gap-1.5">
-                    <span>Versreihenfolge:</span>
+                    <span>{t('editor.verseOrder')}</span>
                     {#if currentSection}
-                      <span class="text-[10px] opacity-60 font-normal truncate max-w-[80px]" title="Aktiver Teil an Cursorposition">
+                      <span class="text-[10px] opacity-60 font-normal truncate max-w-[80px]" title={t('editor.activePartTooltip')}>
                         ({currentSection})
                       </span>
                     {/if}
@@ -1074,17 +1130,17 @@
                       type="button"
                       class="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer transition shadow-2xs"
                       onclick={addCurrentSectionToAblauf}
-                      title="Aktuellen Teil ('{currentSection}') an Ablauf anhängen (+)"
+                      title={t('editor.addPartCurrentTooltip')}
                     >
-                      + Teil
+                      {t('editor.addPart')}
                     </button>
                     <button
                       type="button"
                       class="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer font-bold text-amber-500"
                       onclick={autoPopulateAblauf}
-                      title="Ablauf automatisch aus Text generieren (⚡ Auto)"
+                      title={t('editor.autoAblaufTooltip')}
                     >
-                      ⚡ Auto
+                      {t('editor.autoAblauf')}
                     </button>
                   </div>
                 </div>
@@ -1097,7 +1153,7 @@
                 >
                   {#if verseOrder.length === 0}
                     <div class="text-[11px] text-neutral-400 p-2 text-center">
-                      Keine Versreihenfolge festgelegt. Klicke auf '+ Teil' oder '⚡ Auto'.
+                      {t('editor.noVerseOrder')}
                     </div>
                   {:else}
                     {#each verseOrder as item, idx}
@@ -1140,7 +1196,7 @@
                             e.stopPropagation();
                             removeOrderPart(idx);
                           }}
-                          title="Entfernen"
+                          title={t('schedule.remove')}
                         >
                           ✕
                         </button>
@@ -1159,7 +1215,7 @@
                         : 'border-neutral-300 text-neutral-700'}"
                       onclick={moveSelectedAblaufUp}
                       disabled={selectedAblaufIdx === null || selectedAblaufIdx <= 0}
-                      title="Ausgewählten Teil nach oben verschieben"
+                      title={t('editor.movePartUp')}
                     >
                       ▲
                     </button>
@@ -1170,7 +1226,7 @@
                         : 'border-neutral-300 text-neutral-700'}"
                       onclick={moveSelectedAblaufDown}
                       disabled={selectedAblaufIdx === null || selectedAblaufIdx >= verseOrder.length - 1}
-                      title="Ausgewählten Teil nach unten verschieben"
+                      title={t('editor.movePartDown')}
                     >
                       ▼
                     </button>
@@ -1182,16 +1238,16 @@
                       : 'border-neutral-300'}"
                     onclick={removeSelectedAblauf}
                     disabled={selectedAblaufIdx === null || verseOrder.length === 0}
-                    title="Ausgewählten Teil aus Ablauf entfernen"
+                    title={t('editor.removePart')}
                   >
-                    ✕ Löschen
+                    {t('editor.removePart')}
                   </button>
                 </div>
 
                 <!-- Quick-Add Chips for detected sections in song -->
                 {#if detectedSections.length > 0}
                   <div class="mt-2">
-                    <span class="text-[10px] opacity-70 font-semibold block mb-1">Verfügbare Teile anfügen:</span>
+                    <span class="text-[10px] opacity-70 font-semibold block mb-1">{t('editor.availableParts')}</span>
                     <div class="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
                       {#each detectedSections as sec}
                         {@const color = getSectionColor(sec)}
@@ -1200,7 +1256,7 @@
                           class="px-1.5 py-0.5 rounded text-[10px] font-bold border hover:opacity-80 transition cursor-pointer flex items-center gap-1"
                           style="border-color: {color.hex}; color: {color.hex};"
                           onclick={() => appendSectionToAblauf(sec)}
-                          title="'+ {sec}' zur Reihenfolge hinzufügen"
+                          title={t('editor.appendSectionTooltip', { sec })}
                         >
                           <span>+</span>
                           <span>{sec}</span>
@@ -1215,7 +1271,7 @@
                   <input
                     type="text"
                     bind:value={newOrderPartInput}
-                    placeholder="Eigener Teil..."
+                    placeholder={t('editor.customPartPlaceholder')}
                     class="flex-1 px-2 py-0.5 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
                       ? 'bg-neutral-900 border-neutral-700 text-white'
                       : 'bg-white border-neutral-300 text-neutral-900'}"
@@ -1227,7 +1283,7 @@
                     type="button"
                     class="w-6 h-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center cursor-pointer transition shadow-2xs"
                     onclick={() => addCustomOrderPart(newOrderPartInput)}
-                    title="Zum Ablauf hinzufügen"
+                    title={t('editor.addCustomPartTooltip')}
                   >
                     +
                   </button>
@@ -1240,7 +1296,7 @@
                   ? 'bg-neutral-900/60 border-neutral-700'
                   : 'bg-white border-neutral-400'}"
               >
-                <span class="font-bold">Anzahl Sprachen</span>
+                <span class="font-bold">{t('editor.langCount')}</span>
                 <div class="flex items-center gap-3">
                   {#each [1, 2, 3, 4] as count}
                     <label class="flex items-center gap-1 text-xs cursor-pointer">
@@ -1256,7 +1312,7 @@
                   {/each}
                 </div>
                 <p class="text-[10px] opacity-70 leading-tight">
-                  Die einzelnen Sprachen werden im Text zeilenweise untereinander geschrieben.
+                  {t('editor.langCountHint')}
                 </p>
               </div>
 
@@ -1267,15 +1323,15 @@
                   ? 'bg-amber-400 hover:bg-amber-300 text-neutral-950 border-amber-500'
                   : 'bg-[#ffff99] hover:bg-[#ffff77] text-neutral-900 border-neutral-400'}"
                 onclick={insertSlideSeparator}
-                title="Trennt die Folie an der aktuellen Cursorposition mit '---'"
+                title={t('editor.splitSlideTooltip')}
               >
-                Seiten mit --- trennen
+                {t('editor.splitSlideBtn')}
               </button>
 
               <!-- Chord status notice (strictly only when guitar chords exist) -->
               {#if hasChords}
                 <div class="text-red-600 font-bold text-xs text-center mt-0.5">
-                  Dieser Song besitzt Akkorde.
+                  {t('editor.hasChordsNotice')}
                 </div>
               {/if}
             </div>
@@ -1287,16 +1343,16 @@
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">Urheberrechte & Musikalische Daten</div>
+            <div class="font-bold text-sm border-b pb-1">{t('editor.copyrightsTitle')}</div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div class="flex flex-col gap-1">
-                <label for="author-input" class="font-bold">Autor / Lieddichter / Komponist (#Author):</label>
+                <label for="author-input" class="font-bold">{t('editor.authorLabel')}</label>
                 <input
                   id="author-input"
                   type="text"
                   bind:value={author}
-                  placeholder="z.B. Albert Frey"
+                  placeholder={t('editor.authorPlaceholder')}
                   class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
@@ -1304,12 +1360,12 @@
               </div>
 
               <div class="flex flex-col gap-1">
-                <label for="ccli-input" class="font-bold">CCLI-Liednummer (#CCLI):</label>
+                <label for="ccli-input" class="font-bold">{t('editor.ccliLabel')}</label>
                 <input
                   id="ccli-input"
                   type="text"
                   bind:value={ccli}
-                  placeholder="z.B. 1234567"
+                  placeholder={t('editor.ccliPlaceholder')}
                   class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
@@ -1317,12 +1373,12 @@
               </div>
 
               <div class="flex flex-col gap-1">
-                <label for="copyright-input" class="font-bold">Copyright / Verlag (#Copyright):</label>
+                <label for="copyright-input" class="font-bold">{t('editor.copyrightLabel')}</label>
                 <input
                   id="copyright-input"
                   type="text"
                   bind:value={copyright}
-                  placeholder="z.B. © 2005 Gerth Medien"
+                  placeholder={t('editor.copyrightPlaceholder')}
                   class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
@@ -1330,12 +1386,12 @@
               </div>
 
               <div class="flex flex-col gap-1">
-                <label for="key-input" class="font-bold">Tonart (#Key):</label>
+                <label for="key-input" class="font-bold">{t('editor.keyLabel')}</label>
                 <input
                   id="key-input"
                   type="text"
                   bind:value={musicalKey}
-                  placeholder="z.B. D, Em, G, A"
+                  placeholder={t('editor.keyPlaceholder')}
                   class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
@@ -1343,12 +1399,12 @@
               </div>
 
               <div class="flex flex-col gap-1">
-                <label for="speed-input" class="font-bold">Tempo (BPM / #Speed):</label>
+                <label for="speed-input" class="font-bold">{t('editor.speedLabel')}</label>
                 <input
                   id="speed-input"
                   type="number"
                   bind:value={speed}
-                  placeholder="z.B. 72"
+                  placeholder={t('editor.speedPlaceholder')}
                   class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
@@ -1356,12 +1412,12 @@
               </div>
 
               <div class="flex flex-col gap-1">
-                <label for="lang2-input" class="font-bold">Zweitsprachiger Titel (#TitleLang2):</label>
+                <label for="lang2-input" class="font-bold">{t('editor.titleLang2Label')}</label>
                 <input
                   id="lang2-input"
                   type="text"
                   bind:value={titleLang2}
-                  placeholder="z.B. Bless the Lord, O My Soul"
+                  placeholder={t('editor.titleLang2Placeholder')}
                   class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
@@ -1376,10 +1432,10 @@
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">Schriftart & Foliendarstellung</div>
+            <div class="font-bold text-sm border-b pb-1">{t('editor.formatTitle')}</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div class="flex flex-col gap-1">
-                <label for="font-family-select" class="font-bold">Schriftart (#Font):</label>
+                <label for="font-family-select" class="font-bold">{t('editor.fontLabel')}</label>
                 <select
                   id="font-family-select"
                   bind:value={fontFamily}
@@ -1387,7 +1443,7 @@
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 >
-                  <option value="Arial">Arial (Standard)</option>
+                  <option value="Arial">{t('editor.fontArialStandard')}</option>
                   <option value="Segoe UI">Segoe UI</option>
                   <option value="Inter">Inter</option>
                   <option value="Roboto">Roboto</option>
@@ -1397,7 +1453,7 @@
               </div>
 
               <div class="flex flex-col gap-1">
-                <label for="font-size-input" class="font-bold">Schriftgröße ({fontSize}px / #FontSize):</label>
+                <label for="font-size-input" class="font-bold">{t('editor.fontSizeLabel', { size: fontSize })}</label>
                 <div class="flex items-center gap-2">
                   <input
                     id="font-size-input"
@@ -1419,28 +1475,28 @@
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">Hintergrundbild & Darstellung</div>
+            <div class="font-bold text-sm border-b pb-1">{t('editor.bgTitle')}</div>
             <p class="text-xs opacity-75">
-              Wähle ein Hintergrundbild oder eine Farbfläche für diesen Song aus.
+              {t('editor.bgDesc')}
             </p>
             <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-2">
               <button
                 type="button"
                 class="aspect-video rounded-lg border-2 border-blue-500 bg-gradient-to-b from-[#608ebf] via-[#4a7aa8] to-[#3a6691] flex items-center justify-center text-white text-xs font-bold shadow-xs cursor-pointer"
               >
-                Klassisch Blau
+                {t('editor.bgClassicBlue')}
               </button>
               <button
                 type="button"
                 class="aspect-video rounded-lg border border-neutral-600 bg-black flex items-center justify-center text-white text-xs font-bold shadow-xs cursor-pointer hover:border-neutral-400"
               >
-                Schwarz
+                {t('editor.bgBlack')}
               </button>
               <button
                 type="button"
                 class="aspect-video rounded-lg border border-neutral-600 bg-gradient-to-br from-indigo-950 via-slate-900 to-black flex items-center justify-center text-white text-xs font-bold shadow-xs cursor-pointer hover:border-neutral-400"
               >
-                Modern Nacht
+                {t('editor.bgModernNight')}
               </button>
             </div>
           </div>
@@ -1451,16 +1507,16 @@
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">Verknüpfte Mediendateien</div>
+            <div class="font-bold text-sm border-b pb-1">{t('editor.mediaTitle')}</div>
             <div class="flex flex-col gap-3 text-xs">
               <div class="flex flex-col gap-1">
-                <label for="audio-file-input" class="font-bold">Audio-Begleitdatei (#AudioFile):</label>
+                <label for="audio-file-input" class="font-bold">{t('editor.audioFileLabel')}</label>
                 <div class="flex items-center gap-2">
                   <input
                     id="audio-file-input"
                     type="text"
                     bind:value={audioFile}
-                    placeholder="Pfad zu MP3, WAV oder OGG Begleittrack..."
+                    placeholder={t('editor.audioFilePlaceholder')}
                     class="flex-1 px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                       ? 'bg-neutral-900 border-neutral-700 text-white'
                       : 'bg-white border-neutral-300'}"
@@ -1470,21 +1526,21 @@
                     class="px-3 py-1.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold {presentation.theme === 'dark'
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
-                    onclick={() => alert('Dateiauswahl für Audio wird über Dateidialog geladen.')}
+                    onclick={() => alert(t('editor.audioBrowseAlert'))}
                   >
-                    Durchsuchen...
+                    {t('editor.browseBtn')}
                   </button>
                 </div>
               </div>
 
               <div class="flex flex-col gap-1">
-                <label for="chordsheet-input" class="font-bold">Notenblatt / Chordsheet (#Chordsheet):</label>
+                <label for="chordsheet-input" class="font-bold">{t('editor.chordsheetLabel')}</label>
                 <div class="flex items-center gap-2">
                   <input
                     id="chordsheet-input"
                     type="text"
                     bind:value={chordsheetFile}
-                    placeholder="Pfad zu Notenblatt PDF oder Bild..."
+                    placeholder={t('editor.chordsheetPlaceholder')}
                     class="flex-1 px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
                       ? 'bg-neutral-900 border-neutral-700 text-white'
                       : 'bg-white border-neutral-300'}"
@@ -1494,9 +1550,9 @@
                     class="px-3 py-1.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold {presentation.theme === 'dark'
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
-                    onclick={() => alert('Dateiauswahl für Notenblatt wird über Dateidialog geladen.')}
+                    onclick={() => alert(t('editor.chordsheetBrowseAlert'))}
                   >
-                    Durchsuchen...
+                    {t('editor.browseBtn')}
                   </button>
                 </div>
               </div>
@@ -1509,9 +1565,9 @@
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">Kategorien & Schlagwörter</div>
+            <div class="font-bold text-sm border-b pb-1">{t('editor.categoriesTitle')}</div>
             <div class="flex flex-wrap gap-2 text-xs">
-              {#each ['Lobpreis & Anbetung', 'Dank', 'Kreuz & Gnade', 'Glaube', 'Gemeinde', 'Abendmahl', 'Taufe', 'Ostern', 'Weihnachten', 'Kinderlieder'] as tag}
+              {#each standardCategories as tag}
                 {@const isSelected = categories.includes(tag)}
                 <button
                   type="button"
@@ -1532,7 +1588,7 @@
               <input
                 type="text"
                 bind:value={newCategoryInput}
-                placeholder="Eigene Kategorie..."
+                placeholder={t('editor.customCategoryPlaceholder')}
                 class="px-2.5 py-1 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
                   ? 'bg-neutral-900 border-neutral-700 text-white'
                   : 'bg-white border-neutral-300'}"
@@ -1553,7 +1609,7 @@
                   }
                 }}
               >
-                + Hinzufügen
+                {t('editor.addCategoryBtn')}
               </button>
             </div>
           </div>

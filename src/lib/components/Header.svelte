@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '$lib/i18n';
+  import { t, i18n } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { DisplayMode, AspectRatio, SongSearchResult } from '$lib/types/models';
   import ModernIcon from '$lib/components/icons/ModernIcon.svelte';
@@ -89,48 +89,48 @@
   >
     <div class="flex items-center space-x-0.5 shrink-0 overflow-x-auto max-w-[calc(100vw-280px)]">
       <!-- File Tools -->
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Neu">
+      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title={t('toolbar.new')}>
         <SongBeamerIcon name="new" size={21} />
       </button>
       <button
         type="button"
         class="p-1 hover:bg-black/10 rounded transition cursor-pointer"
         onclick={() => presentation.openSongFileDialog()}
-        title="Öffnen (Strg/Cmd+O)"
+        title={t('toolbar.openSngFile')}
       >
         <SongBeamerIcon name="open" size={21} />
       </button>
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Speichern">
+      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title={t('toolbar.save')}>
         <SongBeamerIcon name="save" size={21} />
       </button>
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Drucken">
+      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title={t('toolbar.print')}>
         <SongBeamerIcon name="print" size={21} />
       </button>
       <button
         type="button"
         class="p-1 hover:bg-black/10 rounded transition cursor-pointer"
         onclick={() => presentation.openSongEditor()}
-        title="Song bearbeiten (Strg/Cmd+E)"
+        title={t('toolbar.editSong')}
       >
         <SongBeamerIcon name="edit" size={21} />
       </button>
       <div class="w-px h-6 bg-neutral-400/40 mx-0.5"></div>
 
       <!-- Media Insertion Tools -->
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Bibelstelle">
+      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title={t('toolbar.bible')}>
         <SongBeamerIcon name="bible" size={21} />
       </button>
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Video">
+      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title={t('toolbar.mediaVideo')}>
         <SongBeamerIcon name="video" size={21} />
       </button>
-      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title="Audio">
+      <button type="button" class="p-1 hover:bg-black/10 rounded transition" title={t('toolbar.mediaMp3')}>
         <SongBeamerIcon name="audio" size={21} />
       </button>
       <button
         type="button"
         class="p-1 hover:bg-black/10 rounded transition cursor-pointer"
         onclick={() => presentation.openSongFileDialog()}
-        title="Lieddatei (.sng) hinzufügen"
+        title={t('toolbar.addSngFile')}
       >
         <SongBeamerIcon name="song" size={21} />
       </button>
@@ -145,7 +145,7 @@
       <button
         type="button"
         class="p-1 hover:bg-black/10 rounded transition opacity-80 hover:opacity-100"
-        title="Live-Video (Kamera-Eingang)"
+        title={t('toolbar.cameraVideo')}
       >
         <SongBeamerIcon name="camera" size={21} />
       </button>
@@ -196,7 +196,7 @@
           : 'border-transparent opacity-40 cursor-not-allowed'}"
         onclick={() => handleCloseBeamer()}
         disabled={!presentation.isBeamerActive}
-        title={presentation.isBeamerActive ? "Zweiten Bildschirm freigeben (Beamer beenden)" : "Keine Präsentation aktiv"}
+        title={presentation.isBeamerActive ? t('toolbar.closeBeamerTooltip') : t('toolbar.noPresentationActive')}
       >
         <SongBeamerIcon name="screen-close" size={23} />
       </button>
@@ -208,7 +208,7 @@
         type="button"
         class="p-1 hover:bg-black/10 rounded transition"
         onclick={() => presentation.nextSlide()}
-        title="Weiter / Play"
+        title={t('toolbar.forwardPlay')}
       >
         <SongBeamerIcon name="play" size={19} />
       </button>
@@ -216,7 +216,7 @@
         type="button"
         class="p-1 hover:bg-black/10 rounded transition"
         onclick={() => presentation.prevSlide()}
-        title="Vorherige Folie"
+        title={t('toolbar.prevSlide')}
       >
         <SongBeamerIcon name="prev" size={19} />
       </button>
@@ -224,7 +224,7 @@
         type="button"
         class="p-1 hover:bg-black/10 rounded transition"
         onclick={() => presentation.nextSlide()}
-        title="Nächste Folie"
+        title={t('toolbar.nextSlide')}
       >
         <SongBeamerIcon name="next" size={19} />
       </button>
@@ -276,7 +276,7 @@
                     </span>
                   {/if}
                   <span class="opacity-50 font-medium">
-                    {res.slide_count} Folien
+                    {res.slide_count} {res.slide_count === 1 ? t('section.slide') : t('section.slidePlural')}
                   </span>
                 </div>
               </button>
@@ -387,7 +387,7 @@
             : 'opacity-30 border-slate-200 text-slate-400 cursor-not-allowed'}"
         onclick={() => handleCloseBeamer()}
         disabled={!presentation.isBeamerActive}
-        title={presentation.isBeamerActive ? "Zweiten Bildschirm freigeben (Beamer beenden)" : "Keine Präsentation aktiv"}
+        title={presentation.isBeamerActive ? t('toolbar.closeBeamerTooltip') : t('toolbar.noPresentationActive')}
       >
         <ModernIcon name="screen-close" size={17} />
       </button>
@@ -496,7 +496,7 @@
                   </span>
                 {/if}
                 <span class="opacity-50 font-medium">
-                  {res.slide_count} Folien
+                  {res.slide_count} {res.slide_count === 1 ? t('section.slide') : t('section.slidePlural')}
                 </span>
               </div>
             </button>
@@ -514,10 +514,10 @@
           ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
           : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'}"
         onclick={() => presentation.openSongFileDialog()}
-        title="Lieddatei (.sng) öffnen (Strg/Cmd+O)"
+        title={t('toolbar.openSngFile')}
       >
         <span>📂</span>
-        <span class="hidden md:inline">Öffnen</span>
+        <span class="hidden md:inline">{t('toolbar.open')}</span>
       </button>
 
       <!-- Edit Song Button -->
@@ -527,10 +527,10 @@
           ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
           : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'}"
         onclick={() => presentation.openSongEditor()}
-        title="Lied bearbeiten (Strg/Cmd+E)"
+        title={t('toolbar.editSong')}
       >
         <span>✏️</span>
-        <span class="hidden md:inline">Bearbeiten</span>
+        <span class="hidden md:inline">{t('toolbar.edit')}</span>
       </button>
 
       <!-- Aspect Ratio Selector -->
@@ -595,6 +595,18 @@
         {:else}
           <ModernIcon name="moon" size={16} />
         {/if}
+      </button>
+
+      <!-- Language Switcher (DE / EN) -->
+      <button
+        type="button"
+        class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition {presentation.theme === 'dark'
+          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
+          : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'}"
+        onclick={() => i18n.setLocale(i18n.locale === 'de' ? 'en' : 'de')}
+        title={i18n.locale === 'de' ? t('toolbar.switchToEnglish') : t('toolbar.switchToGerman')}
+      >
+        {i18n.locale.toUpperCase()}
       </button>
 
       <!-- App Settings Modal -->

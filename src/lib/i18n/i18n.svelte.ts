@@ -13,10 +13,19 @@ const dictionaries: Record<SupportedLocale, Dictionary> = {
 };
 
 class I18nManager {
-  locale = $state<SupportedLocale>('en');
+  locale = $state<SupportedLocale>(
+    typeof localStorage !== 'undefined' && (localStorage.getItem('noah_locale') === 'de' || localStorage.getItem('noah_locale') === 'en')
+      ? (localStorage.getItem('noah_locale') as SupportedLocale)
+      : typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('de')
+      ? 'de'
+      : 'en'
+  );
 
   setLocale(newLocale: SupportedLocale) {
     this.locale = newLocale;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_locale', newLocale);
+    }
     if (typeof document !== 'undefined') {
       document.documentElement.lang = newLocale;
     }

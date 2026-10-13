@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '$lib/i18n';
+  import { t, i18n } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import SongBeamerIcon from '$lib/components/icons/SongBeamerIcon.svelte';
   import type { ScheduleItem, Slide, LyricLine, SongSearchResult } from '$lib/types/models';
@@ -598,6 +598,15 @@
       </button>
       <button
         type="button"
+        class="px-1.5 font-bold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none cursor-pointer"
+        style="height: calc(20px * var(--ui-scale)); font-size: calc(10px * var(--ui-scale));"
+        title={i18n.locale === 'de' ? t('toolbar.switchToEnglish') : t('toolbar.switchToGerman')}
+        onclick={() => i18n.setLocale(i18n.locale === 'de' ? 'en' : 'de')}
+      >
+        {i18n.locale.toUpperCase()}
+      </button>
+      <button
+        type="button"
         class="px-1.5 font-semibold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         title={t('toolbar.settings')}
@@ -679,7 +688,7 @@
         style="height: calc(24px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
       >
         <span class="text-neutral-500 font-mono">
-          {presentation.schedule.length} {presentation.schedule.length === 1 ? 'Eintrag' : 'Einträge'}
+          {presentation.schedule.length === 1 ? t('schedule.itemCountOne') : t('schedule.itemCount', { count: presentation.schedule.length })}
         </span>
         <div class="flex items-center space-x-1">
           <button
@@ -745,7 +754,7 @@
           {presentation.activeSong?.metadata.title ?? t('song.noSongLoaded')}
         </span>
         <span class="font-mono text-neutral-500">
-          {presentation.activeSong?.slides.length ?? 0} {t('section.slide')}n
+          {presentation.activeSong?.slides.length ?? 0} {presentation.activeSong?.slides.length === 1 ? t('section.slide') : t('section.slidePlural')}
         </span>
       </div>
 
@@ -843,11 +852,11 @@
         >
           {#if presentation.displayMode === 'black'}
             <div class="absolute inset-0 bg-black flex items-center justify-center">
-              <span class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">BLACK</span>
+              <span class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">{t('status.black')}</span>
             </div>
           {:else if presentation.displayMode === 'clear_text'}
             <div class="absolute inset-0 bg-neutral-950 flex items-center justify-center">
-              <span class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">CLEAR</span>
+              <span class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">{t('status.clear')}</span>
             </div>
           {:else if presentation.displayMode === 'logo'}
             <div class="absolute inset-0 bg-neutral-900 flex flex-col items-center justify-center">
@@ -886,7 +895,7 @@
             onclick={() => presentation.setDisplayMode('normal')}
           >
             <SongBeamerIcon name="slide-text" size={iconPx} />
-            <span>F4 Text</span>
+            <span>{t('toolbar.btnText')}</span>
           </button>
           <button
             type="button"
@@ -897,7 +906,7 @@
             onclick={() => presentation.setDisplayMode('black')}
           >
             <SongBeamerIcon name="screen-black" size={iconPx} />
-            <span>F5 Black</span>
+            <span>{t('toolbar.btnBlack')}</span>
           </button>
           <button
             type="button"
@@ -908,7 +917,7 @@
             onclick={() => presentation.setDisplayMode('clear_text')}
           >
             <SongBeamerIcon name="slide-clear" size={iconPx} />
-            <span>F6 Clear</span>
+            <span>{t('toolbar.btnClear')}</span>
           </button>
           <button
             type="button"
@@ -919,7 +928,7 @@
             onclick={() => presentation.setDisplayMode('logo')}
           >
             <span class="font-bold text-amber-600">N</span>
-            <span>F7 Logo</span>
+            <span>{t('toolbar.btnLogo')}</span>
           </button>
         </div>
       </div>

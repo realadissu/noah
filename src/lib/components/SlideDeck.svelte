@@ -49,7 +49,7 @@
                 {#if isLive}
                   <span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-500 border border-emerald-500/50">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    LIVE
+                    {t('status.live')}
                   </span>
                 {/if}
                 <span class="text-red-500 font-mono text-xs font-bold">

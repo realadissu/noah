@@ -12,6 +12,7 @@ import type {
   FileLoadResult,
 } from '$lib/types/models';
 import { parseSng } from '$lib/utils/sngParser';
+import { t, i18n } from '$lib/i18n';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
@@ -569,13 +570,16 @@ class PresentationStore {
   }
 
   createNewSong() {
+    const isDe = i18n.locale === 'de';
+    const defaultLabel = isDe ? 'Vers 1' : 'Verse 1';
+    const defaultText = isDe ? 'Text hier eingeben...' : 'Enter lyrics here...';
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'song-' + Date.now();
     const newSong: Song = {
       id,
       metadata: {
-        title: 'Neues Lied',
+        title: isDe ? 'Neues Lied' : 'New Song',
         author: '',
-        verse_order: ['Vers 1'],
+        verse_order: [defaultLabel],
         lang_count: 1,
         custom_tags: {},
       },
@@ -583,14 +587,14 @@ class PresentationStore {
         {
           id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'slide-' + Date.now(),
           index: 0,
-          label: 'Vers 1',
+          label: defaultLabel,
           section: { type: 'Verse', value: 1 },
-          raw_content: 'Text hier eingeben...',
+          raw_content: defaultText,
           lines: [
             {
-              raw_text: 'Text hier eingeben...',
+              raw_text: defaultText,
               language_index: 0,
-              tokens: [{ kind: 'Text', text: 'Text hier eingeben...' }],
+              tokens: [{ kind: 'Text', text: defaultText }],
             },
           ],
         },

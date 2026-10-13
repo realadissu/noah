@@ -223,7 +223,7 @@
           <!-- Drag handle indicator -->
           <span
             class="text-[11px] opacity-40 group-hover:opacity-80 shrink-0 select-none pointer-events-none {presentation.uiMode === 'classic' ? 'text-neutral-500' : 'text-slate-400'}"
-            title="Drag to reorder"
+            title={t('schedule.dragHint')}
           >
             ⠿
           </span>
