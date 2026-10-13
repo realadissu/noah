@@ -41,7 +41,7 @@ pub fn serialize_sng(song: &Song) -> String {
     }
 
     if !song.metadata.verse_order.is_empty() {
-        let _ = writeln!(out, "#Format={}", song.metadata.verse_order.join(","));
+        let _ = writeln!(out, "#VerseOrder={}", song.metadata.verse_order.join(","));
     }
 
     if song.metadata.lang_count > 1 {

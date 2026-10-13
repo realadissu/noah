@@ -175,7 +175,7 @@ fn apply_header_tag(
         "speed" => meta.speed = val.parse::<u32>().ok(),
         "key" => meta.musical_key = Some(val.to_string()),
         "fontsize" => meta.font_size = val.parse::<u32>().ok(),
-        "format" => {
+        "verseorder" => {
             meta.verse_order = val
                 .split(',')
                 .map(str::trim)
