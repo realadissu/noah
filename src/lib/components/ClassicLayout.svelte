@@ -800,11 +800,11 @@
                   >
                     <!-- Lyrics Text Preview (Prominent, bold, readable thumbnail parity) -->
                     <div
-                      class="w-full text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] px-1"
+                      class="w-full text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
                       style="font-size: {calculateSlideFontSize(slide, false, presentation.aspectRatio)}; line-height: 1.35;"
                     >
                       {#each getAudienceLines(slide) as line}
-                        <p class="leading-snug whitespace-nowrap overflow-visible">{line}</p>
+                        <p class="whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit;">{line}</p>
                       {/each}
                     </div>
                   </div>
@@ -858,11 +858,11 @@
               style="padding: 5cqh 6cqw;"
             >
               <div
-                class="w-full text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] px-1"
+                class="w-full text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
                 style="font-size: {calculateSlideFontSize(presentation.activeSlide, false, presentation.aspectRatio)}; line-height: 1.35;"
               >
                 {#each getAudienceLines(presentation.activeSlide) as line}
-                  <p class="leading-snug whitespace-nowrap overflow-visible">{line}</p>
+                  <p class="whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit;">{line}</p>
                 {/each}
               </div>
             </div>

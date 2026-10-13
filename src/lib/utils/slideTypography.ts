@@ -61,7 +61,7 @@ export function calculateSlideFontSize(
   const maxLineLen = Math.max(...lines.map((l) => l.trim().length), 1);
 
   // Line-height multiplier (more vertical headroom needed if chords are shown)
-  const lineFactor = showChords ? 2.1 : 1.35;
+  const lineFactor = showChords ? 2.1 : 1.38;
 
   // Aspect ratio height-to-width factor
   // In CSS container queries, 1cqw is 1% container width.
@@ -76,15 +76,15 @@ export function calculateSlideFontSize(
     aspectFactor = 0.625;
   }
 
-  // Safe Margins (SongBeamer standard):
+  // Safe Margins (SongBeamer standard: 6% horizontal, 6% vertical safe margin):
   // Safe width: 100 - 2 * 6% = 88cqw
-  // Safe height: (100 - 2 * 5%) * aspectFactor = 90 * aspectFactor (in cqw units)
+  // Safe height: (100 - 2 * 6%) * aspectFactor = 88 * aspectFactor (in cqw units)
   const safeWidthCqw = 88.0;
-  const safeHeightCqw = 90.0 * aspectFactor;
+  const safeHeightCqw = 88.0 * aspectFactor;
 
   // 1. Horizontal Boundary: longest line must fit without wrapping
-  // Average proportional glyph width for standard sans-serif (Segoe UI, Arial, Inter) is ~0.47em
-  const glyphRatio = 0.47;
+  // Bold sans-serif text (Segoe UI, Arial, Inter, System UI) with German umlauts & capitals has max glyph ratio ~0.54em
+  const glyphRatio = 0.54;
   const boundaryHorizontal = safeWidthCqw / (maxLineLen * glyphRatio);
 
   // 2. Vertical Boundary: all lines must fit within safe height
@@ -93,8 +93,8 @@ export function calculateSlideFontSize(
   // 3. Optimal size: whichever boundary hits the limit first defines the font size
   const optimal = Math.min(boundaryHorizontal, boundaryVertical);
 
-  // Presentation bounds (1.8cqw to 14.0cqw)
-  const clamped = Math.min(14.0, Math.max(1.8, optimal));
+  // Presentation bounds (1.8cqw to 12.0cqw)
+  const clamped = Math.min(12.0, Math.max(1.8, optimal));
 
   return `${clamped.toFixed(2)}cqw`;
 }

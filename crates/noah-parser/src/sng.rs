@@ -74,7 +74,7 @@ pub fn parse_sng_str(content: &str) -> Result<Song, SngParseError> {
 
         if header_complete {
             // In slide processing phase
-            if trimmed_line == "---" {
+            if trimmed_line == "---" || trimmed_line == "--" {
                 if !current_slide_lines.is_empty() {
                     slide_blocks.push(std::mem::take(&mut current_slide_lines));
                 }

@@ -35,7 +35,7 @@ export function parseSngText(content: string, fileName?: string): Song {
 
   const metadata: Record<string, string> = {};
   const customTags: Record<string, string> = {};
-  const slideBlocks: string[][] = [];
+  const slideBlocks: { lines: string[]; isContinuation: boolean }[] = [];
   let currentSlideLines: string[] = [];
   let inHeader = true;
 
@@ -66,9 +66,9 @@ export function parseSngText(content: string, fileName?: string): Song {
         currentSlideLines.push(rawLine);
       }
     } else {
-      if (trimmed === '---') {
+      if (trimmed === '---' || trimmed === '--') {
         if (currentSlideLines.length > 0) {
-          slideBlocks.push([...currentSlideLines]);
+          slideBlocks.push({ lines: [...currentSlideLines], isContinuation: trimmed === '--' });
           currentSlideLines = [];
         }
       } else {
@@ -78,7 +78,7 @@ export function parseSngText(content: string, fileName?: string): Song {
   }
 
   if (currentSlideLines.length > 0) {
-    slideBlocks.push(currentSlideLines);
+    slideBlocks.push({ lines: currentSlideLines, isContinuation: false });
   }
 
   // Derive title from #Title or fallback to filename or first line
@@ -94,12 +94,14 @@ export function parseSngText(content: string, fileName?: string): Song {
   const songId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'song-' + Date.now();
 
   const slides: Slide[] = [];
+  let lastLabel = 'Slide 1';
+  let lastSection: SectionType | undefined = undefined;
 
   for (let idx = 0; idx < slideBlocks.length; idx++) {
     const block = slideBlocks[idx];
-    if (block.length === 0) continue;
+    if (block.lines.length === 0) continue;
 
-    const firstLine = block[0].trim();
+    const firstLine = block.lines[0].trim();
     const sectionInfo = parseSectionTag(firstLine);
 
     let label: string;
@@ -109,11 +111,19 @@ export function parseSngText(content: string, fileName?: string): Song {
     if (sectionInfo) {
       label = sectionInfo.label;
       section = sectionInfo.section;
-      textLines = block.slice(1);
+      lastLabel = label;
+      lastSection = section;
+      textLines = block.lines.slice(1);
+    } else if (block.isContinuation && lastSection) {
+      label = lastLabel;
+      section = lastSection;
+      textLines = block.lines;
     } else {
       label = `Slide ${idx + 1}`;
       section = undefined;
-      textLines = block;
+      lastLabel = label;
+      lastSection = undefined;
+      textLines = block.lines;
     }
 
     // Clean empty lines at start and end
@@ -202,25 +212,27 @@ function parseSectionTag(firstLine: string): { label: string; section: SectionTy
  * Parses chord brackets like "[D]Lobe den Herrn, [G]meine Seele" into structured LyricLine tokens.
  */
 export function parseLyricLine(rawText: string): LyricLine {
+  // Strip SongBeamer inline formatting/color codes (e.g. #C1, #GF, #0, #r)
+  const cleanedText = rawText.replace(/^#[A-Za-z0-9]+\s*/, '');
   const tokens: LyricToken[] = [];
   const regex = /\[([^\]]*)\]/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = regex.exec(rawText)) !== null) {
+  while ((match = regex.exec(cleanedText)) !== null) {
     const chord = match[1];
     const matchStart = match.index;
 
     // Any text preceding the chord
     if (matchStart > lastIndex) {
-      const textBefore = rawText.slice(lastIndex, matchStart);
+      const textBefore = cleanedText.slice(lastIndex, matchStart);
       tokens.push({ kind: 'Text', text: textBefore });
     }
 
     lastIndex = regex.lastIndex;
 
     // Look ahead to text following this chord until next chord or line end
-    const nextMatch = rawText.slice(lastIndex);
+    const nextMatch = cleanedText.slice(lastIndex);
     const nextBracket = nextMatch.indexOf('[');
     const textAfter = nextBracket === -1 ? nextMatch : nextMatch.slice(0, nextBracket);
 
@@ -234,12 +246,12 @@ export function parseLyricLine(rawText: string): LyricLine {
   }
 
   // Any remaining text after last chord
-  if (lastIndex < rawText.length) {
-    tokens.push({ kind: 'Text', text: rawText.slice(lastIndex) });
+  if (lastIndex < cleanedText.length) {
+    tokens.push({ kind: 'Text', text: cleanedText.slice(lastIndex) });
   }
 
   if (tokens.length === 0) {
-    tokens.push({ kind: 'Text', text: rawText });
+    tokens.push({ kind: 'Text', text: cleanedText });
   }
 
   return {

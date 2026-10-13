@@ -231,11 +231,11 @@
   >
     {#if slideA}
       <div
-        class="w-full text-center font-bold px-1"
+        class="w-full text-center font-bold"
         style="font-size: {calculateSlideFontSize(slideA, false, aspectRatio)}; line-height: 1.35;"
       >
         {#each getAudienceLines(slideA) as line}
-          <p class="leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible">
+          <p class="whitespace-nowrap overflow-visible m-0 p-0 text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]" style="line-height: inherit;">
             {line}
           </p>
         {/each}
@@ -250,11 +250,11 @@
   >
     {#if slideB}
       <div
-        class="w-full text-center font-bold px-1"
+        class="w-full text-center font-bold"
         style="font-size: {calculateSlideFontSize(slideB, false, aspectRatio)}; line-height: 1.35;"
       >
         {#each getAudienceLines(slideB) as line}
-          <p class="leading-snug tracking-wide text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible">
+          <p class="whitespace-nowrap overflow-visible m-0 p-0 text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]" style="line-height: inherit;">
             {line}
           </p>
         {/each}

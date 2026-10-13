@@ -98,7 +98,7 @@
                           {/each}
                         </div>
                       {:else}
-                        <p class="font-bold tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible">
+                        <p class="font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit;">
                           {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
                         </p>
                       {/if}
