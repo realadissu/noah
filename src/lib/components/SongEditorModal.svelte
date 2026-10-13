@@ -29,10 +29,125 @@
   let categories = $state<string[]>([]);
   let newCategoryInput = $state<string>('');
 
-  // UI state
+  // UI & Chord state
   let isChordModalOpen = $state<boolean>(false);
   let newOrderPartInput = $state<string>('');
-  let viewMode = $state<'banners' | 'raw'>('banners');
+
+  // Editor DOM elements
+  let textareaEl = $state<HTMLTextAreaElement | null>(null);
+  let backdropEl = $state<HTMLDivElement | null>(null);
+  let currentSection = $state<string>('Vers 1');
+
+  // Drag & drop state for Ablauf box
+  let draggedAblaufIdx = $state<number | null>(null);
+  let targetAblaufIdx = $state<number | null>(null);
+
+  // Multilingual section keyword map
+  const SECTION_KEYWORD_MAP: Record<string, { kind: string; hex: string; defaultLabel: string }> = {
+    // German
+    vers: { kind: 'verse', hex: '#0078d7', defaultLabel: 'Vers' },
+    strophe: { kind: 'verse', hex: '#0078d7', defaultLabel: 'Strophe' },
+    refrain: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Refrain' },
+    kehrvers: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Kehrvers' },
+    chor: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Chor' },
+    bridge: { kind: 'bridge', hex: '#cc0000', defaultLabel: 'Bridge' },
+    brücke: { kind: 'bridge', hex: '#cc0000', defaultLabel: 'Brücke' },
+    'pre-chorus': { kind: 'prechorus', hex: '#008080', defaultLabel: 'Pre-Chorus' },
+    prechorus: { kind: 'prechorus', hex: '#008080', defaultLabel: 'Pre-Chorus' },
+    'vor-refrain': { kind: 'prechorus', hex: '#008080', defaultLabel: 'Vor-Refrain' },
+    vorrefrain: { kind: 'prechorus', hex: '#008080', defaultLabel: 'Vor-Refrain' },
+    intro: { kind: 'intro', hex: '#475569', defaultLabel: 'Intro' },
+    einleitung: { kind: 'intro', hex: '#475569', defaultLabel: 'Einleitung' },
+    outro: { kind: 'outro', hex: '#475569', defaultLabel: 'Outro' },
+    schluss: { kind: 'outro', hex: '#475569', defaultLabel: 'Schluss' },
+    coda: { kind: 'outro', hex: '#475569', defaultLabel: 'Coda' },
+    zwischenspiel: { kind: 'other', hex: '#1e40af', defaultLabel: 'Zwischenspiel' },
+    interlude: { kind: 'other', hex: '#1e40af', defaultLabel: 'Interlude' },
+    instrumental: { kind: 'other', hex: '#1e40af', defaultLabel: 'Instrumental' },
+    solo: { kind: 'other', hex: '#1e40af', defaultLabel: 'Solo' },
+    teil: { kind: 'other', hex: '#1e40af', defaultLabel: 'Teil' },
+
+    // English
+    verse: { kind: 'verse', hex: '#0078d7', defaultLabel: 'Verse' },
+    chorus: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Chorus' },
+    ending: { kind: 'outro', hex: '#475569', defaultLabel: 'Ending' },
+    part: { kind: 'other', hex: '#1e40af', defaultLabel: 'Part' },
+
+    // French
+    couplet: { kind: 'verse', hex: '#0078d7', defaultLabel: 'Couplet' },
+    pont: { kind: 'bridge', hex: '#cc0000', defaultLabel: 'Pont' },
+    fin: { kind: 'outro', hex: '#475569', defaultLabel: 'Fin' },
+
+    // Spanish / Portuguese / Italian
+    estrofa: { kind: 'verse', hex: '#0078d7', defaultLabel: 'Estrofa' },
+    estrofe: { kind: 'verse', hex: '#0078d7', defaultLabel: 'Estrofe' },
+    coro: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Coro' },
+    refrán: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Refrán' },
+    refrão: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Refrão' },
+    puente: { kind: 'bridge', hex: '#cc0000', defaultLabel: 'Puente' },
+    ponte: { kind: 'bridge', hex: '#cc0000', defaultLabel: 'Ponte' },
+    ritornello: { kind: 'chorus', hex: '#7e12d4', defaultLabel: 'Ritornello' },
+  };
+
+  function getSectionHeaderInfo(rawLine: string): { isHeader: boolean; hex: string; label: string } | null {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('//')) return null;
+
+    // Support SongBeamer internal $$M= tag or plaintext
+    const clean = line.replace(/^\$\$M=/, '').trim();
+    const lower = clean.toLowerCase();
+
+    // Extract first word (alphanumeric with hyphen)
+    const match = lower.match(/^([a-zäöüéèáàíóúñãõç-]+)/i);
+    if (!match) return null;
+
+    const firstWord = match[1];
+    const info = SECTION_KEYWORD_MAP[firstWord];
+    if (info) {
+      return {
+        isHeader: true,
+        hex: info.hex,
+        label: clean,
+      };
+    }
+
+    return null;
+  }
+
+  // Determine section color for Ablauf items
+  function getSectionColor(label: string): { hex: string } {
+    const info = getSectionHeaderInfo(label);
+    if (info) return { hex: info.hex };
+    return { hex: '#0078d7' };
+  }
+
+  // Strict check if song currently contains valid guitar chords (avoiding false positives like [Denn] or [1])
+  function hasValidGuitarChords(text: string): boolean {
+    const bracketMatches = text.match(/\[([^\]]+)\]/g);
+    if (!bracketMatches) return false;
+
+    const VALID_ROOTS = ['C', 'C#', 'DB', 'D', 'D#', 'EB', 'E', 'F', 'F#', 'GB', 'G', 'G#', 'AB', 'A', 'A#', 'BB', 'B', 'H'];
+
+    for (const m of bracketMatches) {
+      const inner = m.slice(1, -1).trim();
+      const chordMatch = inner.match(/^([A-Ha-h][b#]?)(.*)$/);
+      if (chordMatch) {
+        const root = chordMatch[1].toUpperCase();
+        if (VALID_ROOTS.includes(root)) {
+          const suffix = chordMatch[2].trim().toLowerCase();
+          if (
+            suffix === '' ||
+            /^(m|min|maj|dim|aug|sus|add|[0-9]|\+|\-|\/|[A-Ha-h][b#]?)+$/.test(suffix)
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  const hasChords = $derived<boolean>(hasValidGuitarChords(editorText));
 
   // Reconstruct initial editor text from song slides
   function songToText(s: Song): string {
@@ -118,110 +233,73 @@
       categories = s.metadata.custom_tags['category']
         ? s.metadata.custom_tags['category'].split(',').map((x) => x.trim())
         : [];
+      updateCurrentSectionFromCursor();
     }
   });
 
-  // Check if song currently contains bracketed guitar chords
-  const hasChords = $derived<boolean>(/\[[A-Ha-h][b#]?[^\]]*\]/.test(editorText));
+  // Determine section at cursor position
+  function updateCurrentSectionFromCursor() {
+    if (!textareaEl) return;
+    const pos = textareaEl.selectionStart ?? 0;
+    const before = editorText.slice(0, pos);
+    const lines = before.split('\n');
 
-  // Determine section banner color matching SongBeamer authenticity
-  function getSectionColor(label: string): { bg: string; text: string; hex: string } {
-    const l = label.toLowerCase();
-    if (l.startsWith('vers') || l.startsWith('strophe') || l.startsWith('verse')) {
-      return { bg: 'bg-[#0078d7]', text: 'text-white', hex: '#0078d7' }; // Windows/SongBeamer Blue
-    }
-    if (l.startsWith('refrain') || l.startsWith('chorus') || l == 'chor') {
-      return { bg: 'bg-[#7e12d4]', text: 'text-white', hex: '#7e12d4' }; // SongBeamer Purple
-    }
-    if (l.startsWith('bridge')) {
-      return { bg: 'bg-[#cc0000]', text: 'text-white', hex: '#cc0000' }; // SongBeamer Crimson Red
-    }
-    if (l.startsWith('pre-chorus') || l.startsWith('prechorus')) {
-      return { bg: 'bg-[#008080]', text: 'text-white', hex: '#008080' }; // Teal
-    }
-    if (l.startsWith('intro') || l.startsWith('outro') || l.startsWith('coda')) {
-      return { bg: 'bg-[#475569]', text: 'text-white', hex: '#475569' }; // Slate
-    }
-    return { bg: 'bg-[#1e40af]', text: 'text-white', hex: '#1e40af' };
-  }
-
-  interface ParsedSlideBlock {
-    id: number;
-    section: string;
-    lyrics: string;
-  }
-
-  // Parse editorText into distinct slide blocks for visual banner rendering
-  const parsedBlocks = $derived<ParsedSlideBlock[]>(
-    editorText.split('\n---\n').map((block, id) => {
-      const lines = block.split('\n');
-      const firstLine = lines[0]?.trim() ?? '';
-      const isHeader =
-        firstLine.startsWith('$$M=') ||
-        /^(vers|verse|strophe|refrain|chorus|bridge|pre-chorus|intro|outro|coda|zwischenspiel|schluss)/i.test(firstLine);
-
-      if (isHeader) {
-        const cleanTag = firstLine.replace(/^\$\$M=/, '').trim();
-        return {
-          id,
-          section: cleanTag,
-          lyrics: lines.slice(1).join('\n'),
-        };
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const headerInfo = getSectionHeaderInfo(lines[i]);
+      if (headerInfo) {
+        currentSection = headerInfo.label;
+        return;
       }
-      return {
-        id,
-        section: id === 0 ? 'Vers 1' : `Folie ${id + 1}`,
-        lyrics: block,
-      };
-    })
-  );
+    }
 
-  function updateBlockLyrics(id: number, newLyrics: string) {
-    const blocks = [...parsedBlocks];
-    if (blocks[id]) {
-      blocks[id].lyrics = newLyrics;
-      editorText = blocks.map((b) => `${b.section}\n${b.lyrics}`.trim()).join('\n---\n');
+    // Fallback: check first header in whole text
+    const allLines = editorText.split('\n');
+    for (const l of allLines) {
+      const info = getSectionHeaderInfo(l);
+      if (info) {
+        currentSection = info.label;
+        return;
+      }
+    }
+    currentSection = 'Vers 1';
+  }
+
+  // Ablauf: add section currently under cursor to the end
+  function addCurrentSectionToAblauf() {
+    updateCurrentSectionFromCursor();
+    if (currentSection) {
+      verseOrder = [...verseOrder, currentSection];
     }
   }
 
-  function updateBlockSection(id: number, newSection: string) {
-    const blocks = [...parsedBlocks];
-    if (blocks[id]) {
-      blocks[id].section = newSection;
-      editorText = blocks.map((b) => `${b.section}\n${b.lyrics}`.trim()).join('\n---\n');
-    }
+  function addCustomOrderPart(part: string) {
+    if (!part.trim()) return;
+    verseOrder = [...verseOrder, part.trim()];
+    newOrderPartInput = '';
   }
 
-  function addSlideBlock(afterId: number) {
-    const blocks = [...parsedBlocks];
-    const newBlock: ParsedSlideBlock = {
-      id: blocks.length,
-      section: 'Refrain',
-      lyrics: '',
-    };
-    blocks.splice(afterId + 1, 0, newBlock);
-    editorText = blocks.map((b) => `${b.section}\n${b.lyrics}`.trim()).join('\n---\n');
+  function removeOrderPart(idx: number) {
+    verseOrder = verseOrder.filter((_, i) => i !== idx);
   }
 
-  function deleteSlideBlock(id: number) {
-    if (parsedBlocks.length <= 1) return;
-    const blocks = parsedBlocks.filter((_, idx) => idx !== id);
-    editorText = blocks.map((b) => `${b.section}\n${b.lyrics}`.trim()).join('\n---\n');
-  }
-
-  // Lightning button: automatically deduce verse order from section banners in text
-  function autoPopulateVerseOrder() {
+  // Lightning Auto-populate Ablauf
+  function autoPopulateAblauf() {
+    const allLines = editorText.split('\n');
     const detected: string[] = [];
-    for (const b of parsedBlocks) {
-      if (b.section && !detected.includes(b.section)) {
-        detected.push(b.section);
+    for (const l of allLines) {
+      const info = getSectionHeaderInfo(l);
+      if (info && !detected.includes(info.label)) {
+        detected.push(info.label);
       }
     }
-    // If standard Verse + Chorus detected, populate common flow
-    if (detected.some((s) => s.toLowerCase().startsWith('vers 1')) && detected.some((s) => s.toLowerCase().startsWith('refrain'))) {
+
+    if (
+      detected.some((s) => s.toLowerCase().startsWith('vers 1')) &&
+      detected.some((s) => s.toLowerCase().startsWith('refrain'))
+    ) {
       const order: string[] = [];
-      const verses = detected.filter((s) => s.toLowerCase().startsWith('vers'));
-      const chorus = detected.find((s) => s.toLowerCase().startsWith('refrain')) || 'Refrain';
+      const verses = detected.filter((s) => s.toLowerCase().startsWith('vers') || s.toLowerCase().startsWith('strophe'));
+      const chorus = detected.find((s) => s.toLowerCase().startsWith('refrain') || s.toLowerCase().startsWith('chorus')) || 'Refrain';
       const bridge = detected.find((s) => s.toLowerCase().startsWith('bridge'));
 
       for (const v of verses) {
@@ -238,14 +316,120 @@
     }
   }
 
-  function addOrderPart(part: string) {
-    if (!part.trim()) return;
-    verseOrder = [...verseOrder, part.trim()];
-    newOrderPartInput = '';
+  // Ablauf Drag & Drop reordering
+  function handleAblaufDragStart(e: DragEvent, idx: number) {
+    draggedAblaufIdx = idx;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+    }
   }
 
-  function removeOrderPart(idx: number) {
-    verseOrder = verseOrder.filter((_, i) => i !== idx);
+  function handleAblaufDragOver(e: DragEvent, idx: number) {
+    e.preventDefault();
+    if (draggedAblaufIdx !== null && draggedAblaufIdx !== idx) {
+      targetAblaufIdx = idx;
+    }
+  }
+
+  function handleAblaufDrop(e: DragEvent, idx: number) {
+    e.preventDefault();
+    if (draggedAblaufIdx !== null && draggedAblaufIdx !== idx) {
+      const items = [...verseOrder];
+      const [moved] = items.splice(draggedAblaufIdx, 1);
+      items.splice(idx, 0, moved);
+      verseOrder = items;
+    }
+    draggedAblaufIdx = null;
+    targetAblaufIdx = null;
+  }
+
+  function handleAblaufDragEnd() {
+    draggedAblaufIdx = null;
+    targetAblaufIdx = null;
+  }
+
+  // Point 5 & 6: Insertion & macOS Smart Dash prevention
+  function insertSlideSeparator() {
+    if (!textareaEl) {
+      editorText += '\n---\n';
+      return;
+    }
+
+    const start = textareaEl.selectionStart;
+    const end = textareaEl.selectionEnd;
+    const text = editorText;
+
+    const before = text.slice(0, start);
+    const after = text.slice(end);
+
+    const prefix = before.length === 0 || before.endsWith('\n') ? '' : '\n';
+    const suffix = after.length === 0 || after.startsWith('\n') ? '' : '\n';
+
+    const separator = `${prefix}---\n${suffix}`;
+    const newText = before + separator + after;
+    const newCursorPos = start + separator.length;
+
+    editorText = newText;
+    textareaEl.value = newText;
+    textareaEl.focus();
+    textareaEl.setSelectionRange(newCursorPos, newCursorPos);
+    updateCurrentSectionFromCursor();
+  }
+
+  function handleTextareaBeforeInput(e: InputEvent) {
+    // Intercept macOS smart dash substitution (em-dash U+2014 or en-dash U+2013)
+    if (e.data === '—' || e.data === '–') {
+      e.preventDefault();
+      if (!textareaEl) return;
+      const start = textareaEl.selectionStart;
+      const end = textareaEl.selectionEnd;
+      const val = textareaEl.value;
+      const nextVal = val.slice(0, start) + '---' + val.slice(end);
+      textareaEl.value = nextVal;
+      editorText = nextVal;
+      textareaEl.setSelectionRange(start + 3, start + 3);
+      updateCurrentSectionFromCursor();
+    }
+  }
+
+  function handleTextareaKeyDown(e: KeyboardEvent) {
+    if (e.key === '-' && textareaEl) {
+      const start = textareaEl.selectionStart;
+      if (start >= 2 && editorText.slice(start - 2, start) === '--') {
+        // Prevent macOS text replacement system hook
+        e.preventDefault();
+        const end = textareaEl.selectionEnd;
+        const val = textareaEl.value;
+        const nextVal = val.slice(0, start) + '-' + val.slice(end);
+        textareaEl.value = nextVal;
+        editorText = nextVal;
+        textareaEl.setSelectionRange(start + 1, start + 1);
+        updateCurrentSectionFromCursor();
+      }
+    }
+  }
+
+  function handleTextareaInput(e: Event) {
+    const target = e.target as HTMLTextAreaElement;
+    let val = target.value;
+    // Fallback: replace any smart dashes that slipped through
+    if (val.includes('—') || val.includes('–')) {
+      const selStart = target.selectionStart;
+      val = val.replaceAll('—', '---').replaceAll('–', '--');
+      target.value = val;
+      target.setSelectionRange(selStart, selStart);
+    }
+    editorText = val;
+    updateCurrentSectionFromCursor();
+  }
+
+  function handleScroll(e: Event) {
+    const target = e.target as HTMLTextAreaElement;
+    if (backdropEl) {
+      backdropEl.scrollTop = target.scrollTop;
+      backdropEl.scrollLeft = target.scrollLeft;
+    }
   }
 
   // Chord tools
@@ -258,14 +442,6 @@
     editorText = await presentation.stripChords(editorText);
   }
 
-  function insertSlideSeparator() {
-    if (viewMode === 'raw') {
-      editorText += '\n---\n';
-    } else {
-      addSlideBlock(parsedBlocks.length - 1);
-    }
-  }
-
   // Save changes
   async function handleSave() {
     if (!title.trim()) {
@@ -273,7 +449,6 @@
       return;
     }
 
-    // Convert editor text and metadata into full SNG string
     let sngContent = `#Title=${title.trim()}\n`;
     if (author.trim()) sngContent += `#Author=${author.trim()}\n`;
     if (copyright.trim()) sngContent += `#Copyright=${copyright.trim()}\n`;
@@ -289,7 +464,6 @@
 
     sngContent += '---\n' + editorText.trim();
 
-    // Parse via backend to guarantee robust tokenization & AST creation
     const parsed = await presentation.parseSongContent(sngContent);
     if (parsed) {
       if (song) {
@@ -406,7 +580,7 @@
       <!-- Main Body Area -->
       <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3 min-h-0">
         {#if activeTab === 'text'}
-          <!-- 1. Song Title Input & Top Control Buttons -->
+          <!-- 1. Song Title Input & Top Action Buttons (OK, Abbrechen, Akkorde, Hintergrund) -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
             <div class="flex-1 flex items-center gap-2">
               <label for="song-title-input" class="text-xs font-bold shrink-0">Titel:</label>
@@ -421,7 +595,7 @@
               />
             </div>
 
-            <!-- Top Right Action Buttons: OK, Abbrechen, Akkorde, Hintergrund -->
+            <!-- Top Right Action Buttons -->
             <div class="flex items-center gap-1.5 shrink-0 justify-end">
               <button
                 type="button"
@@ -521,218 +695,148 @@
             </div>
           {/if}
 
-          <!-- Formatting & Insertion Toolbar above editor -->
-          <div
-            class="h-8 px-2 flex items-center justify-between border rounded text-xs shrink-0 select-none {presentation.theme === 'dark'
-              ? 'bg-neutral-900/70 border-neutral-700'
-              : 'bg-[#f4f2ec] border-neutral-300'}"
-          >
-            <div class="flex items-center gap-1">
-              <!-- Quick part insertion -->
-              <span class="text-[11px] font-bold opacity-75">Teil einfügen:</span>
-              <button
-                type="button"
-                class="px-1.5 py-0.5 rounded bg-[#0078d7] text-white font-bold text-[10px] hover:opacity-90 cursor-pointer"
-                onclick={() => {
-                  const num = parsedBlocks.filter((b) => b.section.toLowerCase().startsWith('vers')).length + 1;
-                  addOrderPart(`Vers ${num}`);
-                  if (viewMode === 'raw') editorText += `\n---\nVers ${num}\n`;
-                  else addSlideBlock(parsedBlocks.length - 1);
-                }}
-              >
-                + Vers
-              </button>
-              <button
-                type="button"
-                class="px-1.5 py-0.5 rounded bg-[#7e12d4] text-white font-bold text-[10px] hover:opacity-90 cursor-pointer"
-                onclick={() => {
-                  addOrderPart('Refrain');
-                  if (viewMode === 'raw') editorText += '\n---\nRefrain\n';
-                  else addSlideBlock(parsedBlocks.length - 1);
-                }}
-              >
-                + Refrain
-              </button>
-              <button
-                type="button"
-                class="px-1.5 py-0.5 rounded bg-[#cc0000] text-white font-bold text-[10px] hover:opacity-90 cursor-pointer"
-                onclick={() => {
-                  addOrderPart('Bridge');
-                  if (viewMode === 'raw') editorText += '\n---\nBridge\n';
-                  else addSlideBlock(parsedBlocks.length - 1);
-                }}
-              >
-                + Bridge
-              </button>
-              <button
-                type="button"
-                class="px-1.5 py-0.5 rounded bg-[#475569] text-white font-bold text-[10px] hover:opacity-90 cursor-pointer"
-                onclick={() => {
-                  addOrderPart('Intro');
-                  if (viewMode === 'raw') editorText += '\n---\nIntro\n';
-                  else addSlideBlock(parsedBlocks.length - 1);
-                }}
-              >
-                + Intro
-              </button>
-            </div>
-
-            <!-- View mode toggle: SongBeamer Banner View vs Raw Text View -->
-            <div class="flex items-center gap-1 text-[11px]">
-              <span class="opacity-70">Ansicht:</span>
-              <button
-                type="button"
-                class="px-2 py-0.5 rounded font-bold transition cursor-pointer {viewMode === 'banners'
-                  ? 'bg-blue-600 text-white'
-                  : 'hover:bg-black/10'}"
-                onclick={() => (viewMode = 'banners')}
-              >
-                Banner
-              </button>
-              <button
-                type="button"
-                class="px-2 py-0.5 rounded font-bold transition cursor-pointer {viewMode === 'raw'
-                  ? 'bg-blue-600 text-white'
-                  : 'hover:bg-black/10'}"
-                onclick={() => (viewMode = 'raw')}
-              >
-                SNG-Text
-              </button>
-            </div>
-          </div>
-
-          <!-- 2. Dual Column: Left = Main Editor, Right = Versreihenfolge & Options -->
+          <!-- 2. Dual Column: Left = Main Text Editor with Auto Section Banners, Right = Ablauf & Controls -->
           <div class="flex-1 flex flex-col md:flex-row gap-3 min-h-[320px] overflow-hidden">
-            <!-- Left Column: Song Text Editor with SongBeamer Colored Banners -->
+            <!-- Left Column: Unified Text Editor with Automatic Header Banners -->
             <div
               class="flex-1 flex flex-col rounded-lg border overflow-hidden relative {presentation.theme === 'dark'
                 ? 'bg-neutral-950 border-neutral-700'
                 : 'bg-white border-neutral-400'}"
             >
-              {#if viewMode === 'banners'}
-                <!-- Visual Banner Mode (Matching SongBeamer Screenshot Authentically) -->
-                <div class="flex-1 overflow-y-auto p-2 flex flex-col gap-2 relative">
-                  <!-- Subtle center guideline -->
-                  <div
-                    class="absolute inset-y-0 left-1/2 border-r border-dotted border-neutral-300 dark:border-neutral-800 pointer-events-none"
-                    aria-hidden="true"
-                  ></div>
+              <!-- Container with center dotted guideline and red bottom border -->
+              <div class="relative flex-1 w-full h-full overflow-hidden">
+                <!-- Subtle center guideline down the middle -->
+                <div
+                  class="absolute inset-y-0 left-1/2 border-r border-dotted border-neutral-300 dark:border-neutral-800 pointer-events-none z-10"
+                  aria-hidden="true"
+                ></div>
 
-                  {#each parsedBlocks as block, idx (block.id)}
-                    {@const color = getSectionColor(block.section)}
-                    <div class="flex flex-col rounded border shadow-2xs overflow-hidden {presentation.theme === 'dark' ? 'border-neutral-800' : 'border-neutral-300'}">
-                      <!-- Section Title Banner (Full Width Solid Colored Bar) -->
-                      <div class="h-6 px-2.5 {color.bg} {color.text} flex items-center justify-between text-xs font-bold select-none">
-                        <div class="flex items-center gap-2">
-                          <span>{block.section}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 opacity-90 text-[10px]">
-                          <select
-                            value={block.section}
-                            onchange={(e) => updateBlockSection(idx, (e.target as HTMLSelectElement).value)}
-                            class="bg-black/30 text-white rounded px-1 py-0.2 focus:outline-none cursor-pointer"
-                          >
-                            <option value="Vers 1">Vers 1</option>
-                            <option value="Vers 2">Vers 2</option>
-                            <option value="Vers 3">Vers 3</option>
-                            <option value="Vers 4">Vers 4</option>
-                            <option value="Refrain">Refrain</option>
-                            <option value="Refrain 2">Refrain 2</option>
-                            <option value="Bridge">Bridge</option>
-                            <option value="Pre-Chorus">Pre-Chorus</option>
-                            <option value="Intro">Intro</option>
-                            <option value="Outro">Outro</option>
-                            <option value="Zwischenspiel">Zwischenspiel</option>
-                          </select>
-                          <button
-                            type="button"
-                            class="hover:text-red-200 transition cursor-pointer font-bold px-1"
-                            onclick={() => deleteSlideBlock(idx)}
-                            title="Folie entfernen"
-                          >
-                            ✕
-                          </button>
-                        </div>
+                <!-- Backdrop Layer: Automatic Section Header Banners & Red '---' styling -->
+                <div
+                  bind:this={backdropEl}
+                  class="absolute inset-0 p-3 overflow-hidden pointer-events-none font-mono text-xs leading-[22px] select-none z-0"
+                  aria-hidden="true"
+                >
+                  {#each editorText.split('\n') as line}
+                    {@const headerInfo = getSectionHeaderInfo(line)}
+                    {#if headerInfo}
+                      <div
+                        style="background-color: {headerInfo.hex};"
+                        class="w-full text-white font-bold px-2 rounded-xs h-[22px] flex items-center leading-none tracking-wide shadow-2xs"
+                      >
+                        {line}
                       </div>
-
-                      <!-- Slide Lyrics Textarea -->
-                      <textarea
-                        value={block.lyrics}
-                        oninput={(e) => updateBlockLyrics(idx, (e.target as HTMLTextAreaElement).value)}
-                        placeholder="Liedtext für diese Folie..."
-                        rows={Math.max(3, block.lyrics.split('\n').length)}
-                        class="w-full p-2.5 text-xs font-mono leading-relaxed resize-none focus:outline-none transition {presentation.theme === 'dark'
-                          ? 'bg-neutral-900 text-neutral-100 placeholder-neutral-600'
-                          : 'bg-white text-neutral-900 placeholder-neutral-400'}"
-                      ></textarea>
-                    </div>
-
-                    <!-- Slide divider separator if not last -->
-                    {#if idx < parsedBlocks.length - 1}
-                      <div class="flex items-center justify-center my-0.5 select-none">
-                        <span class="text-red-500 font-mono text-xs font-bold tracking-widest">---</span>
+                    {:else if line.trim() === '---' || line.trim() === '--'}
+                      <div class="text-red-600 font-bold font-mono tracking-widest h-[22px] flex items-center">
+                        {line}
+                      </div>
+                    {:else}
+                      <div class="h-[22px] text-neutral-900 dark:text-neutral-100 flex items-center whitespace-pre overflow-hidden">
+                        {line || ' '}
                       </div>
                     {/if}
                   {/each}
-
-                  <!-- Bottom border line matching SongBeamer -->
-                  <div class="w-full h-0.5 bg-red-500 mt-2"></div>
                 </div>
-              {:else}
-                <!-- Raw SNG Textarea -->
+
+                <!-- Input Textarea: Fully Native Typing, Selection & Scrolling on Top -->
                 <textarea
-                  bind:value={editorText}
-                  placeholder="Songtext mit Vers 1, Refrain und Folientrennung mit --- ..."
-                  class="flex-1 w-full p-3 text-xs font-mono leading-relaxed resize-none focus:outline-none {presentation.theme === 'dark'
-                    ? 'bg-neutral-950 text-neutral-100'
-                    : 'bg-white text-neutral-900'}"
+                  bind:this={textareaEl}
+                  value={editorText}
+                  oninput={handleTextareaInput}
+                  onbeforeinput={handleTextareaBeforeInput}
+                  onkeydown={handleTextareaKeyDown}
+                  onscroll={handleScroll}
+                  onclick={updateCurrentSectionFromCursor}
+                  onkeyup={updateCurrentSectionFromCursor}
+                  onselect={updateCurrentSectionFromCursor}
+                  spellcheck="false"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  data-gramm="false"
+                  placeholder="Songtext hier eingeben... Überschriften wie Vers 1, Refrain, Bridge etc. werden automatisch als Banner erkannt. Folien mit --- trennen."
+                  class="absolute inset-0 w-full h-full p-3 font-mono text-xs leading-[22px] resize-none focus:outline-none bg-transparent text-transparent caret-neutral-900 dark:caret-white selection:bg-blue-500/35 selection:text-transparent whitespace-pre overflow-y-auto z-20"
                 ></textarea>
-              {/if}
+              </div>
+
+              <!-- Red horizontal guideline at bottom matching SongBeamer -->
+              <div class="w-full h-0.5 bg-red-500 shrink-0"></div>
             </div>
 
-            <!-- Right Column: Versreihenfolge & Language / Slide Controls -->
+            <!-- Right Column: Ablauf (Order of Service) & Language / Slide Controls -->
             <div class="w-full md:w-64 flex flex-col gap-3 shrink-0 text-xs">
-              <!-- Versreihenfolge Box -->
+              <!-- Ablauf Box -->
               <div
                 class="flex-1 flex flex-col rounded-lg border p-2.5 {presentation.theme === 'dark'
                   ? 'bg-neutral-900/60 border-neutral-700'
                   : 'bg-white border-neutral-400'}"
               >
                 <div class="flex items-center justify-between font-bold mb-1.5">
-                  <span>Versreihenfolge:</span>
-                  <button
-                    type="button"
-                    class="p-1 rounded hover:bg-black/10 transition cursor-pointer font-bold text-amber-500"
-                    onclick={autoPopulateVerseOrder}
-                    title="Versreihenfolge automatisch aus Text generieren (Blitz)"
-                  >
-                    ⚡ Auto
-                  </button>
+                  <div class="flex items-center gap-1.5">
+                    <span>Ablauf:</span>
+                    {#if currentSection}
+                      <span class="text-[10px] opacity-60 font-normal truncate max-w-[90px]" title="Aktiver Teil an Cursorposition">
+                        ({currentSection})
+                      </span>
+                    {/if}
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer transition shadow-2xs"
+                      onclick={addCurrentSectionToAblauf}
+                      title="Aktuellen Teil ('{currentSection}') an Ablauf anhängen (+)"
+                    >
+                      + Teil
+                    </button>
+                    <button
+                      type="button"
+                      class="p-1 rounded hover:bg-black/10 transition cursor-pointer font-bold text-amber-500"
+                      onclick={autoPopulateAblauf}
+                      title="Ablauf automatisch aus Text generieren (Blitz)"
+                    >
+                      ⚡ Auto
+                    </button>
+                  </div>
                 </div>
 
-                <!-- Sequence list with colored text matching SongBeamer -->
+                <!-- Sequence list with colored text matching SongBeamer & Drag'n'Drop -->
                 <div
-                  class="flex-1 min-h-[120px] max-h-48 overflow-y-auto border rounded p-1 space-y-0.5 {presentation.theme === 'dark'
+                  class="flex-1 min-h-[120px] max-h-48 overflow-y-auto border rounded p-1 space-y-0.5 select-none {presentation.theme === 'dark'
                     ? 'bg-neutral-950 border-neutral-800'
                     : 'bg-white border-neutral-300'}"
                 >
                   {#if verseOrder.length === 0}
                     <div class="text-[11px] text-neutral-400 p-2 text-center">
-                      Keine Reihenfolge festgelegt. Klicke ⚡ für Auto.
+                      Kein Ablauf festgelegt. Klicke auf '+ Teil' oder '⚡ Auto'.
                     </div>
                   {:else}
                     {#each verseOrder as item, idx}
                       {@const color = getSectionColor(item)}
+                      {@const isDragging = draggedAblaufIdx === idx}
+                      {@const isTarget = targetAblaufIdx === idx && draggedAblaufIdx !== null}
+
                       <div
-                        class="px-2 py-0.5 rounded text-xs font-bold flex items-center justify-between group {presentation.theme === 'dark'
+                        role="button"
+                        tabindex="0"
+                        draggable="true"
+                        ondragstart={(e) => handleAblaufDragStart(e, idx)}
+                        ondragover={(e) => handleAblaufDragOver(e, idx)}
+                        ondrop={(e) => handleAblaufDrop(e, idx)}
+                        ondragend={handleAblaufDragEnd}
+                        class="px-2 py-1 rounded text-xs font-bold flex items-center justify-between group cursor-grab active:cursor-grabbing transition relative {isDragging ? 'opacity-30 border border-dashed border-amber-500' : ''} {presentation.theme === 'dark'
                           ? 'hover:bg-neutral-800'
                           : 'hover:bg-neutral-100'}"
                         style="color: {color.hex};"
                       >
-                        <span>{item}</span>
+                        <!-- Drag drop indicator bar -->
+                        {#if isTarget}
+                          <div class="absolute -top-[2px] left-0 right-0 h-[2px] bg-amber-400 pointer-events-none"></div>
+                        {/if}
+
+                        <span class="truncate">{item}</span>
                         <button
                           type="button"
-                          class="opacity-0 group-hover:opacity-100 text-red-500 text-[10px] hover:font-black cursor-pointer"
+                          class="opacity-0 group-hover:opacity-100 text-red-500 text-[10px] hover:font-black cursor-pointer ml-1"
                           onclick={() => removeOrderPart(idx)}
                           title="Entfernen"
                         >
@@ -743,7 +847,7 @@
                   {/if}
                 </div>
 
-                <!-- Add Part to order -->
+                <!-- Add custom part to order -->
                 <div class="flex items-center gap-1 mt-2">
                   <input
                     type="text"
@@ -753,14 +857,14 @@
                       ? 'bg-neutral-900 border-neutral-700 text-white'
                       : 'bg-white border-neutral-300 text-neutral-900'}"
                     onkeydown={(e) => {
-                      if (e.key === 'Enter') addOrderPart(newOrderPartInput);
+                      if (e.key === 'Enter') addCustomOrderPart(newOrderPartInput);
                     }}
                   />
                   <button
                     type="button"
-                    class="w-6 h-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center cursor-pointer transition"
-                    onclick={() => addOrderPart(newOrderPartInput)}
-                    title="Zur Versreihenfolge hinzufügen"
+                    class="w-6 h-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center cursor-pointer transition shadow-2xs"
+                    onclick={() => addCustomOrderPart(newOrderPartInput)}
+                    title="Zum Ablauf hinzufügen"
                   >
                     +
                   </button>
@@ -793,20 +897,21 @@
                 </p>
               </div>
 
-              <!-- Yellow Button: Folien mit --- trennen -->
+              <!-- Yellow Button: Folien mit --- trennen (at cursor position) -->
               <button
                 type="button"
                 class="w-full py-2 px-3 rounded-lg border font-bold text-xs shadow-xs transition cursor-pointer text-center {presentation.theme === 'dark'
                   ? 'bg-amber-400 hover:bg-amber-300 text-neutral-950 border-amber-500'
                   : 'bg-[#ffff99] hover:bg-[#ffff77] text-neutral-900 border-neutral-400'}"
                 onclick={insertSlideSeparator}
+                title="Trennt die Folie an der aktuellen Cursorposition mit '---'"
               >
                 Folien mit --- trennen
               </button>
 
-              <!-- Chord status notice -->
+              <!-- Chord status notice (strictly only when guitar chords exist) -->
               {#if hasChords}
-                <div class="text-red-600 font-bold text-xs text-center">
+                <div class="text-red-600 font-bold text-xs text-center mt-1">
                   Dieser Song besitzt Gitarrenakkorde.
                 </div>
               {/if}
