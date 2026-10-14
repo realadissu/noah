@@ -294,6 +294,7 @@
         <SongBeamerIcon name="song-new" size={iconPx} />
       </button>
       <button
+        id="toolbar-edit-song-btn"
         type="button"
         class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"

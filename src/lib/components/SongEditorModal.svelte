@@ -2,6 +2,7 @@
   import { t, i18n } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { Song } from '$lib/types/models';
+  import { PRESENTATION_BACKGROUNDS, type BackgroundItem, type BackgroundCategory } from '$lib/data/backgrounds';
 
   type EditorTab = 'text' | 'format' | 'background' | 'categories' | 'media' | 'copyrights';
 
@@ -12,6 +13,16 @@
   let editorText = $state<string>('');
   let verseOrder = $state<string[]>([]);
   let langCount = $state<number>(1);
+
+  // Background state (20 curated presets & custom tags)
+  let selectedBgCategory = $state<BackgroundCategory | 'all'>('all');
+  let selectedBg = $state<string>(''); // image URL, gradient, or hex
+  let bgDimmer = $state<number>(25); // 0 to 80%
+
+  const filteredBackgrounds = $derived.by<BackgroundItem[]>(() => {
+    if (selectedBgCategory === 'all') return PRESENTATION_BACKGROUNDS;
+    return PRESENTATION_BACKGROUNDS.filter((b) => b.category === selectedBgCategory);
+  });
 
   // Copyrights metadata
   let author = $state<string>('');
@@ -319,6 +330,86 @@
     return detected;
   });
 
+  // Slide line analysis for accurate 16:9 overflow warnings (> 7 lines per slide)
+  interface AnalyzedLine {
+    lineIndex: number;
+    text: string;
+    isHeader: boolean;
+    headerInfo: { label: string; hex: string } | null;
+    isSeparator: boolean;
+    isContinuation: boolean;
+    slideIndex: number;
+    lineInSlide: number;
+    isWarningThreshold: boolean; // line 8: show optical warning guideline
+    isOverflow: boolean; // line 8+: text cramped on 16:9 projection
+  }
+
+  const analyzedLines = $derived.by<AnalyzedLine[]>(() => {
+    const rawLines = editorText.split('\n');
+    let currentSlide = 1;
+    let lineInSlide = 0;
+    const result: AnalyzedLine[] = [];
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const trimmed = line.trim();
+      const isSep = trimmed === '---';
+      const isCont = trimmed === '--';
+
+      if (isSep || isCont) {
+        currentSlide++;
+        lineInSlide = 0;
+        result.push({
+          lineIndex: i,
+          text: line,
+          isHeader: false,
+          headerInfo: null,
+          isSeparator: isSep,
+          isContinuation: isCont,
+          slideIndex: currentSlide,
+          lineInSlide: 0,
+          isWarningThreshold: false,
+          isOverflow: false,
+        });
+      } else {
+        lineInSlide++;
+        const info = getSectionHeaderInfo(line);
+        const isWarn = lineInSlide === 8;
+        const isOver = lineInSlide >= 8;
+        result.push({
+          lineIndex: i,
+          text: line,
+          isHeader: !!info,
+          headerInfo: info,
+          isSeparator: false,
+          isContinuation: false,
+          slideIndex: currentSlide,
+          lineInSlide,
+          isWarningThreshold: isWarn,
+          isOverflow: isOver,
+        });
+      }
+    }
+    return result;
+  });
+
+  // Summary of slide overflow warnings (> 7 lines)
+  const slideOverflows = $derived.by<{ slideIndex: number; totalLines: number }[]>(() => {
+    const overflows: { slideIndex: number; totalLines: number }[] = [];
+    const counts = new Map<number, number>();
+    for (const l of analyzedLines) {
+      if (!l.isSeparator && !l.isContinuation) {
+        counts.set(l.slideIndex, (counts.get(l.slideIndex) ?? 0) + 1);
+      }
+    }
+    for (const [slideIdx, cnt] of counts.entries()) {
+      if (cnt > 7) {
+        overflows.push({ slideIndex: slideIdx, totalLines: cnt });
+      }
+    }
+    return overflows;
+  });
+
   // Initialize fields from active editing song (strictly guarded to never reset user edits)
   $effect(() => {
     const s = presentation.editingSong;
@@ -372,6 +463,13 @@
       : [];
     audioFile = s.metadata.custom_tags['audiofile'] ?? '';
     chordsheetFile = s.metadata.custom_tags['chordsheet'] ?? '';
+    
+    // Background tags from song
+    selectedBg = s.metadata.custom_tags['backgroundimage'] ?? s.metadata.custom_tags['format.background'] ?? s.metadata.custom_tags['background'] ?? '';
+    const dimmerTag = s.metadata.custom_tags['backgrounddimmer'];
+    bgDimmer = dimmerTag ? parseInt(dimmerTag, 10) : 25;
+    if (isNaN(bgDimmer)) bgDimmer = 25;
+
     selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
     lastCursorPos = 0;
     updateCurrentSectionFromCursor();
@@ -706,16 +804,22 @@
 
   function handleTextareaInput(e: Event) {
     const target = e.target as HTMLTextAreaElement;
-    let val = target.value;
-    // Fallback: replace any smart dashes that slipped through
-    if (val.includes('—') || val.includes('–')) {
-      const selStart = target.selectionStart;
-      val = val.replaceAll('—', '---').replaceAll('–', '--');
-      target.value = val;
-      target.setSelectionRange(selStart, selStart);
-    }
+    const start = target.selectionStart;
+    const end = target.selectionEnd;
+    const val = target.value;
+
     editorText = val;
+    lastCursorPos = start;
     updateCurrentSectionFromCursor();
+
+    // Critical fix: In Chromium/WebKit, Svelte's reactive reconciliation on bound elements
+    // can reset the caret position to the end of the text on Backspace or deletion.
+    // We immediately restore the exact cursor range on requestAnimationFrame.
+    requestAnimationFrame(() => {
+      if (document.activeElement === target && (target.selectionStart !== start || target.selectionEnd !== end)) {
+        target.setSelectionRange(start, end);
+      }
+    });
   }
 
   function handleScroll(e: Event) {
@@ -778,11 +882,25 @@
           lowerK !== 'titlelang2' &&
           lowerK !== 'category' &&
           lowerK !== 'audiofile' &&
-          lowerK !== 'chordsheet'
+          lowerK !== 'chordsheet' &&
+          lowerK !== 'backgroundimage' &&
+          lowerK !== 'backgrounddimmer' &&
+          lowerK !== 'format.background' &&
+          lowerK !== 'background'
         ) {
           sngContent += `#${k}=${v}\n`;
         }
       }
+    }
+
+    // Save chosen presentation background & dimmer
+    if (selectedBg) {
+      if (selectedBg.startsWith('/') || selectedBg.endsWith('.jpg') || selectedBg.endsWith('.png') || selectedBg.endsWith('.webp')) {
+        sngContent += `#BackgroundImage=${selectedBg}\n`;
+      } else {
+        sngContent += `#Format.Background=${selectedBg}\n`;
+      }
+      sngContent += `#BackgroundDimmer=${bgDimmer}\n`;
     }
 
     sngContent += '---\n' + editorText.trim();
@@ -1082,6 +1200,27 @@
                 </div>
               </div>
 
+              <!-- Slide Overflow Warning Bar (Live warning when any slide has > 7 lines) -->
+              {#if slideOverflows.length > 0}
+                <div class="flex items-center justify-between gap-2 px-3 py-1.5 bg-amber-500/15 border-b border-amber-500/30 text-xs text-amber-800 dark:text-amber-200 font-medium">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    {#each slideOverflows as ovf}
+                      <span class="inline-flex items-center gap-1 bg-amber-500/25 px-2 py-0.5 rounded font-bold text-amber-800 dark:text-amber-300">
+                        {t('editor.slideOverflowBadge', { slide: ovf.slideIndex, count: ovf.totalLines })}
+                      </span>
+                    {/each}
+                  </div>
+                  <button
+                    type="button"
+                    class="px-2.5 py-0.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-[11px] cursor-pointer shrink-0 transition shadow-2xs"
+                    onclick={insertSlideSeparator}
+                    title={t('editor.splitSlideBtn')}
+                  >
+                    ✂️ {t('editor.splitSlideBtn')}
+                  </button>
+                </div>
+              {/if}
+
               <!-- Main text area with syntax-highlighted section banners & guidelines -->
               <div class="relative flex-1 w-full h-full min-h-[300px] overflow-hidden flex flex-col bg-white dark:bg-neutral-950 font-mono text-[14px] leading-[26px]">
                 <!-- Vertical guideline for recommended max line length (~50 characters, matching SongBeamer RightLinePen) -->
@@ -1092,32 +1231,53 @@
                   aria-hidden="true"
                 ></div>
 
-                <!-- Backdrop Layer: Automatic Section Header Banners, Red '---' / '--' styling, and EndOfText line -->
+                <!-- Backdrop Layer: Automatic Section Header Banners, Red '---' / '--' styling, and Slide-Height 8-line Warning Marker -->
                 <div
                   bind:this={backdropEl}
-                  class="absolute inset-0 p-3.5 overflow-hidden pointer-events-none font-mono text-[14px] leading-[26px] select-none z-0"
+                  class="absolute inset-0 p-3.5 overflow-hidden pointer-events-none select-none z-0"
+                  style="font-family: Consolas, 'Courier New', ui-monospace, monospace; font-size: 14px; line-height: 26px; tab-size: 4;"
                   aria-hidden="true"
                 >
-                  {#each editorText.split('\n') as line}
-                    {@const headerInfo = getSectionHeaderInfo(line)}
-                    {#if headerInfo}
+                  {#each analyzedLines as line (line.lineIndex)}
+                    {#if line.headerInfo}
                       <div
-                        style="background-color: {headerInfo.hex};"
-                        class="w-full text-white font-bold px-2.5 rounded-xs h-[26px] flex items-center leading-none tracking-wide shadow-2xs text-[13px]"
+                        style="background-color: {line.headerInfo.hex}; font-family: Consolas, 'Courier New', ui-monospace, monospace; line-height: 26px; height: 26px;"
+                        class="w-full text-white font-bold px-1.5 rounded-xs h-[26px] leading-[26px] whitespace-pre text-[14px] overflow-hidden"
                       >
-                        {line}
+                        {line.text}
                       </div>
-                    {:else if line.trim() === '---'}
-                      <div class="text-red-600 font-bold font-mono tracking-widest h-[26px] flex items-center leading-none text-[14px]">
-                        {line}
+                    {:else if line.isSeparator}
+                      <div
+                        style="font-family: Consolas, 'Courier New', ui-monospace, monospace; line-height: 26px; height: 26px;"
+                        class="text-red-600 font-bold h-[26px] leading-[26px] whitespace-pre text-[14px]"
+                      >
+                        {line.text}
                       </div>
-                    {:else if line.trim() === '--'}
-                      <div class="text-red-500 font-bold font-mono tracking-widest h-[26px] flex items-center leading-none text-[14px]">
-                        {line}
+                    {:else if line.isContinuation}
+                      <div
+                        style="font-family: Consolas, 'Courier New', ui-monospace, monospace; line-height: 26px; height: 26px;"
+                        class="text-red-500 font-bold h-[26px] leading-[26px] whitespace-pre text-[14px]"
+                      >
+                        {line.text}
                       </div>
                     {:else}
-                      <div class="h-[26px] text-neutral-900 dark:text-neutral-100 flex items-center leading-none whitespace-pre overflow-hidden text-[14px]">
-                        {line || ' '}
+                      <div
+                        style="font-family: Consolas, 'Courier New', ui-monospace, monospace; line-height: 26px; height: 26px;"
+                        class="h-[26px] leading-[26px] whitespace-pre overflow-hidden text-[14px] relative {line.isOverflow
+                          ? 'bg-amber-500/15 text-amber-900 dark:text-amber-200 border-l-4 border-amber-500 pl-1'
+                          : 'text-neutral-900 dark:text-neutral-100'}"
+                      >
+                        {line.text || ' '}
+                        {#if line.isWarningThreshold}
+                          <!-- Red dashed horizontal guideline right on top edge of line 8 -->
+                          <div class="absolute inset-x-0 top-0 border-t-2 border-dashed border-red-500 pointer-events-none"></div>
+                          <span
+                            class="absolute right-2 top-0 -translate-y-1/2 text-[10px] font-sans font-bold bg-red-600 text-white px-2 py-0.5 rounded shadow-xs z-10 pointer-events-none tracking-normal"
+                            title={t('editor.slideHeightWarning')}
+                          >
+                            ⚠️ {t('editor.slideHeightWarning')}
+                          </span>
+                        {/if}
                       </div>
                     {/if}
                   {/each}
@@ -1128,7 +1288,7 @@
                   {/if}
                 </div>
 
-                <!-- Input Textarea: Native Typing & Caret on Top with full text selection -->
+                <!-- Input Textarea: Pixel-perfect baseline & Consolas font alignment matching backdrop -->
                 <textarea
                   id="song-text-editor"
                   bind:this={textareaEl}
@@ -1145,7 +1305,8 @@
                   autocapitalize="off"
                   data-gramm="false"
                   placeholder={t('editor.textPlaceholder')}
-                  class="absolute inset-0 w-full h-full p-3.5 font-mono text-[14px] leading-[26px] resize-none focus:outline-none bg-transparent text-transparent caret-blue-600 dark:caret-amber-400 selection:bg-blue-500/35 selection:text-transparent select-text whitespace-pre overflow-y-auto z-20"
+                  style="font-family: Consolas, 'Courier New', ui-monospace, monospace; font-size: 14px; line-height: 26px; padding: 14px; tab-size: 4;"
+                  class="absolute inset-0 w-full h-full resize-none focus:outline-none bg-transparent text-transparent caret-blue-600 dark:caret-amber-400 selection:bg-blue-500/35 selection:text-transparent select-text whitespace-pre overflow-y-auto z-20"
                 ></textarea>
               </div>
             </div>
@@ -1529,35 +1690,187 @@
             </div>
           </div>
         {:else if activeTab === 'background'}
-          <!-- 4. Background Tab -->
+          <!-- 4. Background Tab: 20 Curated Presets across 4 Categories with Contrast Dimmer & Live Preview -->
           <div
-            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 {presentation.theme === 'dark'
+            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 overflow-y-auto {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-base border-b pb-1.5">{t('editor.bgTitle')}</div>
-            <p class="text-sm opacity-80">
-              {t('editor.bgDesc')}
-            </p>
-            <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-2">
+            <div class="flex items-center justify-between border-b pb-2">
+              <div>
+                <div class="font-bold text-base">{t('editor.bgTitle')}</div>
+                <p class="text-xs opacity-75">{t('editor.bgDesc')}</p>
+              </div>
+              {#if selectedBg}
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded border text-xs font-bold hover:bg-red-500/10 text-red-500 transition cursor-pointer"
+                  onclick={() => (selectedBg = '')}
+                >
+                  ✕ {t('editor.bgNone')}
+                </button>
+              {/if}
+            </div>
+
+            <!-- Category Filter Tabs -->
+            <div class="flex items-center gap-1.5 flex-wrap">
               <button
                 type="button"
-                class="aspect-video rounded-lg border-2 border-blue-500 bg-gradient-to-b from-[#608ebf] via-[#4a7aa8] to-[#3a6691] flex items-center justify-center text-white text-sm font-bold shadow-xs cursor-pointer"
+                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
+                onclick={() => (selectedBgCategory = 'all')}
               >
-                {t('editor.bgClassicBlue')}
+                {t('editor.bgCategoryAll')}
               </button>
               <button
                 type="button"
-                class="aspect-video rounded-lg border border-neutral-600 bg-black flex items-center justify-center text-white text-sm font-bold shadow-xs cursor-pointer hover:border-neutral-400"
+                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'colors'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
+                onclick={() => (selectedBgCategory = 'colors')}
               >
-                {t('editor.bgBlack')}
+                🎨 {t('editor.bgCategoryColors')} (5)
               </button>
               <button
                 type="button"
-                class="aspect-video rounded-lg border border-neutral-600 bg-gradient-to-br from-indigo-950 via-slate-900 to-black flex items-center justify-center text-white text-sm font-bold shadow-xs cursor-pointer hover:border-neutral-400"
+                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'gradients'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
+                onclick={() => (selectedBgCategory = 'gradients')}
               >
-                {t('editor.bgModernNight')}
+                🌈 {t('editor.bgCategoryGradients')} (5)
               </button>
+              <button
+                type="button"
+                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'nature'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
+                onclick={() => (selectedBgCategory = 'nature')}
+              >
+                🏔️ {t('editor.bgCategoryNature')} (5)
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'kids'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
+                onclick={() => (selectedBgCategory = 'kids')}
+              >
+                🧸 {t('editor.bgCategoryKids')} (5)
+              </button>
+            </div>
+
+            <!-- Compact 16:9 Live Stage Preview & Dimmer Controls -->
+            {#if selectedBg}
+              <div class="flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 shadow-xs">
+                <!-- 16:9 Stage Preview -->
+                <div
+                  class="w-60 shrink-0 rounded-lg border border-neutral-700 shadow-md overflow-hidden relative flex flex-col items-center justify-center text-center p-2.5"
+                  style="{selectedBg.startsWith('/') || selectedBg.endsWith('.jpg') || selectedBg.endsWith('.png') || selectedBg.endsWith('.webp')
+                    ? `background-image: url('${selectedBg}'); background-size: cover; background-position: center;`
+                    : `background: ${selectedBg};`}; aspect-ratio: 16/9; min-height: 90px;"
+                >
+                  <div class="absolute inset-0 bg-black pointer-events-none" style="opacity: {bgDimmer / 100};"></div>
+                  <div class="relative z-10 text-white font-bold text-xs leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)] px-1">
+                    <p class="m-0 truncate max-w-[210px]">{title || 'Großer Gott, wir loben dich'}</p>
+                    <p class="m-0 text-[10px] font-normal opacity-90 truncate max-w-[210px]">Herr, wir preisen deine Stärke.</p>
+                  </div>
+                  <span class="absolute bottom-1 right-1 z-10 text-[8px] uppercase tracking-wider font-extrabold text-white/80 bg-black/60 px-1 py-0.5 rounded">16:9 Beamer</span>
+                </div>
+
+                <!-- Dimmer controls -->
+                <div class="flex-1 flex flex-col gap-2 w-full">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                      {t('editor.bgDimmerLabel')}:
+                    </span>
+                    <span class="text-xs font-mono font-extrabold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                      {bgDimmer}% Abdunklung
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="80"
+                    step="5"
+                    bind:value={bgDimmer}
+                    class="w-full accent-blue-600 cursor-pointer"
+                  />
+                  <div class="flex items-center justify-between text-[10px] text-neutral-500">
+                    <span>0% (Hell)</span>
+                    <span>25% (Ausgewogen)</span>
+                    <span>50% (Hoher Kontrast)</span>
+                    <span>80% (Dunkel)</span>
+                  </div>
+                </div>
+              </div>
+            {/if}
+
+            <!-- 20 Backgrounds Gallery Section -->
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                Vorlagen ({filteredBackgrounds.length} verfügbar):
+              </span>
+              <span class="text-[11px] text-neutral-400">
+                Klick auf ein Bild übernimmt den Hintergrund für Beamer & Vorschau
+              </span>
+            </div>
+
+            <!-- 20 Backgrounds Gallery Grid -->
+            <div class="grid grid-cols-4 sm:grid-cols-5 gap-3.5 max-h-[360px] overflow-y-auto p-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50">
+              {#each filteredBackgrounds as bg (bg.id)}
+                {@const isSelected = selectedBg === bg.value}
+                <div
+                  role="button"
+                  tabindex="0"
+                  class="group flex flex-col rounded-xl border-2 transition-all overflow-hidden text-left cursor-pointer hover:scale-[1.02] select-none shadow-xs {isSelected
+                    ? 'border-blue-600 ring-2 ring-blue-500/40 shadow-md'
+                    : 'border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500'}"
+                  onclick={() => (selectedBg = bg.value)}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      selectedBg = bg.value;
+                    }
+                  }}
+                >
+                  <!-- 16:9 Thumbnail (96px fixed height for true widescreen proportions) -->
+                  <div
+                    class="w-full h-24 relative flex items-center justify-center p-2 overflow-hidden bg-cover bg-center shrink-0"
+                    style="{bg.previewStyle}"
+                  >
+                    <!-- Built-in Dimmer Preview Layer -->
+                    <div
+                      class="absolute inset-0 bg-black pointer-events-none transition-opacity"
+                      style="opacity: {isSelected ? bgDimmer / 100 : 0.25};"
+                    ></div>
+
+                    <!-- Lyric preview snippet showing high contrast legibility -->
+                    <span class="relative z-10 text-[11px] font-bold text-white text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] opacity-90 group-hover:opacity-100 transition">
+                      Abba, Vater
+                    </span>
+
+                    {#if isSelected}
+                      <span class="absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold shadow">
+                        ✓
+                      </span>
+                    {/if}
+                  </div>
+
+                  <!-- Card Label -->
+                  <div class="h-8 px-2 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between shrink-0">
+                    <span class="text-[11px] font-semibold truncate text-neutral-800 dark:text-neutral-200" title={t(bg.nameKey) !== bg.nameKey ? t(bg.nameKey) : bg.defaultName}>
+                      {t(bg.nameKey) !== bg.nameKey ? t(bg.nameKey) : bg.defaultName}
+                    </span>
+                    {#if isSelected}
+                      <span class="text-[9px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-400 ml-1 shrink-0">
+                        {t('editor.bgActiveBadge')}
+                      </span>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
             </div>
           </div>
         {:else if activeTab === 'media'}

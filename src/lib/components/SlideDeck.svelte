@@ -19,6 +19,16 @@
   function handleSlideClick(index: number) {
     presentation.selectSlide(index);
   }
+
+  const activeSongBg = $derived.by<string>(() => {
+    const tags = presentation.activeSong?.metadata?.custom_tags;
+    return tags?.['backgroundimage'] ?? tags?.['format.background'] ?? tags?.['background'] ?? '';
+  });
+
+  const activeSongDimmer = $derived.by<number>(() => {
+    const val = presentation.activeSong?.metadata?.custom_tags?.['backgrounddimmer'];
+    return (val ? parseInt(val, 10) : 25) / 100;
+  });
 </script>
 
 <div class="flex-1 flex flex-col h-full overflow-hidden select-none {presentation.theme === 'dark' ? 'bg-neutral-950 text-neutral-100' : 'bg-neutral-100 text-neutral-900'}">
@@ -66,9 +76,25 @@
                 ? 'border-red-600 ring-2 ring-red-600/30'
                 : 'border-neutral-700 hover:border-neutral-600'}"
             >
+              <!-- Optional Song Background & Dimmer Layer -->
+              {#if activeSongBg}
+                {#if activeSongBg.startsWith('/') || activeSongBg.endsWith('.jpg') || activeSongBg.endsWith('.png') || activeSongBg.endsWith('.webp')}
+                  <div
+                    class="absolute inset-0 bg-cover bg-center pointer-events-none z-0"
+                    style="background-image: url('{activeSongBg}');"
+                  ></div>
+                {:else}
+                  <div
+                    class="absolute inset-0 pointer-events-none z-0"
+                    style="background: {activeSongBg};"
+                  ></div>
+                {/if}
+                <div class="absolute inset-0 bg-black pointer-events-none z-0" style="opacity: {activeSongDimmer};"></div>
+              {/if}
+
               <!-- Lyrics with accurate baseline alignment and linear responsive typography -->
               <div
-                class="w-full h-full flex flex-col items-center justify-center overflow-hidden font-sans select-none"
+                class="w-full h-full flex flex-col items-center justify-center overflow-hidden font-sans select-none relative z-10"
                 style="padding: 5cqh 6cqw; font-size: {calculateSlideFontSize(slide, presentation.showChords, presentation.aspectRatio)}; line-height: 1.35;"
               >
                 <div class="w-full flex flex-col items-center justify-center" style="gap: 0.2em;">

@@ -16,6 +16,16 @@
   let slideA = $state<Slide | null>(null);
   let slideB = $state<Slide | null>(null);
 
+  const beamerBg = $derived.by<string>(() => {
+    const tags = activeSong?.metadata?.custom_tags;
+    return tags?.['backgroundimage'] ?? tags?.['format.background'] ?? tags?.['background'] ?? '';
+  });
+
+  const beamerDimmer = $derived.by<number>(() => {
+    const val = activeSong?.metadata?.custom_tags?.['backgrounddimmer'];
+    return (val ? parseInt(val, 10) : 25) / 100;
+  });
+
   async function refreshState() {
     if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
       try {
@@ -221,6 +231,22 @@
       <h1 class="text-3xl md:text-4xl font-extrabold tracking-widest text-neutral-200">Noah</h1>
       <p class="text-sm md:text-base font-medium text-neutral-500 tracking-widest mt-2">NOT ONLY ANOTHER HYMNAL</p>
     </div>
+  {/if}
+
+  <!-- Optional Song Background & Dimmer for Beamer Output -->
+  {#if beamerBg && displayMode === 'normal'}
+    {#if beamerBg.startsWith('/') || beamerBg.endsWith('.jpg') || beamerBg.endsWith('.png') || beamerBg.endsWith('.webp')}
+      <div
+        class="absolute inset-0 bg-cover bg-center pointer-events-none z-0 transition-opacity duration-300"
+        style="background-image: url('{beamerBg}');"
+      ></div>
+    {:else}
+      <div
+        class="absolute inset-0 pointer-events-none z-0 transition-opacity duration-300"
+        style="background: {beamerBg};"
+      ></div>
+    {/if}
+    <div class="absolute inset-0 bg-black pointer-events-none z-0" style="opacity: {beamerDimmer};"></div>
   {/if}
 
   <!-- Double-Buffered Slide Layers with Shared Dynamic Auto-Font Sizing -->
