@@ -815,13 +815,13 @@
   >
     <!-- Modal Window (Replicating SongBeamer "Song bearbeiten" Window authentically) -->
     <div
-      class="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-xl border shadow-2xl overflow-hidden transition-all {presentation.theme === 'dark'
+      class="w-full max-w-5xl h-[88vh] min-h-[640px] max-h-[900px] flex flex-col rounded-xl border shadow-2xl overflow-hidden transition-all {presentation.theme === 'dark'
         ? 'bg-[#1e2229] border-neutral-700 text-neutral-100 shadow-black/80'
         : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 shadow-2xl'}"
     >
       <!-- Title Bar -->
       <div
-        class="h-9 px-3 flex items-center justify-between border-b shrink-0 font-bold text-xs select-none {presentation.theme === 'dark'
+        class="h-10 px-3.5 flex items-center justify-between border-b shrink-0 font-bold text-sm select-none {presentation.theme === 'dark'
           ? 'bg-[#181a20] border-neutral-700 text-neutral-200'
           : 'bg-[#0055ea] border-[#0040b0] text-white'}"
       >
@@ -831,7 +831,7 @@
         </div>
         <button
           type="button"
-          class="w-6 h-6 rounded flex items-center justify-center hover:bg-red-600 hover:text-white transition cursor-pointer"
+          class="w-7 h-7 rounded flex items-center justify-center hover:bg-red-600 hover:text-white transition cursor-pointer font-bold text-sm"
           onclick={handleCancel}
           title={t('settings.closeTitle')}
         >
@@ -841,13 +841,13 @@
 
       <!-- Navigation Tabs (Text | Formatierung | Hintergrund | Kategorien | Medien | Copyrights) -->
       <div
-        class="flex items-center px-2 pt-1 border-b gap-1 text-xs shrink-0 select-none {presentation.theme === 'dark'
+        class="flex items-center px-3 pt-1 border-b gap-1.5 text-sm shrink-0 select-none {presentation.theme === 'dark'
           ? 'bg-[#252932] border-neutral-700'
           : 'bg-[#dfdbcf] border-neutral-400'}"
       >
         <button
           type="button"
-          class="px-3 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'text'
+          class="px-3.5 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'text'
             ? presentation.theme === 'dark'
               ? 'bg-[#1e2229] border-neutral-700 text-amber-400 border-b-transparent shadow-xs'
               : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 border-b-transparent font-bold'
@@ -858,7 +858,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'format'
+          class="px-3.5 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'format'
             ? presentation.theme === 'dark'
               ? 'bg-[#1e2229] border-neutral-700 text-amber-400 border-b-transparent shadow-xs'
               : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 border-b-transparent font-bold'
@@ -869,7 +869,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'background'
+          class="px-3.5 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'background'
             ? presentation.theme === 'dark'
               ? 'bg-[#1e2229] border-neutral-700 text-amber-400 border-b-transparent shadow-xs'
               : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 border-b-transparent font-bold'
@@ -880,7 +880,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'categories'
+          class="px-3.5 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'categories'
             ? presentation.theme === 'dark'
               ? 'bg-[#1e2229] border-neutral-700 text-amber-400 border-b-transparent shadow-xs'
               : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 border-b-transparent font-bold'
@@ -891,7 +891,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'media'
+          class="px-3.5 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'media'
             ? presentation.theme === 'dark'
               ? 'bg-[#1e2229] border-neutral-700 text-amber-400 border-b-transparent shadow-xs'
               : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 border-b-transparent font-bold'
@@ -902,7 +902,7 @@
         </button>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'copyrights'
+          class="px-3.5 py-1.5 rounded-t-md font-semibold transition cursor-pointer border-t border-l border-r {activeTab === 'copyrights'
             ? presentation.theme === 'dark'
               ? 'bg-[#1e2229] border-neutral-700 text-amber-400 border-b-transparent shadow-xs'
               : 'bg-[#ece9d8] border-neutral-400 text-neutral-900 border-b-transparent font-bold'
@@ -914,29 +914,29 @@
       </div>
 
       <!-- Main Body Area -->
-      <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3 min-h-0 select-text">
+      <div class="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3 min-h-0 select-text">
         {#if activeTab === 'text'}
           <!-- 1. Song Title Input & Top Action Buttons (OK, Abbrechen, Akkorde, Hintergrund) -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
-            <div class="flex-1 flex items-center gap-2">
-              <label for="song-title-input" class="text-xs font-bold shrink-0">{t('editor.titleLabel')}</label>
+            <div class="flex-1 flex items-center gap-2.5">
+              <label for="song-title-input" class="text-sm font-bold shrink-0">{t('editor.titleLabel')}</label>
               <input
                 id="song-title-input"
                 type="text"
                 bind:value={title}
                 placeholder={t('editor.titlePlaceholder')}
-                class="flex-1 px-2.5 py-1 text-sm rounded border focus:outline-none {presentation.theme === 'dark'
+                class="flex-1 px-3 py-1.5 text-base rounded border focus:outline-none {presentation.theme === 'dark'
                   ? 'bg-neutral-900 border-neutral-700 text-white focus:border-amber-500'
                   : 'bg-white border-neutral-400 text-neutral-900 focus:border-blue-600'}"
               />
             </div>
 
             <!-- Top Right Action Buttons -->
-            <div class="flex items-center gap-1.5 shrink-0 justify-end">
+            <div class="flex items-center gap-2 shrink-0 justify-end">
               <button
                 id="save-song-btn"
                 type="button"
-                class="px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+                class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
                   ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border-emerald-500/50'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-xs'}"
                 onclick={handleSave}
@@ -947,7 +947,7 @@
               <button
                 id="cancel-song-btn"
                 type="button"
-                class="px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+                class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
                   ? 'bg-red-600/30 hover:bg-red-600/50 text-red-300 border-red-500/50'
                   : 'bg-red-600 hover:bg-red-700 text-white border-red-700 shadow-xs'}"
                 onclick={handleCancel}
@@ -957,7 +957,7 @@
               </button>
               <button
                 type="button"
-                class="px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 transition border cursor-pointer {presentation.theme === 'dark'
+                class="px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
                   ? 'bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border-neutral-700'
                   : 'bg-white hover:bg-neutral-100 text-emerald-700 border-neutral-400'}"
                 onclick={() => (isChordModalOpen = !isChordModalOpen)}
@@ -968,7 +968,7 @@
               </button>
               <button
                 type="button"
-                class="px-2.5 py-1 rounded text-xs font-medium transition border cursor-pointer {presentation.theme === 'dark'
+                class="px-3 py-1.5 rounded text-sm font-medium transition border cursor-pointer {presentation.theme === 'dark'
                   ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
                   : 'bg-white hover:bg-neutral-100 text-neutral-800 border-neutral-400'}"
                 onclick={() => (activeTab = 'background')}
@@ -981,43 +981,43 @@
           <!-- Chord Tool Popover if opened -->
           {#if isChordModalOpen}
             <div
-              class="p-2.5 rounded-lg border shadow-lg flex flex-wrap items-center gap-2 text-xs shrink-0 {presentation.theme === 'dark'
+              class="p-3 rounded-lg border shadow-lg flex flex-wrap items-center gap-2 text-sm shrink-0 {presentation.theme === 'dark'
                 ? 'bg-neutral-900 border-neutral-700 text-white'
                 : 'bg-white border-neutral-400 text-neutral-900'}"
             >
               <span class="font-bold">{t('editor.transposeTitle')}</span>
               <button
                 type="button"
-                class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
+                class="px-2.5 py-1 rounded border hover:bg-black/10 cursor-pointer font-bold"
                 onclick={() => transposeBy(1)}
               >
                 {t('editor.transposePlus1')}
               </button>
               <button
                 type="button"
-                class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
+                class="px-2.5 py-1 rounded border hover:bg-black/10 cursor-pointer font-bold"
                 onclick={() => transposeBy(-1)}
               >
                 {t('editor.transposeMinus1')}
               </button>
               <button
                 type="button"
-                class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
+                class="px-2.5 py-1 rounded border hover:bg-black/10 cursor-pointer font-bold"
                 onclick={() => transposeBy(2)}
               >
                 {t('editor.transposePlus2')}
               </button>
               <button
                 type="button"
-                class="px-2 py-0.5 rounded border hover:bg-black/10 cursor-pointer"
+                class="px-2.5 py-1 rounded border hover:bg-black/10 cursor-pointer font-bold"
                 onclick={() => transposeBy(-2)}
               >
                 {t('editor.transposeMinus2')}
               </button>
-              <div class="w-px h-5 bg-neutral-500/40 mx-1"></div>
+              <div class="w-px h-6 bg-neutral-500/40 mx-1"></div>
               <button
                 type="button"
-                class="px-2 py-0.5 rounded border text-red-500 hover:bg-red-500/10 cursor-pointer"
+                class="px-2.5 py-1 rounded border text-red-500 hover:bg-red-500/10 cursor-pointer font-bold"
                 onclick={stripAllChords}
                 title={t('editor.stripChordsTooltip')}
               >
@@ -1025,7 +1025,7 @@
               </button>
               <button
                 type="button"
-                class="ml-auto text-xs opacity-60 hover:opacity-100 cursor-pointer"
+                class="ml-auto text-xs opacity-60 hover:opacity-100 cursor-pointer font-semibold"
                 onclick={() => (isChordModalOpen = false)}
               >
                 {t('editor.done')}
@@ -1033,9 +1033,9 @@
             </div>
           {/if}
 
-          <!-- 2. Dual Column: Left = Main Text Editor with Toolbar & Guidelines, Right = Ablauf & Controls -->
+          <!-- 2. Dual Column: Left = Main Text Editor with Toolbar, Right = Ablauf & Controls -->
           <div class="flex-1 flex flex-col md:flex-row gap-3 min-h-[340px] overflow-hidden">
-            <!-- Left Column: Unified Text Editor with Toolbar, Automatic Header Banners & Guidelines -->
+            <!-- Left Column: Unified Text Editor with Automatic Header Banners -->
             <div
               class="flex-1 flex flex-col rounded-lg border overflow-hidden relative {presentation.theme === 'dark'
                 ? 'bg-neutral-950 border-neutral-700'
@@ -1043,78 +1043,15 @@
             >
               <!-- SongBeamer Editor Toolbar above text area -->
               <div
-                class="h-8 px-2 border-b flex items-center justify-between gap-1 text-xs shrink-0 select-none {presentation.theme === 'dark'
+                class="h-9 px-3 border-b flex items-center justify-end gap-1.5 text-xs shrink-0 select-none {presentation.theme === 'dark'
                   ? 'bg-neutral-900 border-neutral-800'
                   : 'bg-[#f4f3ed] border-neutral-300'}"
               >
-                <div class="flex items-center gap-1 relative">
-                  <!-- Marke insertion dropdown -->
-                  <div class="relative">
-                    <button
-                      type="button"
-                      class="px-2 py-0.5 rounded border font-semibold flex items-center gap-1 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
-                        ? 'border-neutral-700 text-neutral-200'
-                        : 'border-neutral-300 text-neutral-800'}"
-                      onclick={() => (isMarkeDropdownOpen = !isMarkeDropdownOpen)}
-                      title={t('editor.markerTooltip')}
-                    >
-                      <span>🏷️ {t('editor.marker')}</span>
-                      <span class="text-[10px]">▼</span>
-                    </button>
-
-                    {#if isMarkeDropdownOpen}
-                      <div
-                        class="absolute left-0 top-full mt-1 w-44 max-h-60 overflow-y-auto rounded-md border shadow-xl z-50 py-1 text-xs {presentation.theme === 'dark'
-                          ? 'bg-neutral-900 border-neutral-700 text-neutral-200'
-                          : 'bg-white border-neutral-400 text-neutral-900'}"
-                      >
-                        {#each markeOptions as opt}
-                          <button
-                            type="button"
-                            class="w-full text-left px-3 py-1 hover:bg-blue-600 hover:text-white cursor-pointer transition flex items-center gap-2"
-                            onclick={() => insertMarker(opt)}
-                          >
-                            <span
-                              class="w-2 h-2 rounded-full"
-                              style="background-color: {getSectionColor(opt).hex};"
-                            ></span>
-                            <span>{opt}</span>
-                          </button>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-
-                  <!-- Page break separator (---) -->
-                  <button
-                    type="button"
-                    class="px-2 py-0.5 rounded border font-mono font-bold text-red-600 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
-                      ? 'border-neutral-700'
-                      : 'border-neutral-300'}"
-                    onclick={insertSlideSeparator}
-                    title={t('editor.slideBreakTooltip')}
-                  >
-                    {t('editor.slideBreak')}
-                  </button>
-
-                  <!-- Block break continuation (--) -->
-                  <button
-                    type="button"
-                    class="px-2 py-0.5 rounded border font-mono font-bold text-red-500 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
-                      ? 'border-neutral-700'
-                      : 'border-neutral-300'}"
-                    onclick={insertContinuationBreak}
-                    title={t('editor.lineBreakTooltip')}
-                  >
-                    {t('editor.lineBreak')}
-                  </button>
-                </div>
-
                 <!-- Quick Chords buttons in toolbar -->
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1.5">
                   <button
                     type="button"
-                    class="px-1.5 py-0.5 rounded border text-[11px] font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
+                    class="px-2 py-1 rounded border text-xs font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
                       ? 'border-neutral-700 text-emerald-400'
                       : 'border-neutral-300 text-emerald-700'}"
                     onclick={() => transposeBy(1)}
@@ -1124,7 +1061,7 @@
                   </button>
                   <button
                     type="button"
-                    class="px-1.5 py-0.5 rounded border text-[11px] font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
+                    class="px-2 py-1 rounded border text-xs font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer {presentation.theme === 'dark'
                       ? 'border-neutral-700 text-emerald-400'
                       : 'border-neutral-300 text-emerald-700'}"
                     onclick={() => transposeBy(-1)}
@@ -1134,7 +1071,7 @@
                   </button>
                   <button
                     type="button"
-                    class="px-1.5 py-0.5 rounded border text-[11px] text-red-500 hover:bg-red-500/10 cursor-pointer {presentation.theme === 'dark'
+                    class="px-2 py-1 rounded border text-xs text-red-500 hover:bg-red-500/10 cursor-pointer font-bold {presentation.theme === 'dark'
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
                     onclick={stripAllChords}
@@ -1145,20 +1082,12 @@
                 </div>
               </div>
 
-              <!-- Main text area with SongBeamer vertical red guideline at 48ch & syntax-highlighted section banners -->
-              <div class="relative flex-1 w-full h-full min-h-[300px] overflow-hidden flex flex-col bg-white dark:bg-neutral-950 font-mono text-xs leading-[22px]">
-                <!-- SongBeamer vertical red guideline (approx. 48 monospace characters width) -->
-                <div
-                  class="absolute inset-y-0 border-r border-dotted border-red-500/60 dark:border-red-500/40 pointer-events-none z-10"
-                  style="left: calc(48ch + 14px);"
-                  title={t('editor.lineLimitGuide')}
-                  aria-hidden="true"
-                ></div>
-
+              <!-- Main text area with syntax-highlighted section banners -->
+              <div class="relative flex-1 w-full h-full min-h-[300px] overflow-hidden flex flex-col bg-white dark:bg-neutral-950 font-mono text-[14px] leading-[26px]">
                 <!-- Backdrop Layer: Automatic Section Header Banners & Red '---' / '--' styling -->
                 <div
                   bind:this={backdropEl}
-                  class="absolute inset-0 p-3 overflow-hidden pointer-events-none font-mono text-xs leading-[22px] select-none z-0"
+                  class="absolute inset-0 p-3.5 overflow-hidden pointer-events-none font-mono text-[14px] leading-[26px] select-none z-0"
                   aria-hidden="true"
                 >
                   {#each editorText.split('\n') as line}
@@ -1166,20 +1095,20 @@
                     {#if headerInfo}
                       <div
                         style="background-color: {headerInfo.hex};"
-                        class="w-full text-white font-bold px-2 rounded-xs h-[22px] flex items-center leading-none tracking-wide shadow-2xs"
+                        class="w-full text-white font-bold px-2.5 rounded-xs h-[26px] flex items-center leading-none tracking-wide shadow-2xs text-[13px]"
                       >
                         {line}
                       </div>
                     {:else if line.trim() === '---'}
-                      <div class="text-red-600 font-bold font-mono tracking-widest h-[22px] flex items-center leading-none">
+                      <div class="text-red-600 font-bold font-mono tracking-widest h-[26px] flex items-center leading-none text-[14px]">
                         {line}
                       </div>
                     {:else if line.trim() === '--'}
-                      <div class="text-red-500 font-bold font-mono tracking-widest h-[22px] flex items-center leading-none">
+                      <div class="text-red-500 font-bold font-mono tracking-widest h-[26px] flex items-center leading-none text-[14px]">
                         {line}
                       </div>
                     {:else}
-                      <div class="h-[22px] text-neutral-900 dark:text-neutral-100 flex items-center leading-none whitespace-pre overflow-hidden">
+                      <div class="h-[26px] text-neutral-900 dark:text-neutral-100 flex items-center leading-none whitespace-pre overflow-hidden text-[14px]">
                         {line || ' '}
                       </div>
                     {/if}
@@ -1203,51 +1132,36 @@
                   autocapitalize="off"
                   data-gramm="false"
                   placeholder={t('editor.textPlaceholder')}
-                  class="absolute inset-0 w-full h-full p-3 font-mono text-xs leading-[22px] resize-none focus:outline-none bg-transparent text-transparent caret-blue-600 dark:caret-amber-400 selection:bg-blue-500/35 selection:text-transparent select-text whitespace-pre overflow-y-auto z-20"
+                  class="absolute inset-0 w-full h-full p-3.5 font-mono text-[14px] leading-[26px] resize-none focus:outline-none bg-transparent text-transparent caret-blue-600 dark:caret-amber-400 selection:bg-blue-500/35 selection:text-transparent select-text whitespace-pre overflow-y-auto z-20"
                 ></textarea>
               </div>
-
-              <!-- Red horizontal guideline at bottom matching SongBeamer -->
-              <div class="w-full h-0.5 bg-red-600 shrink-0"></div>
             </div>
 
-            <!-- Right Column: Versreihenfolge / Ablauf (Order of Service) & Language / Slide Controls -->
-            <div class="w-full md:w-64 flex flex-col gap-2.5 shrink-0 text-xs">
+            <!-- Right Column: Ablauf (Order of Service) & Language / Slide Controls -->
+            <div class="w-full md:w-72 flex flex-col gap-3 shrink-0 text-sm">
               <!-- Ablauf Box -->
               <div
-                class="flex-1 flex flex-col rounded-lg border p-2.5 {presentation.theme === 'dark'
+                class="flex-1 flex flex-col rounded-lg border p-3 {presentation.theme === 'dark'
                   ? 'bg-neutral-900/60 border-neutral-700'
                   : 'bg-white border-neutral-400'}"
               >
                 <!-- Ablauf Header with Actions -->
-                <div class="flex items-center justify-between font-bold mb-1.5">
+                <div class="flex items-center justify-between font-bold mb-2">
+                  <span class="text-sm font-bold">{t('editor.verseOrder')}</span>
                   <div class="flex items-center gap-1.5">
-                    <span>{t('editor.verseOrder')}</span>
-                    {#if currentSection}
-                      {@const badgeColor = getSectionColor(currentSection)}
-                      <span
-                        class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white shadow-2xs truncate max-w-[100px]"
-                        style="background-color: {badgeColor.hex};"
-                        title={t('editor.activePartTooltip')}
-                      >
-                        {currentSection}
-                      </span>
-                    {/if}
-                  </div>
-                  <div class="flex items-center gap-1">
                     <button
                       id="add-part-current-btn"
                       type="button"
-                      class="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer transition shadow-2xs"
+                      class="w-7 h-7 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base flex items-center justify-center cursor-pointer transition shadow-2xs"
                       onclick={addCurrentSectionToAblauf}
                       title={t('editor.addPartCurrentTooltip')}
                     >
-                      {t('editor.addPart')}
+                      +
                     </button>
                     <button
                       id="auto-ablauf-btn"
                       type="button"
-                      class="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer font-bold text-amber-500"
+                      class="px-2 py-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer font-bold text-xs text-amber-500 border border-amber-500/30"
                       onclick={autoPopulateAblauf}
                       title={t('editor.autoAblaufTooltip')}
                     >
@@ -1258,12 +1172,12 @@
 
                 <!-- Sequence list with colored badges matching SongBeamer & Drag'n'Drop -->
                 <div
-                  class="flex-1 min-h-[130px] max-h-48 overflow-y-auto border rounded p-1 space-y-0.5 select-none {presentation.theme === 'dark'
+                  class="flex-1 min-h-[140px] max-h-52 overflow-y-auto border rounded p-1 space-y-0.5 select-none {presentation.theme === 'dark'
                     ? 'bg-neutral-950 border-neutral-800'
                     : 'bg-white border-neutral-300'}"
                 >
                   {#if verseOrder.length === 0}
-                    <div class="text-[11px] text-neutral-400 p-2 text-center">
+                    <div class="text-xs text-neutral-400 p-2 text-center">
                       {t('editor.noVerseOrder')}
                     </div>
                   {:else}
@@ -1286,7 +1200,7 @@
                         ondragover={(e) => handleAblaufDragOver(e, idx)}
                         ondrop={(e) => handleAblaufDrop(e, idx)}
                         ondragend={handleAblaufDragEnd}
-                        class="px-2 py-1 rounded text-xs font-bold flex items-center justify-between group cursor-grab active:cursor-grabbing transition relative {isSelected
+                        class="px-2.5 py-1.5 rounded text-sm font-bold flex items-center justify-between group cursor-grab active:cursor-grabbing transition relative {isSelected
                           ? presentation.theme === 'dark'
                             ? 'bg-blue-600/30 border border-blue-500'
                             : 'bg-blue-100 border border-blue-400'
@@ -1303,7 +1217,7 @@
                         <span class="truncate">{idx + 1}. {item}</span>
                         <button
                           type="button"
-                          class="opacity-0 group-hover:opacity-100 text-red-500 text-[10px] hover:font-black cursor-pointer ml-1"
+                          class="opacity-0 group-hover:opacity-100 text-red-500 text-xs hover:font-black cursor-pointer ml-1"
                           onclick={(e) => {
                             e.stopPropagation();
                             removeOrderPart(idx);
@@ -1318,12 +1232,12 @@
                 </div>
 
                 <!-- Up, Down, Remove buttons for selected item in Ablauf -->
-                <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-neutral-300 dark:border-neutral-800">
+                <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-neutral-300 dark:border-neutral-800">
                   <div class="flex items-center gap-1">
                     <button
                       id="move-ablauf-up-btn"
                       type="button"
-                      class="px-2 py-0.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
+                      class="px-2.5 py-1 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold text-xs disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
                         ? 'border-neutral-700 text-neutral-300'
                         : 'border-neutral-300 text-neutral-700'}"
                       onclick={moveSelectedAblaufUp}
@@ -1335,7 +1249,7 @@
                     <button
                       id="move-ablauf-down-btn"
                       type="button"
-                      class="px-2 py-0.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
+                      class="px-2.5 py-1 rounded border hover:bg-black/5 dark:hover:bg-white/10 font-bold text-xs disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
                         ? 'border-neutral-700 text-neutral-300'
                         : 'border-neutral-300 text-neutral-700'}"
                       onclick={moveSelectedAblaufDown}
@@ -1348,7 +1262,7 @@
                   <button
                     id="remove-ablauf-btn"
                     type="button"
-                    class="px-2 py-0.5 rounded border text-red-500 hover:bg-red-500/10 font-bold disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
+                    class="px-2.5 py-1 rounded border text-red-500 hover:bg-red-500/10 font-bold text-xs disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed {presentation.theme === 'dark'
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
                     onclick={removeSelectedAblauf}
@@ -1361,14 +1275,14 @@
 
                 <!-- Quick-Add Chips for detected sections in song -->
                 {#if detectedSections.length > 0}
-                  <div class="mt-2">
-                    <span class="text-[10px] opacity-70 font-semibold block mb-1">{t('editor.availableParts')}</span>
-                    <div class="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+                  <div class="mt-2.5">
+                    <span class="text-xs opacity-75 font-semibold block mb-1">{t('editor.availableParts')}</span>
+                    <div class="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
                       {#each detectedSections as sec}
                         {@const color = getSectionColor(sec)}
                         <button
                           type="button"
-                          class="px-1.5 py-0.5 rounded text-[10px] font-bold border hover:opacity-80 transition cursor-pointer flex items-center gap-1"
+                          class="px-2 py-0.5 rounded text-xs font-bold border hover:opacity-80 transition cursor-pointer flex items-center gap-1"
                           style="border-color: {color.hex}; color: {color.hex};"
                           onclick={() => appendSectionToAblauf(sec)}
                           title={t('editor.appendSectionTooltip', { sec })}
@@ -1381,31 +1295,9 @@
                   </div>
                 {/if}
 
-                <!-- Add custom part to order -->
-                <div class="flex items-center gap-1 mt-2">
-                  <input
-                    type="text"
-                    bind:value={newOrderPartInput}
-                    placeholder={t('editor.customPartPlaceholder')}
-                    class="flex-1 px-2 py-0.5 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
-                      ? 'bg-neutral-900 border-neutral-700 text-white'
-                      : 'bg-white border-neutral-300 text-neutral-900'}"
-                    onkeydown={(e) => {
-                      if (e.key === 'Enter') addCustomOrderPart(newOrderPartInput);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    class="w-6 h-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center cursor-pointer transition shadow-2xs"
-                    onclick={() => addCustomOrderPart(newOrderPartInput)}
-                    title={t('editor.addCustomPartTooltip')}
-                  >
-                    +
-                  </button>
-                </div>
                 <!-- Direct VerseOrder text input line (matching SongBeamer AC_Edit line) -->
-                <div class="mt-2 pt-1 border-t border-neutral-300 dark:border-neutral-800 flex flex-col gap-0.5">
-                  <label for="verse-order-text-input" class="text-[10px] opacity-70 font-semibold block">
+                <div class="mt-2.5 pt-1.5 border-t border-neutral-300 dark:border-neutral-800 flex flex-col gap-1">
+                  <label for="verse-order-text-input" class="text-xs opacity-75 font-semibold block">
                     {t('editor.verseOrder')} (#VerseOrder):
                   </label>
                   <input
@@ -1414,7 +1306,7 @@
                     bind:value={verseOrderInput}
                     oninput={handleVerseOrderInput}
                     placeholder="Refrain, Vers 1, Refrain, Vers 2..."
-                    class="px-2 py-1 text-xs rounded border font-mono focus:outline-none {presentation.theme === 'dark'
+                    class="px-2.5 py-1.5 text-xs rounded border font-mono focus:outline-none {presentation.theme === 'dark'
                       ? 'bg-neutral-950 border-neutral-700 text-neutral-200 focus:border-amber-500'
                       : 'bg-white border-neutral-300 text-neutral-900 focus:border-blue-600'}"
                   />
@@ -1423,22 +1315,22 @@
 
               <!-- Anzahl Sprachen -->
               <div
-                class="rounded-lg border p-2.5 flex flex-col gap-1.5 {presentation.theme === 'dark'
+                class="rounded-lg border p-3 flex flex-col gap-2 {presentation.theme === 'dark'
                   ? 'bg-neutral-900/60 border-neutral-700'
                   : 'bg-white border-neutral-400'}"
               >
                 <div class="flex items-center justify-between">
-                  <span class="font-bold">{t('editor.langCount')}</span>
+                  <span class="font-bold text-sm">{t('editor.langCount')}</span>
                   <span class="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
                     {langCount} {langCount === 1 ? 'Sprache' : 'Sprachen'}
                   </span>
                 </div>
-                <div class="grid grid-cols-4 gap-1.5 mt-0.5">
+                <div class="grid grid-cols-4 gap-2 mt-0.5">
                   {#each [1, 2, 3, 4] as count}
                     <button
                       id="lang-count-{count}"
                       type="button"
-                      class="py-1.5 rounded border text-center font-bold text-xs cursor-pointer transition {langCount === count
+                      class="py-2 rounded border text-center font-bold text-sm cursor-pointer transition {langCount === count
                         ? 'border-blue-500 bg-blue-500/20 text-blue-600 dark:text-blue-300 font-extrabold ring-1 ring-blue-500/40'
                         : presentation.theme === 'dark'
                           ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300'
@@ -1449,13 +1341,13 @@
                     </button>
                   {/each}
                 </div>
-                <p class="text-[10px] opacity-70 leading-tight">
+                <p class="text-xs opacity-70 leading-tight">
                   {t('editor.langCountHint')}
                 </p>
 
                 {#if langCount > 1}
-                  <div class="mt-1 pt-1 border-t border-neutral-300 dark:border-neutral-700 flex flex-col gap-1">
-                    <label for="title-lang2-quick" class="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                  <div class="mt-1 pt-1.5 border-t border-neutral-300 dark:border-neutral-700 flex flex-col gap-1">
+                    <label for="title-lang2-quick" class="text-xs font-bold text-blue-600 dark:text-blue-400">
                       {t('editor.titleLang2Label')}
                     </label>
                     <input
@@ -1463,7 +1355,7 @@
                       type="text"
                       bind:value={titleLang2}
                       placeholder={t('editor.titleLang2Placeholder')}
-                      class="px-2 py-1 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
+                      class="px-2.5 py-1.5 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
                         ? 'bg-neutral-950 border-neutral-700 text-white'
                         : 'bg-white border-neutral-300 text-neutral-900'}"
                     />
@@ -1474,7 +1366,7 @@
               <!-- Yellow Button: Seiten mit --- trennen (at cursor position) -->
               <button
                 type="button"
-                class="w-full py-2 px-3 rounded-lg border font-bold text-xs shadow-xs transition cursor-pointer text-center {presentation.theme === 'dark'
+                class="w-full py-2.5 px-3 rounded-lg border font-bold text-sm shadow-xs transition cursor-pointer text-center {presentation.theme === 'dark'
                   ? 'bg-amber-400 hover:bg-amber-300 text-neutral-950 border-amber-500'
                   : 'bg-[#ffff99] hover:bg-[#ffff77] text-neutral-900 border-neutral-400'}"
                 onclick={insertSlideSeparator}
@@ -1485,7 +1377,7 @@
 
               <!-- Chord status notice (strictly only when guitar chords exist) -->
               {#if hasChords}
-                <div class="text-red-600 font-bold text-xs text-center mt-0.5">
+                <div class="text-red-600 font-bold text-sm text-center">
                   {t('editor.hasChordsNotice')}
                 </div>
               {/if}
@@ -1494,86 +1386,86 @@
         {:else if activeTab === 'copyrights'}
           <!-- 2. Copyrights & Song Data Tab -->
           <div
-            class="flex-1 flex flex-col gap-3 rounded-lg border p-4 {presentation.theme === 'dark'
+            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">{t('editor.copyrightsTitle')}</div>
+            <div class="font-bold text-base border-b pb-1.5">{t('editor.copyrightsTitle')}</div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div class="flex flex-col gap-1">
-                <label for="author-input" class="font-bold">{t('editor.authorLabel')}</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div class="flex flex-col gap-1.5">
+                <label for="author-input" class="font-semibold text-sm">{t('editor.authorLabel')}</label>
                 <input
                   id="author-input"
                   type="text"
                   bind:value={author}
                   placeholder={t('editor.authorPlaceholder')}
-                  class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 />
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label for="ccli-input" class="font-bold">{t('editor.ccliLabel')}</label>
+              <div class="flex flex-col gap-1.5">
+                <label for="ccli-input" class="font-semibold text-sm">{t('editor.ccliLabel')}</label>
                 <input
                   id="ccli-input"
                   type="text"
                   bind:value={ccli}
                   placeholder={t('editor.ccliPlaceholder')}
-                  class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 />
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label for="copyright-input" class="font-bold">{t('editor.copyrightLabel')}</label>
+              <div class="flex flex-col gap-1.5">
+                <label for="copyright-input" class="font-semibold text-sm">{t('editor.copyrightLabel')}</label>
                 <input
                   id="copyright-input"
                   type="text"
                   bind:value={copyright}
                   placeholder={t('editor.copyrightPlaceholder')}
-                  class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 />
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label for="key-input" class="font-bold">{t('editor.keyLabel')}</label>
+              <div class="flex flex-col gap-1.5">
+                <label for="key-input" class="font-semibold text-sm">{t('editor.keyLabel')}</label>
                 <input
                   id="key-input"
                   type="text"
                   bind:value={musicalKey}
                   placeholder={t('editor.keyPlaceholder')}
-                  class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 />
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label for="speed-input" class="font-bold">{t('editor.speedLabel')}</label>
+              <div class="flex flex-col gap-1.5">
+                <label for="speed-input" class="font-semibold text-sm">{t('editor.speedLabel')}</label>
                 <input
                   id="speed-input"
                   type="number"
                   bind:value={speed}
                   placeholder={t('editor.speedPlaceholder')}
-                  class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 />
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label for="lang2-input" class="font-bold">{t('editor.titleLang2Label')}</label>
+              <div class="flex flex-col gap-1.5">
+                <label for="lang2-input" class="font-semibold text-sm">{t('editor.titleLang2Label')}</label>
                 <input
                   id="lang2-input"
                   type="text"
                   bind:value={titleLang2}
                   placeholder={t('editor.titleLang2Placeholder')}
-                  class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 />
@@ -1583,18 +1475,18 @@
         {:else if activeTab === 'format'}
           <!-- 3. Formatting Tab -->
           <div
-            class="flex-1 flex flex-col gap-3 rounded-lg border p-4 {presentation.theme === 'dark'
+            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">{t('editor.formatTitle')}</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div class="flex flex-col gap-1">
-                <label for="font-family-select" class="font-bold">{t('editor.fontLabel')}</label>
+            <div class="font-bold text-base border-b pb-1.5">{t('editor.formatTitle')}</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
+              <div class="flex flex-col gap-1.5">
+                <label for="font-family-select" class="font-semibold text-sm">{t('editor.fontLabel')}</label>
                 <select
                   id="font-family-select"
                   bind:value={fontFamily}
-                  class="px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                     ? 'bg-neutral-900 border-neutral-700 text-white'
                     : 'bg-white border-neutral-300'}"
                 >
@@ -1607,9 +1499,9 @@
                 </select>
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label for="font-size-input" class="font-bold">{t('editor.fontSizeLabel', { size: fontSize })}</label>
-                <div class="flex items-center gap-2">
+              <div class="flex flex-col gap-1.5">
+                <label for="font-size-input" class="font-semibold text-sm">{t('editor.fontSizeLabel', { size: fontSize })}</label>
+                <div class="flex items-center gap-3">
                   <input
                     id="font-size-input"
                     type="range"
@@ -1618,7 +1510,7 @@
                     bind:value={fontSize}
                     class="flex-1"
                   />
-                  <span class="w-10 text-right font-mono">{fontSize}</span>
+                  <span class="w-12 text-right font-mono text-base font-bold">{fontSize}</span>
                 </div>
               </div>
             </div>
@@ -1626,30 +1518,30 @@
         {:else if activeTab === 'background'}
           <!-- 4. Background Tab -->
           <div
-            class="flex-1 flex flex-col gap-3 rounded-lg border p-4 {presentation.theme === 'dark'
+            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">{t('editor.bgTitle')}</div>
-            <p class="text-xs opacity-75">
+            <div class="font-bold text-base border-b pb-1.5">{t('editor.bgTitle')}</div>
+            <p class="text-sm opacity-80">
               {t('editor.bgDesc')}
             </p>
-            <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-2">
+            <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-2">
               <button
                 type="button"
-                class="aspect-video rounded-lg border-2 border-blue-500 bg-gradient-to-b from-[#608ebf] via-[#4a7aa8] to-[#3a6691] flex items-center justify-center text-white text-xs font-bold shadow-xs cursor-pointer"
+                class="aspect-video rounded-lg border-2 border-blue-500 bg-gradient-to-b from-[#608ebf] via-[#4a7aa8] to-[#3a6691] flex items-center justify-center text-white text-sm font-bold shadow-xs cursor-pointer"
               >
                 {t('editor.bgClassicBlue')}
               </button>
               <button
                 type="button"
-                class="aspect-video rounded-lg border border-neutral-600 bg-black flex items-center justify-center text-white text-xs font-bold shadow-xs cursor-pointer hover:border-neutral-400"
+                class="aspect-video rounded-lg border border-neutral-600 bg-black flex items-center justify-center text-white text-sm font-bold shadow-xs cursor-pointer hover:border-neutral-400"
               >
                 {t('editor.bgBlack')}
               </button>
               <button
                 type="button"
-                class="aspect-video rounded-lg border border-neutral-600 bg-gradient-to-br from-indigo-950 via-slate-900 to-black flex items-center justify-center text-white text-xs font-bold shadow-xs cursor-pointer hover:border-neutral-400"
+                class="aspect-video rounded-lg border border-neutral-600 bg-gradient-to-br from-indigo-950 via-slate-900 to-black flex items-center justify-center text-white text-sm font-bold shadow-xs cursor-pointer hover:border-neutral-400"
               >
                 {t('editor.bgModernNight')}
               </button>
@@ -1658,27 +1550,27 @@
         {:else if activeTab === 'media'}
           <!-- 5. Medien Tab -->
           <div
-            class="flex-1 flex flex-col gap-3 rounded-lg border p-4 {presentation.theme === 'dark'
+            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">{t('editor.mediaTitle')}</div>
-            <div class="flex flex-col gap-3 text-xs">
-              <div class="flex flex-col gap-1">
-                <label for="audio-file-input" class="font-bold">{t('editor.audioFileLabel')}</label>
-                <div class="flex items-center gap-2">
+            <div class="font-bold text-base border-b pb-1.5">{t('editor.mediaTitle')}</div>
+            <div class="flex flex-col gap-4 text-sm">
+              <div class="flex flex-col gap-1.5">
+                <label for="audio-file-input" class="font-semibold text-sm">{t('editor.audioFileLabel')}</label>
+                <div class="flex items-center gap-2.5">
                   <input
                     id="audio-file-input"
                     type="text"
                     bind:value={audioFile}
                     placeholder={t('editor.audioFilePlaceholder')}
-                    class="flex-1 px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                    class="flex-1 px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                       ? 'bg-neutral-900 border-neutral-700 text-white'
                       : 'bg-white border-neutral-300'}"
                   />
                   <button
                     type="button"
-                    class="px-3 py-1.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold {presentation.theme === 'dark'
+                    class="px-4 py-2 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold text-sm {presentation.theme === 'dark'
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
                     onclick={() => alert(t('editor.audioBrowseAlert'))}
@@ -1688,21 +1580,21 @@
                 </div>
               </div>
 
-              <div class="flex flex-col gap-1">
-                <label for="chordsheet-input" class="font-bold">{t('editor.chordsheetLabel')}</label>
-                <div class="flex items-center gap-2">
+              <div class="flex flex-col gap-1.5">
+                <label for="chordsheet-input" class="font-semibold text-sm">{t('editor.chordsheetLabel')}</label>
+                <div class="flex items-center gap-2.5">
                   <input
                     id="chordsheet-input"
                     type="text"
                     bind:value={chordsheetFile}
                     placeholder={t('editor.chordsheetPlaceholder')}
-                    class="flex-1 px-2.5 py-1.5 rounded border focus:outline-none {presentation.theme === 'dark'
+                    class="flex-1 px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
                       ? 'bg-neutral-900 border-neutral-700 text-white'
                       : 'bg-white border-neutral-300'}"
                   />
                   <button
                     type="button"
-                    class="px-3 py-1.5 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold {presentation.theme === 'dark'
+                    class="px-4 py-2 rounded border hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-semibold text-sm {presentation.theme === 'dark'
                       ? 'border-neutral-700'
                       : 'border-neutral-300'}"
                     onclick={() => alert(t('editor.chordsheetBrowseAlert'))}
@@ -1716,17 +1608,17 @@
         {:else if activeTab === 'categories'}
           <!-- 6. Categories Tab -->
           <div
-            class="flex-1 flex flex-col gap-3 rounded-lg border p-4 {presentation.theme === 'dark'
+            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-sm border-b pb-1">{t('editor.categoriesTitle')}</div>
-            <div class="flex flex-wrap gap-2 text-xs">
+            <div class="font-bold text-base border-b pb-1.5">{t('editor.categoriesTitle')}</div>
+            <div class="flex flex-wrap gap-2.5 text-sm">
               {#each standardCategories as tag}
                 {@const isSelected = categories.includes(tag)}
                 <button
                   type="button"
-                  class="px-2.5 py-1 rounded-full border transition cursor-pointer {isSelected
+                  class="px-3.5 py-1.5 rounded-full border transition cursor-pointer font-medium {isSelected
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-black/5 dark:bg-white/5 border-neutral-300 dark:border-neutral-700'}"
                   onclick={() => {
@@ -1739,12 +1631,12 @@
               {/each}
             </div>
 
-            <div class="flex items-center gap-2 mt-2">
+            <div class="flex items-center gap-2.5 mt-3">
               <input
                 type="text"
                 bind:value={newCategoryInput}
                 placeholder={t('editor.customCategoryPlaceholder')}
-                class="px-2.5 py-1 text-xs rounded border focus:outline-none {presentation.theme === 'dark'
+                class="px-3 py-2 text-sm rounded border focus:outline-none {presentation.theme === 'dark'
                   ? 'bg-neutral-900 border-neutral-700 text-white'
                   : 'bg-white border-neutral-300'}"
                 onkeydown={(e) => {
@@ -1756,7 +1648,7 @@
               />
               <button
                 type="button"
-                class="px-2.5 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer transition"
+                class="px-3.5 py-2 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer transition"
                 onclick={() => {
                   if (newCategoryInput.trim()) {
                     categories = [...categories, newCategoryInput.trim()];
