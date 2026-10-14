@@ -1,0 +1,372 @@
+[
+  {
+    "hwnd": "0x2504e8",
+    "class": "TPageControl",
+    "text": "",
+    "visible": true,
+    "x": 7,
+    "y": 29,
+    "w": 725,
+    "h": 535
+  },
+  {
+    "hwnd": "0x2a071c",
+    "class": "TTabSheet",
+    "text": "Te&xt",
+    "visible": true,
+    "x": 11,
+    "y": 52,
+    "w": 717,
+    "h": 507
+  },
+  {
+    "hwnd": "0x2a04c4",
+    "class": "TPanel",
+    "text": "",
+    "visible": true,
+    "x": 510,
+    "y": 52,
+    "w": 218,
+    "h": 507
+  },
+  {
+    "hwnd": "0x30042e",
+    "class": "TBitBtn",
+    "text": "",
+    "visible": true,
+    "x": 696,
+    "y": 251,
+    "w": 24,
+    "h": 22
+  },
+  {
+    "hwnd": "0x370470",
+    "class": "TBitBtn",
+    "text": "",
+    "visible": true,
+    "x": 696,
+    "y": 341,
+    "w": 24,
+    "h": 22
+  },
+  {
+    "hwnd": "0x220606",
+    "class": "TACEdit",
+    "text": "",
+    "visible": true,
+    "x": 516,
+    "y": 341,
+    "w": 174,
+    "h": 18
+  },
+  {
+    "hwnd": "0x25072a",
+    "class": "TListBox",
+    "text": "",
+    "visible": true,
+    "x": 516,
+    "y": 195,
+    "w": 174,
+    "h": 140
+  },
+  {
+    "hwnd": "0x190402",
+    "class": "TButton",
+    "text": "&Hintergrund...",
+    "visible": true,
+    "x": 637,
+    "y": 164,
+    "w": 83,
+    "h": 25
+  },
+  {
+    "hwnd": "0x2d0426",
+    "class": "TPanel",
+    "text": "",
+    "visible": true,
+    "x": 558,
+    "y": 386,
+    "w": 153,
+    "h": 81
+  },
+  {
+    "hwnd": "0x60068c",
+    "class": "TRadioGroup",
+    "text": "Anzahl &Sprachen",
+    "visible": true,
+    "x": 515,
+    "y": 370,
+    "w": 209,
+    "h": 105
+  },
+  {
+    "hwnd": "0x2c0436",
+    "class": "TGroupButton",
+    "text": "4",
+    "visible": true,
+    "x": 519,
+    "y": 450,
+    "w": 204,
+    "h": 22
+  },
+  {
+    "hwnd": "0x200686",
+    "class": "TGroupButton",
+    "text": "3",
+    "visible": true,
+    "x": 519,
+    "y": 428,
+    "w": 204,
+    "h": 22
+  },
+  {
+    "hwnd": "0x35066c",
+    "class": "TGroupButton",
+    "text": "2",
+    "visible": true,
+    "x": 519,
+    "y": 406,
+    "w": 204,
+    "h": 22
+  },
+  {
+    "hwnd": "0x5903c8",
+    "class": "TGroupButton",
+    "text": "1",
+    "visible": true,
+    "x": 519,
+    "y": 384,
+    "w": 204,
+    "h": 22
+  },
+  {
+    "hwnd": "0x300466",
+    "class": "TBitBtn",
+    "text": "OK",
+    "visible": true,
+    "x": 637,
+    "y": 60,
+    "w": 83,
+    "h": 25
+  },
+  {
+    "hwnd": "0x3404a0",
+    "class": "TBitBtn",
+    "text": "Abbrechen",
+    "visible": true,
+    "x": 637,
+    "y": 92,
+    "w": 83,
+    "h": 25
+  },
+  {
+    "hwnd": "0x4d06c0",
+    "class": "TBitBtn",
+    "text": "A&kkorde...",
+    "visible": true,
+    "x": 637,
+    "y": 124,
+    "w": 83,
+    "h": 25
+  },
+  {
+    "hwnd": "0x2806dc",
+    "class": "TPanel",
+    "text": "",
+    "visible": true,
+    "x": 11,
+    "y": 52,
+    "w": 499,
+    "h": 507
+  },
+  {
+    "hwnd": "0x3a06de",
+    "class": "TPanel",
+    "text": "",
+    "visible": true,
+    "x": 11,
+    "y": 84,
+    "w": 499,
+    "h": 28
+  },
+  {
+    "hwnd": "0x3606e0",
+    "class": "TdxBarDockControl",
+    "text": "",
+    "visible": true,
+    "x": 11,
+    "y": 85,
+    "w": 498,
+    "h": 24
+  },
+  {
+    "hwnd": "0x190418",
+    "class": "TdxBarControl",
+    "text": "Toolbar",
+    "visible": true,
+    "x": 11,
+    "y": 85,
+    "w": 498,
+    "h": 24
+  },
+  {
+    "hwnd": "0x15046a",
+    "class": "TPanel",
+    "text": "",
+    "visible": true,
+    "x": 11,
+    "y": 52,
+    "w": 499,
+    "h": 32
+  },
+  {
+    "hwnd": "0xd0720",
+    "class": "TACEdit",
+    "text": "Ehre, Macht, und Stärke",
+    "visible": true,
+    "x": 49,
+    "y": 60,
+    "w": 457,
+    "h": 18
+  },
+  {
+    "hwnd": "0x110464",
+    "class": "TPlusMemoU",
+    "text": "",
+    "visible": true,
+    "x": 11,
+    "y": 112,
+    "w": 499,
+    "h": 447
+  },
+  {
+    "hwnd": "0x5f01c0",
+    "class": "TTabSheet",
+    "text": "Cop&yrights",
+    "visible": false,
+    "x": 11,
+    "y": 52,
+    "w": 717,
+    "h": 507
+  },
+  {
+    "hwnd": "0x870506",
+    "class": "TSZLangComboBox",
+    "text": "",
+    "visible": false,
+    "x": 299,
+    "y": 494,
+    "w": 89,
+    "h": 17
+  },
+  {
+    "hwnd": "0x4306c4",
+    "class": "TComboBox",
+    "text": "",
+    "visible": false,
+    "x": 355,
+    "y": 431,
+    "w": 33,
+    "h": 18
+  },
+  {
+    "hwnd": "0x2d0428",
+    "class": "TSZLangComboBox",
+    "text": "",
+    "visible": false,
+    "x": 107,
+    "y": 473,
+    "w": 105,
+    "h": 17
+  },
+  {
+    "hwnd": "0x290724",
+    "class": "TSZLangComboBox",
+    "text": "",
+    "visible": false,
+    "x": 107,
+    "y": 431,
+    "w": 105,
+    "h": 17
+  },
+  {
+    "hwnd": "0x3c01d2",
+    "class": "TTabSheet",
+    "text": "Kategorien",
+    "visible": false,
+    "x": 11,
+    "y": 52,
+    "w": 717,
+    "h": 507
+  },
+  {
+    "hwnd": "0x320452",
+    "class": "TListBox",
+    "text": "",
+    "visible": false,
+    "x": 363,
+    "y": 100,
+    "w": 257,
+    "h": 377
+  },
+  {
+    "hwnd": "0x4c0710",
+    "class": "TListBox",
+    "text": "",
+    "visible": false,
+    "x": 27,
+    "y": 100,
+    "w": 257,
+    "h": 377
+  },
+  {
+    "hwnd": "0x3c06c2",
+    "class": "TTabSheet",
+    "text": "&Formatierung",
+    "visible": false,
+    "x": 11,
+    "y": 52,
+    "w": 717,
+    "h": 507
+  },
+  {
+    "hwnd": "0x2e06ca",
+    "class": "TGroupBox",
+    "text": "Schriftart und -größe",
+    "visible": false,
+    "x": 19,
+    "y": 260,
+    "w": 393,
+    "h": 145
+  },
+  {
+    "hwnd": "0x8304a2",
+    "class": "TFontComboBox",
+    "text": "",
+    "visible": false,
+    "x": 107,
+    "y": 303,
+    "w": 185,
+    "h": 21
+  },
+  {
+    "hwnd": "0x220446",
+    "class": "TFontComboBox",
+    "text": "",
+    "visible": false,
+    "x": 107,
+    "y": 279,
+    "w": 185,
+    "h": 21
+  },
+  {
+    "hwnd": "0x28045c",
+    "class": "TStatusBar",
+    "text": "",
+    "visible": true,
+    "x": 7,
+    "y": 563,
+    "w": 725,
+    "h": 19
+  }
+]
