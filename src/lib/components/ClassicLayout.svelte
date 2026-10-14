@@ -24,8 +24,8 @@
   }
 
   const nextSlide = $derived<Slide | null>(
-    presentation.activeSong && presentation.activeSlideIndex + 1 < presentation.activeSong.slides.length
-      ? presentation.activeSong.slides[presentation.activeSlideIndex + 1]
+    presentation.activeSong && presentation.activeSlideIndex + 1 < presentation.activeSlides.length
+      ? presentation.activeSlides[presentation.activeSlideIndex + 1]
       : null
   );
 
@@ -760,9 +760,9 @@
 
       <!-- Slide Deck Scroll Area -->
       <div class="flex-1 overflow-y-auto p-2">
-        {#if presentation.activeSong}
+        {#if presentation.activeSong && presentation.activeSlides.length > 0}
           <div class="grid grid-cols-2 gap-2 max-w-full">
-            {#each presentation.activeSong.slides as slide, idx}
+            {#each presentation.activeSlides as slide, idx}
               {@const isLive = presentation.activeSlideIndex === idx}
 
               <div

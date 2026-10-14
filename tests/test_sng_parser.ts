@@ -1,6 +1,6 @@
 //! Verification test for pure TypeScript SNG parser.
 import assert from 'node:assert';
-import { parseSng, parseSngText } from '../src/lib/utils/sngParser.ts';
+import { parseSng, parseSngText, expandSlidesByVerseOrder } from '../src/lib/utils/sngParser.ts';
 
 console.log('Testing parseSng...');
 
@@ -88,13 +88,22 @@ Groß und wunderbar bist du
 const song6 = parseSngText(verseOrderSng);
 assert.strictEqual(song6.metadata.verse_order.length, 5);
 assert.deepStrictEqual(song6.metadata.verse_order, ['Vers', 'Chorus 1', 'Chorus 2', 'Bridge', 'Chorus 2']);
-assert.strictEqual(song6.slides.length, 5);
+// Canonical slides preserve exact file blocks (4 sections)
+assert.strictEqual(song6.slides.length, 4);
 assert.strictEqual(song6.slides[0].label, 'Vers');
 assert.strictEqual(song6.slides[1].label, 'Chorus 1');
 assert.strictEqual(song6.slides[2].label, 'Chorus 2');
 assert.strictEqual(song6.slides[3].label, 'Bridge');
-assert.strictEqual(song6.slides[4].label, 'Chorus 2');
-console.log('✓ Test 6 passed (Verse Order sequencing & slide expansion)');
+
+// Presentation expansion produces the full 5-slide service sequence
+const expanded6 = expandSlidesByVerseOrder(song6.slides, song6.metadata.verse_order);
+assert.strictEqual(expanded6.length, 5);
+assert.strictEqual(expanded6[0].label, 'Vers');
+assert.strictEqual(expanded6[1].label, 'Chorus 1');
+assert.strictEqual(expanded6[2].label, 'Chorus 2');
+assert.strictEqual(expanded6[3].label, 'Bridge');
+assert.strictEqual(expanded6[4].label, 'Chorus 2');
+console.log('✓ Test 6 passed (Verse Order sequencing & presentation slide expansion)');
 
 // Test 7: Verse order case/number insensitivity (e.g. Vers vs Vers 1, Refrain vs Chorus)
 const resilientOrderSng = `#Title=Resilience Test
@@ -107,11 +116,13 @@ Chorus
 Refrain Text
 `;
 const song7 = parseSngText(resilientOrderSng);
-assert.strictEqual(song7.slides.length, 4);
-assert.strictEqual(song7.slides[0].label, 'Vers');
-assert.strictEqual(song7.slides[1].label, 'Chorus');
-assert.strictEqual(song7.slides[2].label, 'Vers');
-assert.strictEqual(song7.slides[3].label, 'Chorus');
+assert.strictEqual(song7.slides.length, 2); // 2 canonical slides in file
+const expanded7 = expandSlidesByVerseOrder(song7.slides, song7.metadata.verse_order);
+assert.strictEqual(expanded7.length, 4); // 4 presentation slides expanded
+assert.strictEqual(expanded7[0].label, 'Vers');
+assert.strictEqual(expanded7[1].label, 'Chorus');
+assert.strictEqual(expanded7[2].label, 'Vers');
+assert.strictEqual(expanded7[3].label, 'Chorus');
 console.log('✓ Test 7 passed (Resilient section matching between Vers/Strophe and Chorus/Refrain)');
 
 console.log('All TypeScript SNG parser tests passed successfully!');

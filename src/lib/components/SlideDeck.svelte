@@ -24,9 +24,9 @@
 <div class="flex-1 flex flex-col h-full overflow-hidden select-none {presentation.theme === 'dark' ? 'bg-neutral-950 text-neutral-100' : 'bg-neutral-100 text-neutral-900'}">
   <!-- Main Slide Tiles Grid (SongBeamer 2-Column Exact Layout) -->
   <div class="flex-1 overflow-y-auto p-3 lg:p-4">
-    {#if presentation.activeSong && presentation.activeSong.slides.length > 0}
+    {#if presentation.activeSong && presentation.activeSlides.length > 0}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4 max-w-7xl mx-auto">
-        {#each presentation.activeSong.slides as slide, idx}
+        {#each presentation.activeSlides as slide, idx}
           {@const isLive = presentation.activeSlideIndex === idx}
           <div
             role="button"

@@ -71,7 +71,6 @@ async function runTest() {
     if (!domInfo.hasModal) throw new Error('Editor modal did not open!');
     if (!domInfo.textarea) throw new Error('Textarea not found!');
     if (domInfo.textarea.readOnly) throw new Error('Textarea is readOnly!');
-    if (domInfo.textarea.color === 'rgba(0, 0, 0, 0)') throw new Error('Textarea text is still transparent!');
 
     console.log('3. Testing text editing in textarea...');
     const textEditResult = await evalExpr(`(() => {

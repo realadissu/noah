@@ -37,8 +37,8 @@
   let currentTime = $state<string>('');
 
   const nextSlide = $derived<Slide | null>(
-    presentation.activeSong && presentation.activeSlideIndex + 1 < presentation.activeSong.slides.length
-      ? presentation.activeSong.slides[presentation.activeSlideIndex + 1]
+    presentation.activeSong && presentation.activeSlideIndex + 1 < presentation.activeSlides.length
+      ? presentation.activeSlides[presentation.activeSlideIndex + 1]
       : null
   );
 
@@ -169,7 +169,7 @@
       case '8':
       case '9': {
         const index = parseInt(e.key, 10) - 1;
-        if (presentation.activeSong && index < presentation.activeSong.slides.length) {
+        if (presentation.activeSong && index < presentation.activeSlides.length) {
           e.preventDefault();
           presentation.selectSlide(index);
         }

@@ -143,31 +143,35 @@ export function parseSngText(content: string, fileName?: string): Song {
       section,
       raw_content: textLines.join('\n'),
       lines: slideLines,
+      is_continuation: block.isContinuation,
     });
   }
 
-  // Expand slides according to verse_order if specified
-  const expandedSlides = expandSlidesByVerseOrder(slides, verseOrder);
+  // Preserve canonical slides (never drop verses unmentioned in verse_order)
+  const canonicalSlides = slides.length > 0 ? slides : [
+    {
+      id: 'slide-fallback',
+      index: 0,
+      label: 'Slide 1',
+      raw_content: title,
+      lines: [parseLyricLine(title)],
+      is_continuation: false,
+    },
+  ];
 
   return {
     id: songId,
     metadata: {
       title,
+      title_lang2: metadata['titlelang2'] || undefined,
       author,
       musical_key: musicalKey || undefined,
       verse_order: verseOrder,
-      lang_count: 1,
+      lang_count: metadata['langcount'] ? Math.max(1, parseInt(metadata['langcount'], 10)) : 1,
       custom_tags: customTags,
     },
-    slides: expandedSlides.length > 0 ? expandedSlides : [
-      {
-        id: 'slide-fallback',
-        index: 0,
-        label: 'Slide 1',
-        raw_content: title,
-        lines: [parseLyricLine(title)],
-      },
-    ],
+    slides: canonicalSlides,
+    raw_content: content,
   };
 }
 

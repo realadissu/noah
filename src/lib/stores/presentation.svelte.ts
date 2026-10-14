@@ -11,7 +11,7 @@ import type {
   ScanSummary,
   FileLoadResult,
 } from '$lib/types/models';
-import { parseSng } from '$lib/utils/sngParser';
+import { parseSng, expandSlidesByVerseOrder } from '$lib/utils/sngParser';
 import { t, i18n } from '$lib/i18n';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
@@ -285,6 +285,15 @@ class PresentationStore {
   aspectRatio = $state<AspectRatio>('16:9');
   aspectRatioMode = $state<'auto' | AspectRatio>('auto');
 
+  // Presentation slides sequence expanded by verse_order if defined, while preserving song.slides canonical
+  get activeSlides(): Slide[] {
+    if (!this.activeSong) return [];
+    if (this.activeSong.metadata.verse_order && this.activeSong.metadata.verse_order.length > 0) {
+      return expandSlidesByVerseOrder(this.activeSong.slides, this.activeSong.metadata.verse_order);
+    }
+    return this.activeSong.slides;
+  }
+
   // Cross-window channel for browser tabs / windows parity
   private beamerChannel: BroadcastChannel | null = null;
 
@@ -346,7 +355,7 @@ class PresentationStore {
         slideIndex: this.activeSlideIndex,
         aspectRatio: this.aspectRatio,
       });
-      const slide = this.activeSong.slides[this.activeSlideIndex];
+      const slide = this.activeSlides[this.activeSlideIndex] ?? this.activeSong.slides[this.activeSlideIndex];
       if (slide) {
         this.emitBeamerEvent({
           type: 'CHANGE_SLIDE',
@@ -690,7 +699,7 @@ class PresentationStore {
       song,
       slideIndex: 0,
     });
-    const slide = song.slides[0];
+    const slide = this.activeSlides[0] ?? song.slides[0];
     if (slide) {
       this.emitBeamerEvent({
         type: 'CHANGE_SLIDE',
@@ -790,7 +799,8 @@ class PresentationStore {
   }
 
   nextSlide() {
-    if (this.activeSong && this.activeSlideIndex + 1 < this.activeSong.slides.length) {
+    const slides = this.activeSlides;
+    if (this.activeSong && this.activeSlideIndex + 1 < slides.length) {
       this.selectSlide(this.activeSlideIndex + 1);
     } else if (this.activeScheduleIndex + 1 < this.schedule.length) {
       // Advance to next item in schedule if at last slide
@@ -804,18 +814,20 @@ class PresentationStore {
     } else if (this.activeScheduleIndex > 0) {
       // Go back to previous schedule item
       this.selectScheduleItem(this.activeScheduleIndex - 1);
-      if (this.activeSong && this.activeSong.slides.length > 0) {
-        this.selectSlide(this.activeSong.slides.length - 1);
+      const slides = this.activeSlides;
+      if (this.activeSong && slides.length > 0) {
+        this.selectSlide(slides.length - 1);
       }
     }
   }
 
   selectSlide(index: number) {
-    if (this.activeSong && index >= 0 && index < this.activeSong.slides.length) {
+    const slides = this.activeSlides;
+    if (this.activeSong && index >= 0 && index < slides.length) {
       this.activeSlideIndex = index;
       // Selecting a slide brings it live on screen
       this.displayMode = 'normal';
-      const slide = this.activeSong.slides[index];
+      const slide = slides[index];
       if (slide) {
         invokeTauri('change_slide', {
           slideId: slide.id,

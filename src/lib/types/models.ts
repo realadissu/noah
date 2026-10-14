@@ -36,6 +36,7 @@ export interface Slide {
   label: string;
   lines: LyricLine[];
   raw_content: string;
+  is_continuation?: boolean;
 }
 
 export interface SongMetadata {
@@ -58,6 +59,7 @@ export interface Song {
   metadata: SongMetadata;
   slides: Slide[];
   raw_format?: string;
+  raw_content?: string;
 }
 
 export type DisplayMode = 'normal' | 'black' | 'clear_text' | 'logo' | 'frozen';

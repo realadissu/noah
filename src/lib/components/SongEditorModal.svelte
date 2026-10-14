@@ -231,10 +231,9 @@
 
   const hasChords = $derived<boolean>(hasValidGuitarChords(editorText));
 
-  // Reconstruct initial editor text from song slides, deduplicating slides repeated by verse_order
+  // Lossless editor text from song slides, preserving continuations and every section
   function songToText(s: Song): string {
     const parts: string[] = [];
-    const seen = new Set<string>();
 
     for (const slide of s.slides) {
       let sectionTag = '';
@@ -292,19 +291,17 @@
       });
 
       const body = lineStrings.join('\n').trim();
-      // Deduplicate blocks expanded by verse_order
-      const dedupKey = `${sectionTag}:::${body}`;
-      if (seen.has(dedupKey)) {
-        continue;
-      }
-      seen.add(dedupKey);
-
       let block = '';
-      if (sectionTag) {
+      if (!slide.is_continuation && sectionTag) {
         block += `${sectionTag}\n`;
       }
       block += body;
-      parts.push(block.trim());
+
+      if (slide.is_continuation && parts.length > 0) {
+        parts[parts.length - 1] += `\n--\n${block.trim()}`;
+      } else {
+        parts.push(block.trim());
+      }
     }
     return parts.join('\n---\n');
   }
@@ -337,7 +334,28 @@
 
   function initFromSong(s: Song) {
     title = s.metadata.title;
-    editorText = songToText(s);
+    if (s.raw_content) {
+      const lines = s.raw_content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      const bodyLines: string[] = [];
+      let inHeader = true;
+      for (const line of lines) {
+        if (inHeader) {
+          if (line.trim() === '---') {
+            inHeader = false;
+            continue;
+          }
+          if (!line.trim().startsWith('#') && line.trim().length > 0) {
+            inHeader = false;
+            bodyLines.push(line);
+          }
+        } else {
+          bodyLines.push(line);
+        }
+      }
+      editorText = bodyLines.length > 0 ? bodyLines.join('\n') : songToText(s);
+    } else {
+      editorText = songToText(s);
+    }
     verseOrder = [...(s.metadata.verse_order ?? [])];
     verseOrderInput = verseOrder.join(', ');
     langCount = s.metadata.lang_count || 1;
@@ -355,6 +373,7 @@
     audioFile = s.metadata.custom_tags['audiofile'] ?? '';
     chordsheetFile = s.metadata.custom_tags['chordsheet'] ?? '';
     selectedAblaufIdx = verseOrder.length > 0 ? 0 : null;
+    lastCursorPos = 0;
     updateCurrentSectionFromCursor();
   }
 
@@ -387,37 +406,67 @@
         textareaEl.focus();
         textareaEl.setSelectionRange(charOffset, charOffset + line.length);
         currentSection = info.label;
+        lastCursorPos = charOffset;
         return;
       }
       charOffset += line.length + 1;
     }
   }
 
+  let lastCursorPos = $state<number>(0);
+
+  function handleTextareaCursorEvent() {
+    if (textareaEl) {
+      lastCursorPos = textareaEl.selectionStart ?? 0;
+    }
+    updateCurrentSectionFromCursor();
+  }
+
+  // High-precision section detection for cursor position
+  function getSectionAtCursor(text: string, pos: number): string {
+    if (!text) return i18n.locale === 'de' ? 'Vers 1' : 'Verse 1';
+    const allLines = text.split('\n');
+
+    let offset = 0;
+    let targetLineIdx = 0;
+    for (let i = 0; i < allLines.length; i++) {
+      const lineLen = allLines[i].length;
+      if (pos >= offset && pos <= offset + lineLen) {
+        targetLineIdx = i;
+        break;
+      }
+      offset += lineLen + 1;
+    }
+
+    // 1. If cursor is on the header line itself
+    const currentLineInfo = getSectionHeaderInfo(allLines[targetLineIdx]);
+    if (currentLineInfo) {
+      return currentLineInfo.label;
+    }
+
+    // 2. Scan upwards to find enclosing section header
+    for (let i = targetLineIdx - 1; i >= 0; i--) {
+      const info = getSectionHeaderInfo(allLines[i]);
+      if (info) {
+        return info.label;
+      }
+    }
+
+    // 3. Scan downwards if cursor was placed before first section
+    for (let i = targetLineIdx + 1; i < allLines.length; i++) {
+      const info = getSectionHeaderInfo(allLines[i]);
+      if (info) {
+        return info.label;
+      }
+    }
+
+    return i18n.locale === 'de' ? 'Vers 1' : 'Verse 1';
+  }
+
   // Determine section at cursor position
   function updateCurrentSectionFromCursor() {
-    if (!textareaEl) return;
-    const pos = textareaEl.selectionStart ?? 0;
-    const before = editorText.slice(0, pos);
-    const lines = before.split('\n');
-
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const headerInfo = getSectionHeaderInfo(lines[i]);
-      if (headerInfo) {
-        currentSection = headerInfo.label;
-        return;
-      }
-    }
-
-    // Fallback: check first header in whole text
-    const allLines = editorText.split('\n');
-    for (const l of allLines) {
-      const info = getSectionHeaderInfo(l);
-      if (info) {
-        currentSection = info.label;
-        return;
-      }
-    }
-    currentSection = i18n.locale === 'de' ? 'Vers 1' : 'Verse 1';
+    const pos = textareaEl ? (textareaEl.selectionStart ?? lastCursorPos) : lastCursorPos;
+    currentSection = getSectionAtCursor(editorText, pos);
   }
 
   // Ablauf: add section currently under cursor to the end
@@ -743,6 +792,7 @@
       if (song) {
         parsed.id = song.id;
       }
+      parsed.raw_content = sngContent;
       await presentation.saveEditedSong(parsed);
     } else {
       alert(t('editor.parseErrorAlert'));
@@ -1095,8 +1145,8 @@
                 </div>
               </div>
 
-              <!-- Main text area with SongBeamer vertical red guideline at 48ch -->
-              <div class="relative flex-1 w-full h-full min-h-[300px] overflow-hidden flex flex-col bg-white dark:bg-neutral-950">
+              <!-- Main text area with SongBeamer vertical red guideline at 48ch & syntax-highlighted section banners -->
+              <div class="relative flex-1 w-full h-full min-h-[300px] overflow-hidden flex flex-col bg-white dark:bg-neutral-950 font-mono text-xs leading-[22px]">
                 <!-- SongBeamer vertical red guideline (approx. 48 monospace characters width) -->
                 <div
                   class="absolute inset-y-0 border-r border-dotted border-red-500/60 dark:border-red-500/40 pointer-events-none z-10"
@@ -1105,20 +1155,55 @@
                   aria-hidden="true"
                 ></div>
 
+                <!-- Backdrop Layer: Automatic Section Header Banners & Red '---' / '--' styling -->
+                <div
+                  bind:this={backdropEl}
+                  class="absolute inset-0 p-3 overflow-hidden pointer-events-none font-mono text-xs leading-[22px] select-none z-0"
+                  aria-hidden="true"
+                >
+                  {#each editorText.split('\n') as line}
+                    {@const headerInfo = getSectionHeaderInfo(line)}
+                    {#if headerInfo}
+                      <div
+                        style="background-color: {headerInfo.hex};"
+                        class="w-full text-white font-bold px-2 rounded-xs h-[22px] flex items-center leading-none tracking-wide shadow-2xs"
+                      >
+                        {line}
+                      </div>
+                    {:else if line.trim() === '---'}
+                      <div class="text-red-600 font-bold font-mono tracking-widest h-[22px] flex items-center leading-none">
+                        {line}
+                      </div>
+                    {:else if line.trim() === '--'}
+                      <div class="text-red-500 font-bold font-mono tracking-widest h-[22px] flex items-center leading-none">
+                        {line}
+                      </div>
+                    {:else}
+                      <div class="h-[22px] text-neutral-900 dark:text-neutral-100 flex items-center leading-none whitespace-pre overflow-hidden">
+                        {line || ' '}
+                      </div>
+                    {/if}
+                  {/each}
+                </div>
+
+                <!-- Input Textarea: Native Typing & Caret on Top with full text selection -->
                 <textarea
                   id="song-text-editor"
                   bind:this={textareaEl}
                   bind:value={editorText}
                   oninput={handleTextareaInput}
                   onbeforeinput={handleTextareaBeforeInput}
-                  onclick={updateCurrentSectionFromCursor}
-                  onkeyup={updateCurrentSectionFromCursor}
-                  onselect={updateCurrentSectionFromCursor}
+                  onkeydown={handleTextareaKeyDown}
+                  onscroll={handleScroll}
+                  onclick={handleTextareaCursorEvent}
+                  onkeyup={handleTextareaCursorEvent}
+                  onselect={handleTextareaCursorEvent}
                   spellcheck="false"
                   autocomplete="off"
                   autocapitalize="off"
+                  data-gramm="false"
                   placeholder={t('editor.textPlaceholder')}
-                  class="w-full flex-1 p-3 font-mono text-xs sm:text-sm leading-relaxed resize-none focus:outline-none bg-transparent text-neutral-900 dark:text-neutral-100 caret-blue-600 dark:caret-amber-400 selection:bg-blue-500/25 dark:selection:bg-blue-500/35 select-text whitespace-pre overflow-y-auto z-0"
+                  class="absolute inset-0 w-full h-full p-3 font-mono text-xs leading-[22px] resize-none focus:outline-none bg-transparent text-transparent caret-blue-600 dark:caret-amber-400 selection:bg-blue-500/35 selection:text-transparent select-text whitespace-pre overflow-y-auto z-20"
                 ></textarea>
               </div>
 
@@ -1139,8 +1224,13 @@
                   <div class="flex items-center gap-1.5">
                     <span>{t('editor.verseOrder')}</span>
                     {#if currentSection}
-                      <span class="text-[10px] opacity-60 font-normal truncate max-w-[80px]" title={t('editor.activePartTooltip')}>
-                        ({currentSection})
+                      {@const badgeColor = getSectionColor(currentSection)}
+                      <span
+                        class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white shadow-2xs truncate max-w-[100px]"
+                        style="background-color: {badgeColor.hex};"
+                        title={t('editor.activePartTooltip')}
+                      >
+                        {currentSection}
                       </span>
                     {/if}
                   </div>
