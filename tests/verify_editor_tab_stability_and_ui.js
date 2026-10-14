@@ -97,7 +97,7 @@ async function runTest() {
     fs.writeFileSync('tests/final_verified_editor.png', Buffer.from(finalShot.data, 'base64'));
     console.log('Saved tests/final_verified_editor.png');
 
-    console.log('5. Verifying absence of Marke, ---Folie, --Umbruch, and red lines...');
+    console.log('5. Verifying absence of Marke, ---Folie, --Umbruch, and presence of authentic guidelines...');
     const domCheck = await evalExpr(`(() => {
       const textEditor = document.querySelector('#song-text-editor');
       const dialog = document.querySelector('[role="dialog"]');
@@ -107,7 +107,8 @@ async function runTest() {
         hasSlideBreakBtn: textContent.includes('--- Folie'),
         hasLineBreakBtn: textContent.includes('-- Umbruch'),
         hasEigenerTeil: textContent.includes('Eigener Teil'),
-        redLineCount: dialog.querySelectorAll('.bg-red-600.h-0\\\\.5, [style*="48ch"]').length
+        hasVerticalGuide: !!dialog.querySelector('[style*="50ch"]'),
+        hasEndOfTextMark: !!dialog.querySelector('.border-red-600')
       };
     })()`);
     console.log('DOM check results:', domCheck);
@@ -116,7 +117,8 @@ async function runTest() {
     if (domCheck.hasSlideBreakBtn) throw new Error('--- Folie button is still present!');
     if (domCheck.hasLineBreakBtn) throw new Error('-- Umbruch button is still present!');
     if (domCheck.hasEigenerTeil) throw new Error('Eigener Teil is still present!');
-    if (domCheck.redLineCount > 0) throw new Error('Red guideline is still present!');
+    if (!domCheck.hasVerticalGuide) throw new Error('Vertical guideline (50ch) should be present!');
+    if (!domCheck.hasEndOfTextMark) throw new Error('EndOfTextMark (red line) should be present!');
 
     console.log('ALL MODAL REQUIREMENTS VERIFIED PERFECTLY!');
   } finally {

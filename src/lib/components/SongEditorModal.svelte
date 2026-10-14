@@ -1082,9 +1082,17 @@
                 </div>
               </div>
 
-              <!-- Main text area with syntax-highlighted section banners -->
+              <!-- Main text area with syntax-highlighted section banners & guidelines -->
               <div class="relative flex-1 w-full h-full min-h-[300px] overflow-hidden flex flex-col bg-white dark:bg-neutral-950 font-mono text-[14px] leading-[26px]">
-                <!-- Backdrop Layer: Automatic Section Header Banners & Red '---' / '--' styling -->
+                <!-- Vertical guideline for recommended max line length (~50 characters, matching SongBeamer RightLinePen) -->
+                <div
+                  class="absolute inset-y-0 border-r border-dotted border-neutral-400/80 dark:border-neutral-600/80 pointer-events-none z-10"
+                  style="left: calc(50ch + 14px);"
+                  title={t('editor.lineLimitGuide')}
+                  aria-hidden="true"
+                ></div>
+
+                <!-- Backdrop Layer: Automatic Section Header Banners, Red '---' / '--' styling, and EndOfText line -->
                 <div
                   bind:this={backdropEl}
                   class="absolute inset-0 p-3.5 overflow-hidden pointer-events-none font-mono text-[14px] leading-[26px] select-none z-0"
@@ -1113,6 +1121,11 @@
                       </div>
                     {/if}
                   {/each}
+
+                  <!-- SongBeamer authentic EndOfTextMark: Red line right below the last text line -->
+                  {#if editorText.trim()}
+                    <div class="w-full border-b-2 border-red-600 my-1 pointer-events-none" title="Textende (SongBeamer EndOfTextMark)"></div>
+                  {/if}
                 </div>
 
                 <!-- Input Textarea: Native Typing & Caret on Top with full text selection -->
