@@ -366,7 +366,7 @@ export function getLineRenderStyle(
   // Determine language format for this line
   const langIdx = line.language_index ?? 0;
   let fmt: TextStyleFormat = formatOpts.lang1Format;
-  let defaultColor = DEFAULT_PRESENTATION_COLORS.lang1;
+  let defaultColor: string = DEFAULT_PRESENTATION_COLORS.lang1;
 
   if (langIdx === 1 && formatOpts.lang2Format) {
     fmt = formatOpts.lang2Format;

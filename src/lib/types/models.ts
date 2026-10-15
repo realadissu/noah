@@ -43,6 +43,7 @@ export interface SongMetadata {
   title: string;
   title_lang2?: string;
   author?: string;
+  melody?: string;
   copyright?: string;
   ccli?: string;
   transpose?: number;
@@ -130,6 +131,7 @@ export interface SongSearchResult {
   file_path?: string;
   slide_count: number;
   snippet?: string;
+  match_snippet?: string;
 }
 
 export interface ScanSummary {

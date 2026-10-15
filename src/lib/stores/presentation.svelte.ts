@@ -13,8 +13,8 @@ import type {
 } from '$lib/types/models';
 import { parseSng, parseSngText, serializeSng, expandSlidesByVerseOrder } from '$lib/utils/sngParser';
 import { EMBEDDED_SONGS_ARCHIVE } from '$lib/data/songsArchive';
-import { t, i18n } from '$lib/i18n';
-import { PRESENTATION_BACKGROUNDS, type BackgroundItem, isImageBackground } from '$lib/data/backgrounds';
+import { i18n } from '$lib/i18n';
+import { type BackgroundItem } from '$lib/data/backgrounds';
 import { convertSongSelectToSong, generateSngFromSongSelect, type SongSelectSong } from '$lib/services/ccli';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
@@ -1018,6 +1018,16 @@ class PresentationStore {
     }
   }
 
+  async pickFolder(_title?: string): Promise<string | null> {
+    try {
+      const picked = await invokeTauri<string>('pick_folder', { title: _title });
+      if (picked) return picked;
+    } catch {
+      // Browser or unhandled
+    }
+    return null;
+  }
+
   async scanSongsDirectory(path?: string): Promise<ScanSummary | null> {
     const dir = path ?? this.songsDirectory;
     if (!dir) return null;
@@ -1080,16 +1090,17 @@ class PresentationStore {
 
   async searchSongs(query = '', limit = 50, subfolderFilter?: string): Promise<SongSearchResult[]> {
     const q = query.trim().toLowerCase();
+    if (q.length < 2) {
+      return [];
+    }
 
     // 1. Try native Tauri database search first if running inside desktop app
-    if (q) {
-      const backendResults = await invokeTauri<SongSearchResult[]>('search_songs', { query: q, limit });
-      if (backendResults && backendResults.length > 0) {
-        if (subfolderFilter && subfolderFilter !== 'all') {
-          return backendResults.filter((r) => r.file_path?.toLowerCase().includes(subfolderFilter.toLowerCase()));
-        }
-        return backendResults;
+    const backendResults = await invokeTauri<SongSearchResult[]>('search_songs', { query: q, limit });
+    if (backendResults && backendResults.length > 0) {
+      if (subfolderFilter && subfolderFilter !== 'all') {
+        return backendResults.filter((r) => r.file_path?.toLowerCase().includes(subfolderFilter.toLowerCase()));
       }
+      return backendResults;
     }
 
     // 2. Comprehensive client-side search across Schedule + Local Archive + Sample Library
@@ -1458,8 +1469,6 @@ class PresentationStore {
     }
 
     // 3. Match from local sample library
-    const allKnown = await this.searchSongs('', 100);
-    // Construct realistic song with slides
     const res = await this.searchSongs(item.title, 5);
     const target = res.find((r) => r.title.toLowerCase() === item.title.toLowerCase()) || item;
 
@@ -1505,7 +1514,7 @@ class PresentationStore {
     const fullPath = customFilePath || `${songsDir}/${cleanTitle}.sng`;
 
     // 2. Try saving to disk via Tauri
-    await invokeTauri('save_song_to_disk', { song, filePath: fullPath });
+    await invokeTauri('save_song_to_disk', { song, filePath: fullPath, sngContent });
 
     // 3. Add to schedule and select
     this.addSongToSchedule(song);

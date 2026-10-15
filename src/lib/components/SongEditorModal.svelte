@@ -2,12 +2,7 @@
   import { t, i18n } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { Song } from '$lib/types/models';
-  import {
-    PRESENTATION_BACKGROUNDS,
-    type BackgroundItem,
-    type BackgroundCategory,
-    isImageBackground,
-  } from '$lib/data/backgrounds';
+  import { isImageBackground } from '$lib/data/backgrounds';
   import SongEditorFormatTab from './editor/SongEditorFormatTab.svelte';
   import SongEditorBackgroundTab from './editor/SongEditorBackgroundTab.svelte';
   import { type SongFormatOptions, DEFAULT_FORMAT_OPTIONS } from '$lib/types/format';
@@ -27,14 +22,8 @@
   let formatOptions = $state<SongFormatOptions>({ ...DEFAULT_FORMAT_OPTIONS });
 
   // Background state (20 curated presets & custom tags)
-  let selectedBgCategory = $state<BackgroundCategory | 'all'>('all');
   let selectedBg = $state<string>(''); // image URL, gradient, or hex
   let bgDimmer = $state<number>(25); // 0 to 80%
-
-  const filteredBackgrounds = $derived.by<BackgroundItem[]>(() => {
-    if (selectedBgCategory === 'all') return PRESENTATION_BACKGROUNDS;
-    return PRESENTATION_BACKGROUNDS.filter((b) => b.category === selectedBgCategory);
-  });
 
   // Copyrights metadata
   let author = $state<string>('');
@@ -44,10 +33,6 @@
   let speed = $state<number | undefined>(undefined);
   let transpose = $state<number>(0);
   let titleLang2 = $state<string>('');
-
-  // Formatting metadata
-  let fontSize = $state<number>(36);
-  let fontFamily = $state<string>('Arial');
 
   // Categories metadata
   let categories = $state<string[]>([]);
@@ -59,8 +44,6 @@
 
   // UI state
   let isChordModalOpen = $state<boolean>(false);
-  let isMarkeDropdownOpen = $state<boolean>(false);
-  let newOrderPartInput = $state<string>('');
   let verseOrderInput = $state<string>('');
   let selectedAblaufIdx = $state<number | null>(null);
   let lastLoadedSongId = $state<string | null>(null);
@@ -74,48 +57,6 @@
   let draggedAblaufIdx = $state<number | null>(null);
   let targetAblaufIdx = $state<number | null>(null);
 
-  // Marker options for quick insertion
-  const MARKE_OPTIONS_DE = [
-    'Vers 1',
-    'Vers 2',
-    'Vers 3',
-    'Vers 4',
-    'Vers 5',
-    'Vers 6',
-    'Vers 7',
-    'Vers 8',
-    'Refrain',
-    'Chorus 1',
-    'Chorus 2',
-    'Bridge',
-    'Pre-Chorus',
-    'Intro',
-    'Outro',
-    'Zwischenspiel',
-    'Schluss',
-  ];
-
-  const MARKE_OPTIONS_EN = [
-    'Verse 1',
-    'Verse 2',
-    'Verse 3',
-    'Verse 4',
-    'Verse 5',
-    'Verse 6',
-    'Verse 7',
-    'Verse 8',
-    'Chorus',
-    'Chorus 1',
-    'Chorus 2',
-    'Bridge',
-    'Pre-Chorus',
-    'Intro',
-    'Outro',
-    'Interlude',
-    'Ending',
-  ];
-
-  const markeOptions = $derived<string[]>(i18n.locale === 'de' ? MARKE_OPTIONS_DE : MARKE_OPTIONS_EN);
 
   const STANDARD_CATEGORIES_DE = [
     'Lobpreis & Anbetung',
@@ -469,12 +410,10 @@
     speed = s.metadata.speed;
     transpose = s.metadata.transpose ?? 0;
     titleLang2 = s.metadata.title_lang2 ?? '';
-    fontSize = s.metadata.font_size ?? 0;
     formatOptions = parseSongFormatOptions(s.metadata.custom_tags || {});
     if (s.metadata.font_size !== undefined && s.metadata.font_size > 0) {
       formatOptions.fontSize = s.metadata.font_size;
     }
-    fontFamily = formatOptions.fontFamily;
     categories = s.metadata.custom_tags['category']
       ? s.metadata.custom_tags['category'].split(',').map((x) => x.trim())
       : [];
@@ -599,12 +538,6 @@
     selectedAblaufIdx = verseOrder.length - 1;
   }
 
-  function addCustomOrderPart(part: string) {
-    if (!part.trim()) return;
-    updateVerseOrder([...verseOrder, part.trim()]);
-    newOrderPartInput = '';
-    selectedAblaufIdx = verseOrder.length - 1;
-  }
 
   function removeOrderPart(idx: number) {
     updateVerseOrder(verseOrder.filter((_, i) => i !== idx));
@@ -706,31 +639,6 @@
     targetAblaufIdx = null;
   }
 
-  // Insertion helpers for markers, page breaks, and line breaks
-  function insertMarker(markerName: string) {
-    if (!textareaEl) {
-      editorText += (editorText ? '\n---\n' : '') + `${markerName}\n`;
-      isMarkeDropdownOpen = false;
-      return;
-    }
-    const start = textareaEl.selectionStart;
-    const end = textareaEl.selectionEnd;
-    const text = editorText;
-    const before = text.slice(0, start);
-    const after = text.slice(end);
-
-    const prefix = before.length === 0 ? '' : before.endsWith('\n') ? '---\n' : '\n---\n';
-    const insertion = `${prefix}${markerName}\n`;
-    const newText = before + insertion + after;
-    const newCursorPos = start + insertion.length;
-
-    editorText = newText;
-    textareaEl.value = newText;
-    textareaEl.focus();
-    textareaEl.setSelectionRange(newCursorPos, newCursorPos);
-    updateCurrentSectionFromCursor();
-    isMarkeDropdownOpen = false;
-  }
 
   function insertSlideSeparator() {
     if (!textareaEl) {
@@ -759,32 +667,6 @@
     updateCurrentSectionFromCursor();
   }
 
-  function insertContinuationBreak() {
-    if (!textareaEl) {
-      editorText += '\n--\n';
-      return;
-    }
-
-    const start = textareaEl.selectionStart;
-    const end = textareaEl.selectionEnd;
-    const text = editorText;
-
-    const before = text.slice(0, start);
-    const after = text.slice(end);
-
-    const prefix = before.length === 0 || before.endsWith('\n') ? '' : '\n';
-    const suffix = after.length === 0 || after.startsWith('\n') ? '' : '\n';
-
-    const separator = `${prefix}--\n${suffix}`;
-    const newText = before + separator + after;
-    const newCursorPos = start + separator.length;
-
-    editorText = newText;
-    textareaEl.value = newText;
-    textareaEl.focus();
-    textareaEl.setSelectionRange(newCursorPos, newCursorPos);
-    updateCurrentSectionFromCursor();
-  }
 
   function handleTextareaBeforeInput(e: InputEvent) {
     // Intercept macOS smart dash substitution (em-dash U+2014 or en-dash U+2013)

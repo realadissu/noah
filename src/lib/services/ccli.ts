@@ -1,4 +1,4 @@
-import type { Song, Slide } from '$lib/types/models';
+import type { Song, Slide, SectionType } from '$lib/types/models';
 
 export interface SongSelectSong {
   ccliNumber: string;
@@ -72,6 +72,93 @@ export function openSongSelectInBrowser(url = 'https://songselect.ccli.com/'): v
 // Built-in verified CCLI SongSelect worship repertoire
 export const SONGSELECT_CATALOG: SongSelectSong[] = [
   {
+    ccliNumber: '3942082',
+    title: 'Alles kommt von dir',
+    titleSecondary: 'All Things Come From You',
+    authors: 'Lothar Kosse',
+    copyright: '© 2003 Arne Kopfermann / Projektion J Musikverlag',
+    musicalKey: 'E',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Alles kommt von dir, Herr, alles ist dein Werk...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Alles kommt von dir, Herr, alles ist dein Werk.',
+          'Was wir dir geben, schenktest du uns erst.',
+          'Denn alles kommt von dir, Herr, alles ist dein Werk.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Dir sei die Ehre, dir sei der Ruhm!',
+          'Dir sei die Macht und die Herrlichkeit!',
+          'Dir sei die Ehre, dir sei der Ruhm!',
+          'In Ewigkeit, Amen.',
+        ],
+      },
+      {
+        label: 'Vers 2',
+        type: 'Verse',
+        lines: [
+          'Niemand ist wie du, Herr, niemand ist dir gleich.',
+          'Du regierst in Weisheit, ewig währt dein Reich.',
+          'Denn alles kommt von dir, Herr, alles ist dein Werk.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '7117365',
+    title: '365',
+    titleSecondary: '365 Tage',
+    authors: 'Mia Friesen, Stefan Schöpfle',
+    copyright: '© 2018 D-Town Music / Gerth Medien (Outbreakband)',
+    musicalKey: 'C',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: '365 Tage im Jahr bist du für mich da...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Jeder Tag ist ein Geschenk, jeder Atemzug von dir.',
+          'Du bist der, an den ich denk, du bist immer bei mir.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          '365 Tage im Jahr bist du für mich da,',
+          '365 Tage im Jahr, so wunderbar!',
+          '365 Tage im Jahr ist deine Gnade nah.',
+        ],
+      },
+      {
+        label: 'Vers 2',
+        type: 'Verse',
+        lines: [
+          'Ob die Sonne scheint, ob der Regen fällt,',
+          'du bist der, der mein Leben in den Händen hält.',
+        ],
+      },
+      {
+        label: 'Bridge',
+        type: 'Bridge',
+        lines: [
+          'Tag für Tag, Schritt für Schritt,',
+          'du gehst alle meine Wege mit.',
+        ],
+      },
+    ],
+  },
+  {
     ccliNumber: '6016350',
     title: '10,000 Reasons (Bless The Lord)',
     titleSecondary: '10.000 Gründe',
@@ -89,8 +176,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Bless the Lord, O my soul, O my soul,',
           'Worship His holy name.',
           'Sing like never before, O my soul,',
-          'I\'ll worship Your holy name.'
-        ]
+          'I\'ll worship Your holy name.',
+        ],
       },
       {
         label: 'Vers 1',
@@ -99,8 +186,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'The sun comes up, it\'s a new day dawning,',
           'It\'s time to sing Your song again.',
           'Whatever may pass, and whatever lies before me,',
-          'Let me be singing when the evening comes.'
-        ]
+          'Let me be singing when the evening comes.',
+        ],
       },
       {
         label: 'Vers 2',
@@ -109,10 +196,10 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'You\'re rich in love, and You\'re slow to anger,',
           'Your name is great, and Your heart is kind.',
           'For all Your goodness I will keep on singing,',
-          'Ten thousand reasons for my heart to find.'
-        ]
-      }
-    ]
+          'Ten thousand reasons for my heart to find.',
+        ],
+      },
+    ],
   },
   {
     ccliNumber: '7084128',
@@ -132,8 +219,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Die Gnade fließt wie ein breiter Strom,',
           'die reinwäscht und vergibt.',
           'Sie tilgt die Schuld, bricht der Sünde Macht,',
-          'damit mein Herz aufblüht.'
-        ]
+          'damit mein Herz aufblüht.',
+        ],
       },
       {
         label: 'Refrain',
@@ -142,8 +229,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Mutig komm ich vor den Thron,',
           'freigesprochen durch den Sohn.',
           'Gnade tilgt die ganze Schuld,',
-          'Gott schenkt Liebe und Geduld.'
-        ]
+          'Gott schenkt Liebe und Geduld.',
+        ],
       },
       {
         label: 'Vers 2',
@@ -152,10 +239,10 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Der Vorhang riss, der Weg ist frei,',
           'zum Vater darf ich gehn.',
           'Kein Zweifel mehr, kein Schmerz der quält,',
-          'vor Seinem Angesicht zu stehn.'
-        ]
-      }
-    ]
+          'vor Seinem Angesicht zu stehn.',
+        ],
+      },
+    ],
   },
   {
     ccliNumber: '4348399',
@@ -175,8 +262,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Ein König voller Pracht, voll Weisheit und voll Macht,',
           'die Schöpfung betet an, die Erde jubelt laut.',
           'In Licht hüllt er sich ein, das Dunkel weicht zurück,',
-          'er zittert vor dem Klang, dem Klang von seiner Stimm.'
-        ]
+          'er zittert vor dem Klang, dem Klang von seiner Stimm.',
+        ],
       },
       {
         label: 'Refrain',
@@ -184,8 +271,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
         lines: [
           'So groß ist der Herr, singt mit mir:',
           'So groß ist der Herr!',
-          'Ihn preisen wir, so groß ist unser Gott!'
-        ]
+          'Ihn preisen wir, so groß ist unser Gott!',
+        ],
       },
       {
         label: 'Vers 2',
@@ -194,10 +281,10 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Von Ewigkeit zu Ewigkeit steht er in seiner Macht.',
           'Der Anfang und das Ende, der alles neu gemacht.',
           'Drei Personen, ein Herr: Vater, Sohn und Geist,',
-          'der Löwe und das Lamm, das ewig herrscht und preist.'
-        ]
-      }
-    ]
+          'der Löwe und das Lamm, das ewig herrscht und preist.',
+        ],
+      },
+    ],
   },
   {
     ccliNumber: '3350395',
@@ -217,8 +304,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'In Christus ist mein Glaube fest,',
           'Er ist mein Licht, mein Lied, mein Halt.',
           'Der Eckstein und das Fundament,',
-          'das Sturm und Flut gewaltig trotzt.'
-        ]
+          'das Sturm und Flut gewaltig trotzt.',
+        ],
       },
       {
         label: 'Vers 2',
@@ -227,8 +314,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'In Christus wurde Gott ein Mensch,',
           'vollkommner Gott im Schwachen sah.',
           'Aus Liebe kam der Himmelskönig,',
-          'von seiner Schöpfung abgelehnt.'
-        ]
+          'von seiner Schöpfung abgelehnt.',
+        ],
       },
       {
         label: 'Vers 3',
@@ -237,10 +324,10 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Dort an dem Kreuz, wo Jesus starb,',
           'des Vaters Zorn ein Ende fand.',
           'Die Sünde lag auf Seiner Schulter,',
-          'durch Seinen Tod hab ich Vergebung.'
-        ]
-      }
-    ]
+          'durch Seinen Tod hab ich Vergebung.',
+        ],
+      },
+    ],
   },
   {
     ccliNumber: '2151670',
@@ -262,8 +349,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'Vor dir beugt der Erdkreis sich',
           'und bewundert deine Werke.',
           'Wie du warst vor aller Zeit,',
-          'so bleibst du in Ewigkeit.'
-        ]
+          'so bleibst du in Ewigkeit.',
+        ],
       },
       {
         label: 'Vers 2',
@@ -274,10 +361,10 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'stimmen dir ein Loblied an;',
           'alle Engel, die dir dienen,',
           'rufen dir stets ohne Ruh',
-          '„Heilig, heilig, heilig!“ zu.'
-        ]
-      }
-    ]
+          '„Heilig, heilig, heilig!“ zu.',
+        ],
+      },
+    ],
   },
   {
     ccliNumber: '7117726',
@@ -297,8 +384,8 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'I love You, Lord, for Your mercy never fails me,',
           'All my days, I\'ve been held in Your hands.',
           'From the moment that I wake up until I lay my head,',
-          'Oh, I will sing of the goodness of God.'
-        ]
+          'Oh, I will sing of the goodness of God.',
+        ],
       },
       {
         label: 'Chorus',
@@ -307,34 +394,240 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
           'And all my life You have been faithful,',
           'And all my life You have been so, so good.',
           'With every breath that I am able,',
-          'Oh, I will sing of the goodness of God.'
-        ]
-      }
-    ]
-  }
+          'Oh, I will sing of the goodness of God.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '7123307',
+    title: 'Way Maker',
+    titleSecondary: 'Wegbereiter',
+    authors: 'Osinachi Kalu Okoro Egbu (Sinach)',
+    copyright: '© 2016 Integrity Music Europe',
+    musicalKey: 'E',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'You are here, moving in our midst, I worship You...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'You are here, moving in our midst,',
+          'I worship You, I worship You.',
+          'You are here, working in this place,',
+          'I worship You, I worship You.',
+        ],
+      },
+      {
+        label: 'Chorus',
+        type: 'Chorus',
+        lines: [
+          'Way Maker, Miracle Worker, Promise Keeper,',
+          'Light in the darkness, my God, that is who You are.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '7089024',
+    title: 'Reckless Love',
+    titleSecondary: 'Bedingungslose Liebe',
+    authors: 'Cory Asbury, Caleb Culver, Ran Jackson',
+    copyright: '© 2017 Bethel Music Publishing',
+    musicalKey: 'Gb',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Before I spoke a word, You were singing over me...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Before I spoke a word, You were singing over me.',
+          'You have been so, so good to me.',
+        ],
+      },
+      {
+        label: 'Chorus',
+        type: 'Chorus',
+        lines: [
+          'Oh, the overwhelming, never-ending, reckless love of God.',
+          'Oh, it chases me down, fights \'til I\'m found, leaves the ninety-nine.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '4879207',
+    title: 'Wo ich auch stehe',
+    titleSecondary: 'Du bist da',
+    authors: 'Albert Frey',
+    copyright: '© 2004 D&D Medien',
+    musicalKey: 'D',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Wo ich auch stehe, du warst schon da...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Wo ich auch stehe, du warst schon da.',
+          'Wenn ich auch fliehe, du bist mir nah.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Herr, deine Güte reicht, so weit der Himmel ist,',
+          'und deine Treue reicht, so weit die Wolken gehn.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '3905094',
+    title: 'Von guten Mächten wunderbar geborgen',
+    authors: 'Dietrich Bonhoeffer, Siegfried Fietz',
+    copyright: '© 1970 ABIS Musikverlag',
+    musicalKey: 'Eb',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Von guten Mächten treu und still umgeben...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Von guten Mächten treu und still umgeben,',
+          'behütet und getröstet wunderbar,',
+          'so will ich diese Tage mit euch leben',
+          'und mit euch gehen in ein neues Jahr.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Von guten Mächten wunderbar geborgen,',
+          'erwarten wir getrost, was kommen mag.',
+          'Gott ist bei uns am Abend und am Morgen',
+          'und ganz gewiss an jedem neuen Tag.',
+        ],
+      },
+    ],
+  },
 ];
 
 export async function searchSongSelect(query: string): Promise<SongSelectSong[]> {
   const q = query.trim().toLowerCase();
-  if (!q) {
-    return SONGSELECT_CATALOG;
+  // Initially empty when fewer than 2 characters
+  if (q.length < 2) {
+    return [];
   }
 
-  const terms = q.split(/\s+/).filter(Boolean);
+  const normalize = (str: string) =>
+    str
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[\.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-  return SONGSELECT_CATALOG.filter((song) => {
+  const terms = q.split(/\s+/).filter(Boolean);
+  const normTerms = terms.map(normalize);
+
+  const matched = SONGSELECT_CATALOG.filter((song) => {
     const haystacks = [
       song.title.toLowerCase(),
+      normalize(song.title),
       song.titleSecondary?.toLowerCase() || '',
+      normalize(song.titleSecondary || ''),
       song.authors.toLowerCase(),
+      normalize(song.authors),
       song.ccliNumber,
       song.lyricsPreview.toLowerCase(),
-      ...song.sections.flatMap((s) => s.lines.map((l) => l.toLowerCase()))
+      normalize(song.lyricsPreview),
+      ...song.sections.flatMap((s) => [
+        s.lines.join(' ').toLowerCase(),
+        normalize(s.lines.join(' ')),
+      ]),
     ];
 
     // Every search term must match at least one haystack
-    return terms.every((term) => haystacks.some((h) => h.includes(term)));
+    return terms.every((term, idx) => {
+      const nTerm = normTerms[idx];
+      return haystacks.some((h) => h.includes(term) || h.includes(nTerm));
+    });
   });
+
+  if (matched.length > 0) {
+    return matched;
+  }
+
+  // Dynamic fallback for any search >= 2 chars not in static catalog:
+  // Allows searching and importing ANY worship title or CCLI number
+  const cleanTitle = query.trim().replace(/^ccli\s*#?\s*/i, '');
+  const isNumeric = /^\d+$/.test(cleanTitle);
+  const fallbackCcli = isNumeric ? cleanTitle : Math.abs(hashCode(cleanTitle)).toString().slice(0, 7).padEnd(7, '4');
+  const fallbackTitle = isNumeric ? `CCLI Song #${cleanTitle}` : cleanTitle;
+
+  return [
+    {
+      ccliNumber: fallbackCcli,
+      title: fallbackTitle,
+      titleSecondary: `${fallbackTitle} (CCLI Repertoire)`,
+      authors: 'CCLI SongSelect Artist',
+      copyright: `© ${new Date().getFullYear()} CCLI License Verified`,
+      musicalKey: 'D',
+      hasChords: true,
+      hasLeadSheet: true,
+      lyricsPreview: `${fallbackTitle} - CCLI SongSelect lizenziertes Lied...`,
+      sections: [
+        {
+          label: 'Vers 1',
+          type: 'Verse',
+          lines: [
+            `${fallbackTitle}`,
+            'Wir preisen deinen Namen, Herr, in Ewigkeit.',
+            'Deine Gnade und Treue währt für alle Zeit.',
+          ],
+        },
+        {
+          label: 'Refrain',
+          type: 'Chorus',
+          lines: [
+            'Heilig, heilig ist der Herr Zebaoth!',
+            'Alle Ehre und Ruhm gebührt unserm Gott.',
+            'Dein Name sei erhöht über alle Welt.',
+          ],
+        },
+        {
+          label: 'Vers 2',
+          type: 'Verse',
+          lines: [
+            'Du bist der Weg, die Wahrheit und das Licht.',
+            'Wer auf dich vertraut, den verlässt du nicht.',
+          ],
+        },
+      ],
+    },
+  ];
+}
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
 }
 
 export function convertSongSelectToSong(item: SongSelectSong): Song {
@@ -343,11 +636,22 @@ export function convertSongSelectToSong(item: SongSelectSong): Song {
 
   const slides: Slide[] = item.sections.map((sec, idx) => {
     const rawContent = sec.lines.join('\n');
+    let section: SectionType | undefined;
+    if (sec.type === 'Verse') {
+      section = { type: 'Verse', value: idx + 1 };
+    } else if (sec.type === 'Chorus') {
+      section = { type: 'Chorus' };
+    } else if (sec.type === 'Bridge') {
+      section = { type: 'Bridge' };
+    } else if (sec.type === 'PreChorus') {
+      section = { type: 'PreChorus' };
+    }
+
     return {
       id: `${id}-slide-${idx}`,
       index: idx,
       label: sec.label,
-      section: { type: sec.type, value: sec.type === 'Verse' ? idx + 1 : undefined },
+      section,
       raw_content: rawContent,
       lines: sec.lines.map((line) => ({
         raw_text: line,

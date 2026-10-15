@@ -80,7 +80,17 @@
     if (queryOverride !== undefined) {
       searchQuery = queryOverride;
     }
-    const q = searchQuery;
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      localResults = [];
+      ccliResults = [];
+      selectedLocalSong = null;
+      selectedLocalIndex = 0;
+      selectedCcliIndex = 0;
+      isSearching = false;
+      return;
+    }
+
     isSearching = true;
     try {
       if (activeTab === 'local') {
@@ -254,7 +264,7 @@
       await presentation.importAndAddCcliSong(currentCcliSong, fullPath);
 
       // Re-scan local archive so the new file is immediately indexed
-      await presentation.searchSongs('');
+      presentation.loadLocalArchive().catch(console.error);
 
       isSavePromptOpen = false;
       presentation.closeSongSearchModal();
@@ -389,9 +399,15 @@
         <!-- Sub-header: Count -->
         <div class="px-3 py-2 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-700 dark:text-neutral-300 flex items-center justify-between shrink-0">
           <span>
-            {activeTab === 'local'
-              ? t('songSearch.songsFound', { count: localResults.length })
-              : `SongSelect: ${ccliResults.length} Lieder`}
+            {#if activeTab === 'local'}
+              {localResults.length > 0
+                ? t('songSearch.songsFound', { count: localResults.length })
+                : t('songSearch.tabLocal')}
+            {:else}
+              {ccliResults.length > 0
+                ? `SongSelect: ${ccliResults.length} Lieder`
+                : 'SongSelect'}
+            {/if}
           </span>
           {#if isSearching}
             <span class="text-blue-600 animate-pulse text-sm">...</span>
@@ -403,7 +419,7 @@
           {#if activeTab === 'local'}
             {#if localResults.length === 0}
               <div class="p-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-                {searchQuery ? t('songSearch.noSongsFound', { query: searchQuery }) : t('songSearch.searchPrompt')}
+                {searchQuery.trim().length >= 2 ? t('songSearch.noSongsFound', { query: searchQuery }) : t('songSearch.searchPrompt')}
               </div>
             {:else}
               {#each localResults as item, idx}
@@ -433,7 +449,7 @@
             <!-- SongSelect Results List -->
             {#if ccliResults.length === 0}
               <div class="p-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-                {searchQuery ? t('songSearch.noSongsFound', { query: searchQuery }) : 'Geben Sie einen Begriff ein, um SongSelect zu durchsuchen.'}
+                {searchQuery.trim().length >= 2 ? t('songSearch.noSongsFound', { query: searchQuery }) : t('songSearch.searchPrompt')}
               </div>
             {:else}
               {#each ccliResults as ccliItem, idx}
@@ -505,7 +521,11 @@
           <!-- Empty State -->
           <div class="flex-1 flex flex-col items-center justify-center p-8 text-neutral-400 dark:text-neutral-500 text-center select-none">
             <span class="text-4xl mb-2">🎵</span>
-            <p class="text-sm">{t('songSearch.searchPrompt')}</p>
+            <p class="text-sm">
+              {searchQuery.trim().length >= 2
+                ? t('songSearch.selectSongToPreview')
+                : t('songSearch.searchPrompt')}
+            </p>
           </div>
         {/if}
       </div>

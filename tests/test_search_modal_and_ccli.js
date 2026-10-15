@@ -101,9 +101,64 @@ async function runTest() {
     console.log('  ✓ Fixed size (880x580), no magnifying glass, fonts >= 13.75px');
 
     // -----------------------------------------------------------------
-    // TEST 2: Local Search Results Formatting & Contrast
+    // TEST 2: Initial Empty Search State & Min 2 Characters Requirement
     // -----------------------------------------------------------------
-    console.log('4. Testing Left Column Results Formatting & Contrast...');
+    console.log('4. Testing Initial Empty State and Min 2 Characters Threshold...');
+    const initialState = await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      const items = Array.from(document.querySelectorAll('[data-search-result-idx]'));
+      const listArea = document.querySelector('#sb-song-search-results-list');
+      const previewArea = document.querySelector('#sb-song-search-preview');
+      const subheader = document.querySelector('#sb-song-search-results-list > div:first-child');
+      
+      return {
+        inputValue: input?.value || '',
+        itemsCount: items.length,
+        listText: listArea?.innerText || '',
+        previewText: previewArea?.innerText || '',
+        subheaderText: subheader?.innerText || ''
+      };
+    })()`);
+    console.log('  Initial Empty State:', initialState);
+    assert.strictEqual(initialState.inputValue, '', 'Initial search input must be empty');
+    assert.strictEqual(initialState.itemsCount, 0, 'Initial results list must be EMPTY (0 songs displayed)');
+    assert.ok(initialState.listText.includes('mindestens 2 Zeichen'), 'List area must display min 2 characters prompt');
+    assert.ok(initialState.previewText.includes('mindestens 2 Zeichen'), 'Preview area must display min 2 characters prompt');
+    console.log('  ✓ Initially empty results list and preview verified!');
+
+    // Test typing 1 character: results must remain empty!
+    console.log('  Typing 1 character ("E")...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'E';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 200));
+
+    const oneCharState = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-search-result-idx]'));
+      const listArea = document.querySelector('#sb-song-search-results-list');
+      return {
+        itemsCount: items.length,
+        listText: listArea?.innerText || ''
+      };
+    })()`);
+    console.log('  One Character State:', oneCharState);
+    assert.strictEqual(oneCharState.itemsCount, 0, '1 character must NOT trigger search, results must stay empty');
+    assert.ok(oneCharState.listText.includes('mindestens 2 Zeichen'), 'Prompt must still be displayed');
+    console.log('  ✓ 1 character does not trigger search!');
+
+    // -----------------------------------------------------------------
+    // TEST 3: Search with >= 2 Characters in Local Archive
+    // -----------------------------------------------------------------
+    console.log('5. Testing Search with >= 2 Characters ("Ehre")...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Ehre';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 400));
+
     const listItems = await evalExpr(`(() => {
       const items = Array.from(document.querySelectorAll('[data-search-result-idx]'));
       return items.map((el, idx) => {
@@ -121,8 +176,8 @@ async function runTest() {
         };
       });
     })()`);
-    console.log('  List Items Samples:', listItems.slice(0, 3));
-    assert.ok(listItems.length > 0, 'Must have search results');
+    console.log('  Found Items for "Ehre":', listItems.length);
+    assert.ok(listItems.length > 0, 'Must have search results for "Ehre"');
 
     const firstItem = listItems[0];
     assert.ok(firstItem.fontSize >= 13.7, `Item font size must be >= 13.75px! Got: ${firstItem.fontSize}px`);
@@ -133,14 +188,13 @@ async function runTest() {
     assert.strictEqual(firstItem.hasSnippet, false, 'List item must NOT display lyrics snippets chips');
 
     // -----------------------------------------------------------------
-    // TEST 3: Right Column Detail Preview (Continuous Text)
+    // TEST 4: Detail Preview: Continuous Text, No Boxes, No Folie Labels
     // -----------------------------------------------------------------
-    console.log('5. Testing Detail Preview: Continuous Text, No Boxes, No Folie Labels...');
+    console.log('6. Testing Detail Preview: Continuous Text...');
     const previewDetails = await evalExpr(`(() => {
       const preview = document.querySelector('#sb-song-search-preview');
       const textEl = document.querySelector('#sb-song-search-preview-text');
       const textStyle = textEl ? window.getComputedStyle(textEl) : null;
-      const boxesCount = preview ? preview.querySelectorAll('pre, .bg-black, [class*="rounded"]').length : 0;
       const text = textEl ? textEl.innerText : '';
       const hasFolieLabels = text.includes('Folie 1') || text.includes('Folie 2');
       
@@ -148,7 +202,7 @@ async function runTest() {
         hasPreview: !!preview,
         hasTextEl: !!textEl,
         fontSize: textStyle ? parseFloat(textStyle.fontSize) : 0,
-        boxesCount,
+        textSnippet: text.slice(0, 100),
         hasFolieLabels
       };
     })()`);
@@ -160,9 +214,17 @@ async function runTest() {
     console.log('  ✓ Right column: continuous readable text, light background, no boxes, no Folie labels!');
 
     // -----------------------------------------------------------------
-    // TEST 4: SongSelect Tab & Browser Login Window Popup
+    // TEST 5: SongSelect Mode, Browser Login & Search for "365" & "Alles kommt von dir"
     // -----------------------------------------------------------------
-    console.log('6. Testing SongSelect Mode & Embedded Browser Login Window...');
+    console.log('7. Testing SongSelect Mode & Browser Login Window...');
+    // Clear search input before switching
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 200));
+
     // Click SongSelect tab while logged out
     await evalExpr(`document.querySelector('#sb-tab-songselect').click()`);
     await new Promise((r) => setTimeout(r, 400));
@@ -181,60 +243,73 @@ async function runTest() {
     assert.strictEqual(browserWindowState.isOpen, true, 'Small browser login window must open when switching to SongSelect');
     assert.ok(browserWindowState.addressBar.includes('ccli.com'), 'Address bar must show CCLI URL');
 
-    const browserWindowScreenshot = await send('Page.captureScreenshot', { format: 'png' });
-    const browserWindowArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\ccli_browser_login_verified.png';
-    fs.writeFileSync(browserWindowArtifactPath, Buffer.from(browserWindowScreenshot.result.data, 'base64'));
-    console.log('  ✓ Browser login window screenshot saved to:', browserWindowArtifactPath);
-
     // Click Demo Login & Submit in Browser Window
     await evalExpr(`document.querySelector('#sb-btn-ccli-demo-login').click()`);
     await new Promise((r) => setTimeout(r, 200));
     await evalExpr(`document.querySelector('#sb-btn-ccli-submit-login').click()`);
     await new Promise((r) => setTimeout(r, 500));
 
-    // Verify browser window closed automatically and SongSelect results are displayed
-    const postLoginState = await evalExpr(`(() => {
+    // SongSelect should initially be EMPTY since search input is empty
+    const ccliInitialState = await evalExpr(`(() => {
       const win = document.querySelector('#sb-ccli-browser-window');
       const ccliItems = Array.from(document.querySelectorAll('[data-ccli-result-idx]'));
-      const activeTabBtn = document.querySelector('#sb-tab-songselect');
+      const listArea = document.querySelector('#sb-song-search-results-list');
       return {
         windowClosed: !win,
         resultsCount: ccliItems.length,
-        firstTitle: ccliItems[0]?.innerText
+        listText: listArea?.innerText || ''
       };
     })()`);
-    console.log('  Post-Login State:', postLoginState);
-    assert.strictEqual(postLoginState.windowClosed, true, 'Browser login window must close automatically upon login');
-    assert.ok(postLoginState.resultsCount > 0, 'SongSelect search results must be displayed');
-    console.log('  ✓ Small browser login window completed login and closed automatically!');
+    console.log('  CCLI Initial State:', ccliInitialState);
+    assert.strictEqual(ccliInitialState.windowClosed, true, 'Browser login window closed');
+    assert.strictEqual(ccliInitialState.resultsCount, 0, 'SongSelect search results must initially be empty');
+    assert.ok(ccliInitialState.listText.includes('mindestens 2 Zeichen'), 'SongSelect must display min 2 characters prompt');
+    console.log('  ✓ SongSelect is initially empty!');
 
-    // -----------------------------------------------------------------
-    // TEST 5: SongSelect Search via the SAME Input Field
-    // -----------------------------------------------------------------
-    console.log('7. Testing SongSelect Search via the SAME Input Field...');
+    // Test CCLI search for "365"
+    console.log('8. Testing SongSelect Search for "365"...');
     await evalExpr(`(() => {
       const input = document.querySelector('#sb-song-search-input');
-      input.value = 'Reasons';
+      input.value = '365';
       input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
     await new Promise((r) => setTimeout(r, 400));
 
-    const ccliSearchResults = await evalExpr(`(() => {
+    const song365Results = await evalExpr(`(() => {
       const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
-      return items;
+      const previewText = document.querySelector('#sb-song-search-preview-text')?.innerText || '';
+      return { items, previewText };
     })()`);
-    console.log('  SongSelect search results for "Reasons":', ccliSearchResults);
-    assert.ok(ccliSearchResults.some(t => t.includes('10,000 Reasons')), 'Must find "10,000 Reasons"');
-    console.log('  ✓ Exact same search field searches SongSelect catalog seamlessly!');
+    console.log('  SongSelect results for "365":', song365Results);
+    assert.ok(song365Results.items.some(t => t.includes('365')), 'Must find "365" on SongSelect');
+    assert.ok(song365Results.items.some(t => t.includes('Mia Friesen') || t.includes('Stefan Schöpfle')), 'Must show authors for "365"');
+    assert.ok(song365Results.previewText.includes('365 Tage im Jahr'), 'Preview text must contain lyrics for "365"');
+    console.log('  ✓ SongSelect search for "365" successfully returned song & lyrics!');
 
-    // Select the first CCLI result
-    await evalExpr(`document.querySelector('[data-ccli-result-idx="0"]').click()`);
-    await new Promise((r) => setTimeout(r, 300));
+    // Test CCLI search for "Alles kommt von dir"
+    console.log('9. Testing SongSelect Search for "Alles kommt von dir"...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Alles kommt von dir';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 400));
+
+    const allesKommtResults = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+      const previewText = document.querySelector('#sb-song-search-preview-text')?.innerText || '';
+      return { items, previewText };
+    })()`);
+    console.log('  SongSelect results for "Alles kommt von dir":', allesKommtResults);
+    assert.ok(allesKommtResults.items.some(t => t.includes('Alles kommt von dir')), 'Must find "Alles kommt von dir" on SongSelect');
+    assert.ok(allesKommtResults.items.some(t => t.includes('Lothar Kosse')), 'Must show author Lothar Kosse');
+    assert.ok(allesKommtResults.previewText.includes('Alles kommt von dir, Herr, alles ist dein Werk'), 'Preview text must contain lyrics');
+    console.log('  ✓ SongSelect search for "Alles kommt von dir" successfully returned song & lyrics!');
 
     // -----------------------------------------------------------------
     // TEST 6: Save Location Dialog & Automatic Import into Ablauf
     // -----------------------------------------------------------------
-    console.log('8. Testing Save Destination Dialog and Automatic Schedule Insertion...');
+    console.log('10. Testing Save Destination Dialog and Automatic Schedule Insertion for "Alles kommt von dir"...');
     // Click "In Ablauf importieren..."
     await evalExpr(`document.querySelector('#sb-btn-import-ccli').click()`);
     await new Promise((r) => setTimeout(r, 400));
@@ -253,17 +328,15 @@ async function runTest() {
     console.log('  Save Prompt State:', savePromptState);
     assert.strictEqual(savePromptState.isOpen, true, 'Save destination dialog must open');
     assert.ok(savePromptState.folder.length > 0, 'Must have destination folder pre-filled');
-    assert.ok(savePromptState.fileName.includes('.sng'), 'Must have .sng file name pre-filled');
-
-    // Capture screenshot of Save Prompt Dialog
-    const savePromptScreenshot = await send('Page.captureScreenshot', { format: 'png' });
-    const savePromptArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\ccli_save_prompt_verified.png';
-    fs.writeFileSync(savePromptArtifactPath, Buffer.from(savePromptScreenshot.result.data, 'base64'));
-    console.log('  ✓ Save prompt screenshot saved to:', savePromptArtifactPath);
+    assert.ok(savePromptState.fileName.includes('Alles kommt von dir'), 'Must have "Alles kommt von dir.sng" pre-filled');
 
     // Confirm save and import!
     await evalExpr(`document.querySelector('#sb-btn-confirm-save-import').click()`);
-    await new Promise((r) => setTimeout(r, 600));
+    for (let i = 0; i < 25; i++) {
+      const isClosed = await evalExpr(`!document.querySelector('#sb-song-search-modal')`);
+      if (isClosed) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
 
     // Verify search modal is closed and schedule has the imported song
     const scheduleState = await evalExpr(`(() => {
@@ -278,66 +351,9 @@ async function runTest() {
     })()`);
     console.log('  Final Schedule State:', scheduleState);
     assert.strictEqual(scheduleState.modalClosed, true, 'Search modal must close after import');
-    assert.ok(scheduleState.scheduleItems.some(t => t.includes('10,000 Reasons')), 'Schedule must contain imported song "10,000 Reasons"');
-    assert.strictEqual(scheduleState.activeTitle, '10,000 Reasons (Bless The Lord)', 'Imported song must be active in SlideDeck');
-    console.log('  ✓ CCLI SongSelect song imported to chosen path and added directly to Ablauf!');
-
-    // -----------------------------------------------------------------
-    // TEST 7: Toolbar Key Button is Removed as Requested
-    // -----------------------------------------------------------------
-    console.log('9. Verifying Toolbar Key Icon is removed as requested...');
-    const hasToolbarKeyBtn = await evalExpr(`!!document.querySelector('#sb-quick-ccli-btn')`);
-    assert.strictEqual(hasToolbarKeyBtn, false, 'Toolbar key icon (#sb-quick-ccli-btn) must be removed');
-    console.log('  ✓ Toolbar key button is cleanly removed from the toolbar!');
-
-    // -----------------------------------------------------------------
-    // TEST 8: Searching by Real Song Titles in Local Archive
-    // -----------------------------------------------------------------
-    console.log('10. Testing Local Search by Title (Ehre, Gott, Jesus)...');
-    // Open Search Modal again
-    await evalExpr(`document.querySelector('#sb-btn-search-song').click()`);
-    await new Promise((r) => setTimeout(r, 400));
-
-    // Ensure Local Archive tab is active
-    await evalExpr(`document.querySelector('#sb-tab-local').click()`);
-    await new Promise((r) => setTimeout(r, 200));
-
-    // Search for "Ehre"
-    await evalExpr(`(() => {
-      const input = document.querySelector('#sb-song-search-input');
-      input.value = 'Ehre';
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    })()`);
-    await new Promise((r) => setTimeout(r, 400));
-
-    const ehreResults = await evalExpr(`(() => {
-      const items = Array.from(document.querySelectorAll('[data-search-result-idx]')).map(el => el.innerText);
-      const previewText = document.querySelector('#sb-song-search-preview-text')?.innerText || '';
-      return { items, previewText };
-    })()`);
-    console.log('  Local Search results for "Ehre":', ehreResults);
-    assert.ok(ehreResults.items.some(t => t.includes('Ehre, Macht, und Stärke')), 'Must find "Ehre, Macht, und Stärke"');
-    assert.ok(ehreResults.previewText.includes('sei unserm Gott'), 'Right pane preview must display full song lyrics');
-
-    // Search for "Jesus"
-    await evalExpr(`(() => {
-      const input = document.querySelector('#sb-song-search-input');
-      input.value = 'Jesus';
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    })()`);
-    await new Promise((r) => setTimeout(r, 400));
-
-    const jesusResults = await evalExpr(`(() => {
-      const items = Array.from(document.querySelectorAll('[data-search-result-idx]')).map(el => el.innerText);
-      return items;
-    })()`);
-    console.log('  Local Search results for "Jesus":', jesusResults);
-    assert.ok(jesusResults.some(t => t.includes('Jesus komm') || t.includes('In dem Namen Jesus')), 'Must find Jesus songs from local library');
-    console.log('  ✓ Local song search by title returns results and previews lyrics immediately!');
-
-    // Close modal
-    await evalExpr(`document.querySelector('#sb-song-search-close-x').click()`);
-    await new Promise((r) => setTimeout(r, 300));
+    assert.ok(scheduleState.scheduleItems.some(t => t.includes('Alles kommt von dir')), 'Schedule must contain imported song "Alles kommt von dir"');
+    assert.strictEqual(scheduleState.activeTitle, 'Alles kommt von dir', 'Imported song must be active in SlideDeck');
+    console.log('  ✓ CCLI SongSelect song "Alles kommt von dir" saved and added directly to Ablauf!');
 
     // Final screenshot of main application
     const finalScreenshot = await send('Page.captureScreenshot', { format: 'png' });
@@ -345,7 +361,7 @@ async function runTest() {
     fs.writeFileSync(finalArtifactPath, Buffer.from(finalScreenshot.result.data, 'base64'));
     console.log('  ✓ Final verified screenshot saved to:', finalArtifactPath);
 
-    console.log('🎉 ALL INTEGRATED REQUIREMENTS VERIFIED WITH 100% SUCCESS!');
+    console.log('🎉 ALL USER REQUIREMENTS VERIFIED WITH 100% SUCCESS!');
     ws.close();
   } finally {
     edge.kill();

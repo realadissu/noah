@@ -30,7 +30,7 @@
   async function handleSearch(e: Event) {
     const val = (e.target as HTMLInputElement).value;
     searchQuery = val;
-    if (val.trim().length >= 1) {
+    if (val.trim().length >= 2) {
       const res = await presentation.searchSongs(val);
       searchResults = res;
       showSearchResults = res.length > 0;

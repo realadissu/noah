@@ -3,7 +3,7 @@
   import { presentation } from '$lib/stores/presentation.svelte';
   import SongBeamerIcon from '$lib/components/icons/SongBeamerIcon.svelte';
   import type { ScheduleItem, Slide, LyricLine, SongSearchResult } from '$lib/types/models';
-  import { getAudienceLines, calculateSlideFontSize } from '$lib/utils/slideTypography';
+  import { calculateSlideFontSize } from '$lib/utils/slideTypography';
   import { parseSongFormatOptions, getLineRenderStyle } from '$lib/utils/formatUtils';
   import { isImageBackground } from '$lib/data/backgrounds';
 
@@ -172,7 +172,7 @@
   async function handleSearchInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
     searchQuery = val;
-    if (val.trim().length >= 1) {
+    if (val.trim().length >= 2) {
       searchResults = await presentation.searchSongs(val);
       isSearchDropdownOpen = searchResults.length > 0;
       searchSelectedIndex = searchResults.length > 0 ? 0 : -1;
@@ -838,7 +838,7 @@
                 value={presentation.slidesPerRow}
                 oninput={(e) => presentation.setSlidesPerRow(parseInt((e.target as HTMLInputElement).value, 10))}
                 class="w-20 md:w-24 h-1.5 bg-neutral-300 dark:bg-neutral-600 rounded appearance-none cursor-pointer accent-[#316ac5] dark:accent-blue-400 focus:outline-none"
-                title="{presentation.slidesPerRow}"
+                title={String(presentation.slidesPerRow)}
                 aria-label="{t('deck.slidesPerRow')}"
               />
               <span id="sb-slides-per-row-value" class="w-4 text-center font-mono font-bold text-[#316ac5] dark:text-blue-400 select-none">
