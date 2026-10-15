@@ -154,7 +154,9 @@
   "deck": {
     "title": "Folien",
     "jumpHint": "Klicken oder Cursortasten / Leertaste zum Weiterschalten",
-    "nextSlideHint": "Nächste:"
+    "nextSlideHint": "Nächste:",
+    "slidesPerRow": "Spalten:",
+    "columnsCount": "{count} pro Zeile"
   },
   "song": {
     "title": "Titel",

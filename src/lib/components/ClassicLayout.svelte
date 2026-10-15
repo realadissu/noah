@@ -211,6 +211,19 @@
     searchSelectedIndex = -1;
   }
 
+  $effect(() => {
+    function handleDocumentClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest('#sb-quick-search-container')) {
+        isSearchDropdownOpen = false;
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('click', handleDocumentClick);
+      return () => window.removeEventListener('click', handleDocumentClick);
+    }
+  });
+
   function getItemColorClass(item: ScheduleItem, isActive: boolean): string {
     if (isActive) {
       return presentation.theme === 'dark'
@@ -285,7 +298,7 @@
 
   <!-- 2. Toolbar: SongBeamer 6.16f Toolbar with Exact Parity Icons & 1px Separators -->
   <header
-    class="px-1 flex items-center justify-between border-b rounded-none shrink-0 gap-1 overflow-x-auto {presentation.theme === 'dark'
+    class="px-1 flex items-center justify-between border-b rounded-none shrink-0 gap-1 relative z-40 overflow-visible {presentation.theme === 'dark'
       ? 'bg-[#21252b] border-neutral-700'
       : 'bg-[#f4f4f4] border-[#d0d0d0]'}"
     style="height: calc(28px * var(--ui-scale));"
@@ -515,7 +528,7 @@
       <div class="w-px h-4 bg-[#c0c0c0] dark:bg-neutral-600 mx-0.5"></div>
 
       <!-- Quick Search Bar: "Song suchen:" -->
-      <div class="flex items-center gap-1 pl-0.5 relative">
+      <div id="sb-quick-search-container" class="flex items-center gap-1 pl-0.5 relative z-50">
         <label for="sb-quick-search" class="font-normal text-neutral-700 dark:text-neutral-200 shrink-0" style="font-size: calc(11px * var(--ui-scale));">
           {t('search.label')}
         </label>
@@ -532,8 +545,9 @@
         <!-- Search Autocomplete Dropdown -->
         {#if isSearchDropdownOpen && searchResults.length > 0}
           <div
-            class="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-neutral-800 border border-[#7f9db9] dark:border-neutral-600 shadow-xl max-h-60 overflow-y-auto"
-            style="width: calc(260px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+            id="sb-search-dropdown"
+            class="absolute top-full left-0 mt-1 z-[100] bg-white dark:bg-neutral-800 border border-[#7f9db9] dark:border-neutral-600 shadow-2xl max-h-72 overflow-y-auto"
+            style="width: calc(280px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
           >
             {#each searchResults as res, idx}
               <button
@@ -808,24 +822,51 @@
         <span class="font-bold text-neutral-800 dark:text-white truncate">
           {presentation.activeSong?.metadata.title ?? t('song.noSongLoaded')}
         </span>
-        <span class="font-mono text-neutral-500 dark:text-neutral-400">
-          {presentation.activeSong?.slides.length ?? 0} {presentation.activeSong?.slides.length === 1 ? t('section.slide') : t('section.slidePlural')}
-        </span>
+        <div class="flex items-center gap-2.5 shrink-0">
+          <!-- Chic DropDown: Folien pro Zeile (2 bis 6) -->
+          <div class="flex items-center gap-1">
+            <label for="sb-slides-per-row" class="text-[10px] text-neutral-600 dark:text-neutral-400 font-medium select-none">
+              {t('deck.slidesPerRow')}
+            </label>
+            <select
+              id="sb-slides-per-row"
+              value={presentation.slidesPerRow}
+              onchange={(e) => presentation.setSlidesPerRow(parseInt((e.target as HTMLSelectElement).value, 10))}
+              class="border border-[#7f9db9] dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-none px-1 py-0 text-[10px] font-semibold cursor-pointer focus:outline-none focus:border-[#316ac5]"
+              style="height: calc(18px * var(--ui-scale));"
+            >
+              {#each [2, 3, 4, 5, 6] as count}
+                <option value={count}>
+                  {t('deck.columnsCount', { count })}
+                </option>
+              {/each}
+            </select>
+          </div>
+
+          <span class="font-mono text-neutral-500 dark:text-neutral-400">
+            {presentation.activeSong?.slides.length ?? 0} {presentation.activeSong?.slides.length === 1 ? t('section.slide') : t('section.slidePlural')}
+          </span>
+        </div>
       </div>
 
       <!-- Slide Deck Scroll Area -->
       <div class="flex-1 overflow-y-auto p-2">
         {#if presentation.activeSong && presentation.activeSlides.length > 0}
-          <div class="grid grid-cols-2 gap-2 max-w-full">
+          <div
+            id="sb-slide-deck-grid"
+            class="grid gap-2 max-w-full"
+            style="grid-template-columns: repeat({presentation.slidesPerRow}, minmax(0, 1fr));"
+          >
             {#each presentation.activeSlides as slide, idx}
               {@const isLive = presentation.activeSlideIndex === idx}
 
               <div
                 role="button"
                 tabindex="0"
-                class="flex flex-col border rounded-none cursor-pointer transition-none select-none {isLive
-                  ? 'border-[#cc0000] dark:border-[#e53935] bg-white dark:bg-[#21252b] shadow-sm'
-                  : 'border-[#b0b0b0] dark:border-neutral-700 bg-white dark:bg-[#21252b] hover:bg-neutral-50 dark:hover:bg-[#282c34]'}"
+                data-classic-slide-idx={idx}
+                class="flex flex-col rounded-none cursor-pointer transition-none select-none {isLive
+                  ? 'border-2 border-[#cc0000] dark:border-[#e53935] ring-2 ring-[#cc0000] dark:ring-[#e53935] bg-white dark:bg-[#21252b] shadow-md'
+                  : 'border border-[#b0b0b0] dark:border-neutral-700 bg-white dark:bg-[#21252b] hover:bg-neutral-50 dark:hover:bg-[#282c34]'}"
                 onclick={() => presentation.selectSlide(idx)}
                 onkeydown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -852,10 +893,10 @@
                 </div>
 
                 <!-- Slide Thumbnail Container: Dynamic Aspect Ratio with Container Query for 1:1 WYSIWYG parity -->
-                <!-- Consistent black canvas matching Beamer exactly, with red border when selected -->
+                <!-- Consistent black canvas matching Beamer exactly, with bold red border when selected -->
                 <div
                   class="w-full relative overflow-hidden bg-black text-white {isLive
-                    ? 'border border-[#cc0000] dark:border-[#e53935] ring-1 ring-[#cc0000] dark:ring-[#e53935] ring-inset'
+                    ? 'border-2 border-[#cc0000] dark:border-[#e53935] ring-2 ring-[#cc0000] dark:ring-[#e53935] ring-inset'
                     : 'border border-[#7f9db9] dark:border-neutral-700'}"
                   style="aspect-ratio: {presentation.aspectRatio.replace(':', '/')}; container-type: size;"
                 >

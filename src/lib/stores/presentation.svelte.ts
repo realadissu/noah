@@ -282,6 +282,9 @@ class PresentationStore {
   // Right Column Drawer visibility (hidden by default per user requirement)
   isRightPanelOpen = $state<boolean>(false);
 
+  // Number of slides per row in Slide Deck (2 to 6, per user request)
+  slidesPerRow = $state<number>(2);
+
   // Aspect ratio for slide containers (16:9, 16:10, 4:3, Auto)
   aspectRatio = $state<AspectRatio>('16:9');
   aspectRatioMode = $state<'auto' | AspectRatio>('auto');
@@ -492,6 +495,14 @@ class PresentationStore {
         this.uiScaleMode = 'auto';
         this.updateAutoUiScale();
       }
+
+      const savedCols = localStorage.getItem('noah_slides_per_row');
+      if (savedCols) {
+        const parsed = parseInt(savedCols, 10);
+        if (parsed >= 2 && parsed <= 6) {
+          this.slidesPerRow = parsed;
+        }
+      }
     } else {
       this.updateAutoUiScale();
     }
@@ -667,6 +678,14 @@ class PresentationStore {
     this.uiMode = mode;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('noah_ui_mode', mode);
+    }
+  }
+
+  setSlidesPerRow(count: number) {
+    const clamped = Math.max(2, Math.min(6, Math.round(count)));
+    this.slidesPerRow = clamped;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('noah_slides_per_row', String(clamped));
     }
   }
 

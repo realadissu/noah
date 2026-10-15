@@ -154,7 +154,9 @@
   "deck": {
     "title": "Slides",
     "jumpHint": "Click or use Cursor / Space to present",
-    "nextSlideHint": "Next:"
+    "nextSlideHint": "Next:",
+    "slidesPerRow": "Columns:",
+    "columnsCount": "{count} per row"
   },
   "song": {
     "title": "Title",
