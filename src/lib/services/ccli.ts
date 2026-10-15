@@ -63,6 +63,12 @@ export function logoutCcli(): void {
   saveCcliSession(null);
 }
 
+export function openSongSelectInBrowser(url = 'https://songselect.ccli.com/'): void {
+  if (typeof window !== 'undefined') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
 // Built-in verified CCLI SongSelect worship repertoire
 export const SONGSELECT_CATALOG: SongSelectSong[] = [
   {

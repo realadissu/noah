@@ -163,6 +163,16 @@
     "loading": "Lade Lieddaten...",
     "close": "Schließen"
   },
+  "ccliModal": {
+    "title": "CCLI SongSelect®",
+    "desc": "Die SongSelect-Suche und Lizenzverwaltung erfolgt über das offizielle Webportal von CCLI.",
+    "apiNotice": "Hinweis: CCLI vergibt derzeit keine neuen Direkt-Schnittstellen (Partner-API) an Software-Hersteller. Die Liedsuche läuft daher über das offizielle Webportal.",
+    "openBrowser": "SongSelect im Browser öffnen",
+    "openBrowserUrl": "https://songselect.ccli.com",
+    "importFile": "SongSelect-Datei (.usr / .txt / .sng) importieren...",
+    "importClipboard": "Liedtext aus Zwischenablage anlegen",
+    "close": "Schließen"
+  },
   "nav": {
     "schedule": "Ablaufplan",
     "songs": "Lieddatenbank",

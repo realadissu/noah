@@ -163,6 +163,16 @@
     "loading": "Loading song data...",
     "close": "Close"
   },
+  "ccliModal": {
+    "title": "CCLI SongSelect®",
+    "desc": "SongSelect search and licensing is handled directly through CCLI's official web portal.",
+    "apiNotice": "Notice: CCLI is not accepting new third-party direct API partners. Searching and managing songs is done via the web portal.",
+    "openBrowser": "Open SongSelect in Browser",
+    "openBrowserUrl": "https://songselect.ccli.com",
+    "importFile": "Import SongSelect file (.usr / .txt / .sng)...",
+    "importClipboard": "Import song text from clipboard",
+    "close": "Close"
+  },
   "nav": {
     "schedule": "Order of Service",
     "songs": "Song Library",

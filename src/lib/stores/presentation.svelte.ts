@@ -280,9 +280,12 @@ class PresentationStore {
   editingSong = $state<Song | null>(null);
   editingSongFilePath = $state<string | null>(null);
 
-  // Dedicated Song Search & CCLI SongSelect Modal State
+  // Dedicated Song Search Modal State
   isSongSearchModalOpen = $state<boolean>(false);
   songSearchInitialTab = $state<'local' | 'songselect'>('local');
+
+  // Dedicated SongSelect (CCLI) Modal State
+  isSongSelectModalOpen = $state<boolean>(false);
 
   // Right Column Drawer visibility (hidden by default per user requirement)
   isRightPanelOpen = $state<boolean>(false);
@@ -1727,6 +1730,14 @@ class PresentationStore {
 
   closeSongSearchModal() {
     this.isSongSearchModalOpen = false;
+  }
+
+  openSongSelectModal() {
+    this.isSongSelectModalOpen = true;
+  }
+
+  closeSongSelectModal() {
+    this.isSongSelectModalOpen = false;
   }
 
   async parseSongContent(content: string): Promise<Song | null> {
