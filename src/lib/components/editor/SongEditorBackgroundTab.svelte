@@ -42,6 +42,27 @@
     selectedBg = bg.value;
   }
 
+  let isImageMissing = $state<boolean>(false);
+
+  $effect(() => {
+    if (selectedBg && isImageBackground(selectedBg)) {
+      if (typeof Image !== 'undefined' && !selectedBg.startsWith('data:') && !selectedBg.startsWith('blob:')) {
+        const testImg = new Image();
+        testImg.onload = () => {
+          isImageMissing = false;
+        };
+        testImg.onerror = () => {
+          isImageMissing = true;
+        };
+        testImg.src = selectedBg;
+      } else {
+        isImageMissing = false;
+      }
+    } else {
+      isImageMissing = false;
+    }
+  });
+
   function handleToggleCustom(enabled: boolean) {
     useCustomBackground = enabled;
     if (!enabled) {
@@ -192,39 +213,16 @@
       </button>
     </div>
 
-    <!-- Import Buttons -->
+    <!-- Import Button -->
     <div class="flex items-center gap-2 shrink-0">
       <button
         type="button"
-        class="px-3 py-1.5 rounded-lg text-xs font-bold transition border cursor-pointer bg-blue-600 hover:bg-blue-500 text-white shadow-xs"
+        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition border cursor-pointer bg-blue-600 hover:bg-blue-500 text-white shadow-xs flex items-center gap-1.5"
         onclick={() => presentation.importCustomBackgroundFiles()}
       >
-        {t('editor.bgImportBtn')}
+        <span>📁</span>
+        <span>{t('editor.bgImportBtn')}</span>
       </button>
-
-      {#if presentation.backgroundsDirectory}
-        <button
-          type="button"
-          title={presentation.backgroundsDirectory}
-          class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition border cursor-pointer {presentation.theme === 'dark'
-            ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-600 text-neutral-200'
-            : 'bg-white hover:bg-neutral-100 border-neutral-300 text-neutral-800'}"
-          onclick={() => presentation.openBackgroundsFolderDialog()}
-        >
-          📁 {t('editor.bgImportFromDefaultFolder')}
-        </button>
-      {:else}
-        <button
-          type="button"
-          class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition border cursor-pointer opacity-80 hover:opacity-100 {presentation.theme === 'dark'
-            ? 'bg-neutral-800 border-neutral-700 text-neutral-300'
-            : 'bg-neutral-100 border-neutral-300 text-neutral-700'}"
-          onclick={() => { presentation.isSettingsOpen = true; }}
-          title={t('editor.bgConfigureDefaultFolder')}
-        >
-          ⚙️
-        </button>
-      {/if}
     </div>
   </div>
 
@@ -232,20 +230,31 @@
   {#if selectedBg}
     <div class="flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 shadow-xs">
       <!-- 16:9 Stage Preview -->
-      <div
-        class="w-60 shrink-0 rounded-lg border border-neutral-700 shadow-md overflow-hidden relative flex flex-col items-center justify-center text-center p-2.5"
-        style="{isImageBackground(selectedBg)
-          ? `background-image: url('${selectedBg}'); background-size: cover; background-position: center;`
-          : `background: ${selectedBg};`}; aspect-ratio: 16/9; min-height: 90px;"
-      >
-        <!-- Real-time Dimmer Overlay -->
-        <div class="absolute inset-0 bg-black pointer-events-none" style="opacity: {bgDimmer / 100};"></div>
+      <div class="flex flex-col items-center">
+        <div
+          class="w-60 shrink-0 rounded-lg border border-neutral-700 shadow-md overflow-hidden relative flex flex-col items-center justify-center text-center p-2.5 bg-neutral-950"
+          style="{isImageBackground(selectedBg)
+            ? `background-image: url('${selectedBg}'); background-size: cover; background-position: center;`
+            : `background: ${selectedBg};`}; aspect-ratio: 16/9; min-height: 90px;"
+        >
+          <!-- Real-time Dimmer Overlay -->
+          <div class="absolute inset-0 bg-black pointer-events-none" style="opacity: {bgDimmer / 100};"></div>
 
-        <div class="relative z-10 text-white font-bold text-xs leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)] px-1">
-          <p class="m-0 truncate max-w-[210px]">{songTitle || 'Großer Gott, wir loben dich'}</p>
-          <p class="m-0 text-[10px] font-normal opacity-90 truncate max-w-[210px]">Herr, wir preisen deine Stärke.</p>
+          <div class="relative z-10 text-white font-bold text-xs leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)] px-1">
+            <p class="m-0 truncate max-w-[210px]">{songTitle || 'Großer Gott, wir loben dich'}</p>
+            <p class="m-0 text-[10px] font-normal opacity-90 truncate max-w-[210px]">Herr, wir preisen deine Stärke.</p>
+          </div>
+          <span class="absolute bottom-1 right-1 z-10 text-[8px] uppercase tracking-wider font-extrabold text-white/80 bg-black/60 px-1 py-0.5 rounded">16:9 Beamer</span>
         </div>
-        <span class="absolute bottom-1 right-1 z-10 text-[8px] uppercase tracking-wider font-extrabold text-white/80 bg-black/60 px-1 py-0.5 rounded">16:9 Beamer</span>
+
+        {#if isImageMissing}
+          <div class="w-60 mt-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] leading-tight flex items-center gap-1.5">
+            <span class="shrink-0">⚠️</span>
+            <span class="truncate" title={selectedBg}>
+              {t('editor.bgImageNotFound')} {selectedBg}
+            </span>
+          </div>
+        {/if}
       </div>
 
       <!-- Dimmer controls -->

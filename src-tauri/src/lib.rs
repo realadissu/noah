@@ -9,7 +9,9 @@ pub mod scanner;
 
 use std::sync::Arc;
 
-use dialog::{pick_sng_files_native, pick_songs_folder_native};
+use dialog::{
+    pick_folder_native, pick_image_files_native, pick_sng_files_native, pick_songs_folder_native,
+};
 use models::{
     BeamerEvent, BeamerStateResponse, DisplayInfo, DisplayMode, PresentationState, SngLoadResponse,
     Song, SongSearchResult,
@@ -30,14 +32,72 @@ pub struct AppState {
     pub db: Arc<SongDatabase>,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ScannedBackground {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub category: String,
+}
+
 #[tauri::command]
-fn pick_sng_files() -> Result<Vec<String>, String> {
-    pick_sng_files_native()
+fn pick_sng_files(default_path: Option<String>) -> Result<Vec<String>, String> {
+    pick_sng_files_native(default_path.as_deref())
 }
 
 #[tauri::command]
 fn pick_songs_folder() -> Result<Option<String>, String> {
     pick_songs_folder_native()
+}
+
+#[tauri::command]
+fn pick_folder(title: Option<String>, default_path: Option<String>) -> Result<Option<String>, String> {
+    let prompt = title.as_deref().unwrap_or("Wähle Verzeichnis:");
+    pick_folder_native(prompt, default_path.as_deref())
+}
+
+#[tauri::command]
+fn pick_image_files(default_path: Option<String>) -> Result<Vec<String>, String> {
+    pick_image_files_native(default_path.as_deref())
+}
+
+#[tauri::command]
+async fn scan_backgrounds_directory(dir_path: String) -> Result<Vec<ScannedBackground>, String> {
+    let path = std::path::Path::new(&dir_path);
+    if !path.exists() || !path.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut results = Vec::new();
+    let entries = match std::fs::read_dir(path) {
+        Ok(e) => e,
+        Err(err) => return Err(format!("Failed to read directory {dir_path}: {err}")),
+    };
+
+    for entry in entries.flatten() {
+        let entry_path = entry.path();
+        if entry_path.is_file() {
+            if let Some(ext) = entry_path.extension().and_then(|s| s.to_str()) {
+                let ext_lower = ext.to_lowercase();
+                if matches!(ext_lower.as_str(), "jpg" | "jpeg" | "png" | "webp" | "bmp") {
+                    let file_name = entry_path
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("Hintergrund")
+                        .to_string();
+                    let full_path = entry_path.to_string_lossy().to_string();
+                    results.push(ScannedBackground {
+                        id: format!("custom-bg-{}", uuid::Uuid::new_v4()),
+                        name: file_name,
+                        path: full_path,
+                        category: "custom".to_string(),
+                    });
+                }
+            }
+        }
+    }
+    results.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    Ok(results)
 }
 
 #[tauri::command]
@@ -510,7 +570,10 @@ pub fn run() {
             sync_active_song,
             change_slide,
             set_beamer_visible,
-            dispatch_beamer_event
+            dispatch_beamer_event,
+            pick_folder,
+            pick_image_files,
+            scan_backgrounds_directory
         ])
         .run(tauri::generate_context!())
     {

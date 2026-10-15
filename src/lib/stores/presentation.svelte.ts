@@ -454,6 +454,7 @@ class PresentationStore {
       const savedBackgroundsDir = localStorage.getItem('noah_backgrounds_dir');
       if (savedBackgroundsDir) {
         this.backgroundsDirectory = savedBackgroundsDir;
+        this.scanBackgroundsDirectory(savedBackgroundsDir);
       }
       const savedSchedulesDir = localStorage.getItem('noah_schedules_dir');
       if (savedSchedulesDir) {
@@ -1061,46 +1062,25 @@ class PresentationStore {
 
   async openSongFolderDialog() {
     // 1. Try native folder picker first
-    const nativeFolder = await invokeTauri<string | null>('pick_songs_folder');
+    const nativeFolder = await invokeTauri<string | null>('pick_folder', {
+      title: 'Wähle SongBeamer Lieder-Verzeichnis',
+      defaultPath: this.songsDirectory || undefined,
+    });
     if (nativeFolder) {
       this.setSongsDirectory(nativeFolder);
       await this.scanSongsDirectory(nativeFolder);
       return;
     }
 
-    // 2. Webview HTML5 directory input fallback
-    if (typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.setAttribute('webkitdirectory', '');
-      input.onchange = async () => {
-        if (!input.files || input.files.length === 0) return;
-        this.isScanning = true;
-        let count = 0;
-        try {
-          for (const file of Array.from(input.files)) {
-            if (file.name.toLowerCase().endsWith('.sng')) {
-              try {
-                const buffer = await file.arrayBuffer();
-                const song = parseSng(new Uint8Array(buffer), file.name);
-                this.addSongToSchedule(song);
-                count++;
-              } catch (err) {
-                console.warn('Failed parsing song in directory:', file.name, err);
-              }
-            }
-          }
-          this.scanSummary = {
-            total_scanned: count,
-            indexed_count: count,
-            error_count: 0,
-            directory: 'Browser-Ordner',
-          };
-        } finally {
-          this.isScanning = false;
-        }
-      };
-      input.click();
+    // 2. Pure browser fallback (outside Tauri)
+    if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
+      const entered = window.prompt(
+        'Pfad zum Lieder-Verzeichnis eingeben (z. B. C:\\Worship\\Songs):',
+        this.songsDirectory || ''
+      );
+      if (entered !== null && entered.trim()) {
+        this.setSongsDirectory(entered.trim());
+      }
     }
   }
 
@@ -1112,6 +1092,9 @@ class PresentationStore {
       } else {
         localStorage.removeItem('noah_backgrounds_dir');
       }
+    }
+    if (dir) {
+      this.scanBackgroundsDirectory(dir);
     }
   }
 
@@ -1126,65 +1109,111 @@ class PresentationStore {
     }
   }
 
+  async scanBackgroundsDirectory(dir?: string) {
+    const targetDir = dir ?? this.backgroundsDirectory;
+    if (!targetDir) return;
+    try {
+      const scanned = await invokeTauri<Array<{ id: string; name: string; path: string; category: string }>>(
+        'scan_backgrounds_directory',
+        { dirPath: targetDir }
+      );
+      if (scanned && scanned.length > 0) {
+        const existingPaths = new Set(this.customBackgrounds.map((b) => b.value));
+        for (const item of scanned) {
+          if (!existingPaths.has(item.path)) {
+            this.customBackgrounds.push({
+              id: item.id,
+              nameKey: '',
+              defaultName: item.name,
+              category: 'custom',
+              type: 'image',
+              value: item.path,
+              previewStyle: `background-image: url('${item.path}'); background-size: cover; background-position: center;`,
+              isCustom: true,
+            });
+            existingPaths.add(item.path);
+          }
+        }
+        this.persistCustomBackgrounds();
+      }
+    } catch (err) {
+      console.warn('Failed scanning backgrounds directory:', err);
+    }
+  }
+
   async openBackgroundsFolderDialog() {
     // 1. Try native folder picker first
-    const nativeFolder = await invokeTauri<string | null>('pick_folder', { title: 'Wähle Hintergrundbilder-Verzeichnis' });
+    const nativeFolder = await invokeTauri<string | null>('pick_folder', {
+      title: 'Wähle Hintergrundbilder-Verzeichnis',
+      defaultPath: this.backgroundsDirectory || undefined,
+    });
     if (nativeFolder) {
       this.setBackgroundsDirectory(nativeFolder);
       return;
     }
 
-    // 2. Webview HTML5 directory input fallback
-    if (typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.setAttribute('webkitdirectory', '');
-      input.onchange = async () => {
-        if (!input.files || input.files.length === 0) return;
-        this.setBackgroundsDirectory('Browser-Hintergründe');
-        for (const file of Array.from(input.files)) {
-          const nameLower = file.name.toLowerCase();
-          if (
-            nameLower.endsWith('.jpg') ||
-            nameLower.endsWith('.jpeg') ||
-            nameLower.endsWith('.png') ||
-            nameLower.endsWith('.webp') ||
-            nameLower.endsWith('.bmp')
-          ) {
-            await this.addCustomBackgroundFromFile(file);
-          }
-        }
-      };
-      input.click();
+    // 2. Pure browser fallback (outside Tauri)
+    if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
+      const entered = window.prompt(
+        'Pfad zum Hintergrund-Verzeichnis eingeben (z. B. C:\\Worship\\Hintergruende):',
+        this.backgroundsDirectory || ''
+      );
+      if (entered !== null && entered.trim()) {
+        this.setBackgroundsDirectory(entered.trim());
+      }
     }
   }
 
   async openSchedulesFolderDialog() {
     // 1. Try native folder picker first
-    const nativeFolder = await invokeTauri<string | null>('pick_folder', { title: 'Wähle Ablaufpläne-Verzeichnis' });
+    const nativeFolder = await invokeTauri<string | null>('pick_folder', {
+      title: 'Wähle Ablaufpläne-Verzeichnis',
+      defaultPath: this.schedulesDirectory || undefined,
+    });
     if (nativeFolder) {
       this.setSchedulesDirectory(nativeFolder);
       return;
     }
 
-    // 2. Webview HTML5 directory input fallback
-    if (typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.setAttribute('webkitdirectory', '');
-      input.onchange = async () => {
-        if (!input.files || input.files.length === 0) return;
-        this.setSchedulesDirectory('Browser-Abläufe');
-      };
-      input.click();
+    // 2. Pure browser fallback (outside Tauri)
+    if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
+      const entered = window.prompt(
+        'Pfad zum Ablauf-Verzeichnis eingeben (z. B. C:\\Worship\\Ablaeufe):',
+        this.schedulesDirectory || ''
+      );
+      if (entered !== null && entered.trim()) {
+        this.setSchedulesDirectory(entered.trim());
+      }
     }
   }
 
   async importCustomBackgroundFiles() {
+    // 1. Try native file dialog starting in backgroundsDirectory
+    const nativeFiles = await invokeTauri<string[]>('pick_image_files', {
+      defaultPath: this.backgroundsDirectory || undefined,
+    });
+    if (nativeFiles && nativeFiles.length > 0) {
+      for (const filePath of nativeFiles) {
+        const fileName = filePath.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '') || 'Hintergrund';
+        this.addCustomBackground({
+          id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          category: 'custom',
+          nameKey: '',
+          defaultName: fileName,
+          type: 'image',
+          value: filePath,
+          previewStyle: `background-image: url('${filePath}'); background-size: cover; background-position: center;`,
+          isCustom: true,
+        });
+      }
+      return;
+    }
+
+    // 2. Browser file picker fallback
     if (typeof document === 'undefined') return;
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/jpeg,image/png,image/webp,image/bmp,image/svg+xml,.jpg,.jpeg,.png,.webp,.bmp';
+    input.accept = 'image/jpeg,image/png,image/webp,image/bmp,.jpg,.jpeg,.png,.webp,.bmp';
     input.multiple = true;
     input.onchange = async () => {
       if (!input.files || input.files.length === 0) return;
@@ -1281,18 +1310,35 @@ class PresentationStore {
   async saveEditedSong(song: Song, filePath?: string) {
     this.activeSong = song;
 
-    // Synchronize schedule item
-    const schedItem = this.schedule.find(
-      (item) => item.item_type.kind === 'Song' && (item.item_type.payload.id === song.id || item.title === song.metadata.title)
+    // 1. Synchronize schedule item or insert new song into schedule
+    const schedIndex = this.schedule.findIndex(
+      (item) =>
+        item.item_type.kind === 'Song' &&
+        (item.item_type.payload.id === song.id || item.title === song.metadata.title)
     );
-    if (schedItem && schedItem.item_type.kind === 'Song') {
-      schedItem.title = song.metadata.title;
-      schedItem.item_type.payload = song;
+    if (schedIndex >= 0) {
+      const existing = this.schedule[schedIndex];
+      if (existing && existing.item_type.kind === 'Song') {
+        existing.title = song.metadata.title;
+        existing.item_type.payload = song;
+      }
+    } else {
+      // Brand new song or not yet in schedule -> Add directly to schedule!
+      this.addSongToSchedule(song);
     }
 
-    const path = filePath ?? this.editingSongFilePath;
+    // 2. Determine target file path
+    let path = filePath ?? this.editingSongFilePath;
+    if (!path && this.songsDirectory) {
+      const safeTitle = (song.metadata.title || 'Neues Lied').replace(/[<>:"/\\|?*]/g, '_').trim();
+      const sep = this.songsDirectory.includes('\\') ? '\\' : '/';
+      path = `${this.songsDirectory.replace(/[\\/]+$/, '')}${sep}${safeTitle}.sng`;
+    }
+
+    // 3. Save to disk via Tauri backend
     await invokeTauri('save_song_to_disk', { song, filePath: path });
 
+    // 4. Synchronize live beamer if active
     if (this.isBeamerActive) {
       await invokeTauri('sync_active_song', {
         song,
