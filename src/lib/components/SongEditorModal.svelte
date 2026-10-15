@@ -1700,6 +1700,7 @@
               </div>
               <div class="flex items-center gap-2 shrink-0 justify-end">
                 <button
+                  id="song-editor-ok-btn"
                   type="button"
                   class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
                     ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border-emerald-500/50'
@@ -1710,6 +1711,7 @@
                   <span>{t('editor.ok')}</span>
                 </button>
                 <button
+                  id="song-editor-cancel-btn"
                   type="button"
                   class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
                     ? 'bg-red-600/30 hover:bg-red-600/50 text-red-300 border-red-500/50'
@@ -1718,17 +1720,6 @@
                 >
                   <span>✕</span>
                   <span>{t('editor.cancel')}</span>
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
-                    ? 'bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border-neutral-700'
-                    : 'bg-white hover:bg-neutral-100 text-emerald-700 border-neutral-400'}"
-                  onclick={() => (isChordModalOpen = !isChordModalOpen)}
-                  title={t('editor.chordsBtn')}
-                >
-                  <span class="font-bold">C#</span>
-                  <span>{t('editor.chordsBtn')}</span>
                 </button>
               </div>
             </div>

@@ -24,6 +24,15 @@ AI coding agents often write tests that trivially pass (`assert!(true)`) or mock
 3. **No Flaky Timing Tests:** Never use arbitrary `sleep(100ms)` to verify race conditions. Use asynchronous deterministic channels (`tokio::sync::mpsc`, `tokio::sync::watch`), explicit event waiters, and barrier synchronization.
 4. **Mandatory Failure Verification:** A newly introduced regression or parser test must fail against the broken scenario before the fix is applied.
 
+### 1.3 Zero-Dead-UI & End-to-End Pipeline Mandate
+- **STRICT PROHIBITION OF DEAD / UNTESTED UI:** Never implement or present user interface controls (inputs, checkboxes, color pickers, dropdowns, buttons, sliders) that are purely cosmetic, lack functionality, or are untested. Every single element rendered in any modal, dialog, settings tab, or editor must be fully functional, backed by state, and verified by tests.
+- **NO DUMMY PLACEHOLDERS IN MODALS OR EDITORS:** If a feature or setting is not yet implemented or supported by the engine, DO NOT render dummy/placeholder controls for it in modals or dialogs. Only controls that have end-to-end functionality may be displayed.
+- **END-TO-END WIRING MANDATE:** Every setting in an editor or configuration dialog must be wired through the entire pipeline:
+  `UI Control -> Reactive State -> Persistence / Serialization (.sng / DB) -> SlideDeck Preview -> Live Beamer Output (BeamerView.svelte)`.
+  It is strictly unacceptable for a user to change a font, toggle a style, or pick a color without an immediate, tangible effect on live projection and saved files.
+- **EXCLUSIVE EXCEPTION (MAIN APPLICATION TOOLBAR):** The ONLY permitted exception to this rule is inactive buttons in the Main Application Shell toolbar/menu, which serve as visible placeholders and are systematically brought to life ("mit Leben füllen") step-by-step according to the project roadmap.
+- **DEFAULT INHERITANCE RIGOR:** In worship presentation, songs inherit global style profiles by default. Song-specific overrides must always be explicit opt-ins (e.g. *"Song-spezifische Anpassungen aktivieren"*). If overrides are disabled or set to default/unassigned, no cluttering or redundant override tags may be emitted into the saved `.sng` file.
+
 ---
 
 ## 2. Window & State Decoupling Architecture

@@ -133,8 +133,10 @@ export function parseSngText(content: string, fileName?: string): Song {
     while (textLines.length > 0 && textLines[textLines.length - 1].trim().length === 0) {
       textLines.pop();
     }
-
-    const slideLines: LyricLine[] = textLines.map((line) => parseLyricLine(line));
+    const langCount = metadata['langcount'] ? Math.max(1, parseInt(metadata['langcount'], 10)) : 1;
+    const slideLines: LyricLine[] = textLines.map((line, lIdx) =>
+      parseLyricLine(line, langCount > 1 ? lIdx % langCount : 0)
+    );
 
     slides.push({
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `slide-${idx}-${Date.now()}`,
@@ -285,7 +287,7 @@ function parseSectionTag(firstLine: string): { label: string; section: SectionTy
 /**
  * Parses chord brackets like "[D]Lobe den Herrn, [G]meine Seele" into structured LyricLine tokens.
  */
-export function parseLyricLine(rawText: string): LyricLine {
+export function parseLyricLine(rawText: string, languageIndex = 0): LyricLine {
   // Strip SongBeamer inline formatting/color codes (e.g. #C1, #GF, #0, #r)
   const cleanedText = rawText.replace(/^#[A-Za-z0-9]+\s*/, '');
   const tokens: LyricToken[] = [];
@@ -330,7 +332,7 @@ export function parseLyricLine(rawText: string): LyricLine {
 
   return {
     raw_text: rawText,
-    language_index: 0,
+    language_index: languageIndex,
     tokens,
   };
 }

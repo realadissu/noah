@@ -5,7 +5,9 @@ import {
   type TextAlignment,
   type SongFormatOptions,
   DEFAULT_FORMAT_OPTIONS,
+  DEFAULT_PRESENTATION_COLORS,
 } from '$lib/types/format';
+import type { LyricLine } from '$lib/types/models';
 
 const DELPHI_COLOR_MAP: Record<string, string> = {
   clyellow: '#ffff00',
@@ -105,7 +107,7 @@ export function hexToDelphiColor(hex: string): string {
 export function parseDelphiFormat(
   formatStr: string | undefined | null,
   defaultAlign: TextAlignment = 'center',
-  defaultColor = '#ffffff'
+  defaultColor = ''
 ): TextStyleFormat {
   const result: TextStyleFormat = {
     color: defaultColor,
@@ -132,6 +134,7 @@ export function parseDelphiFormat(
     }
   }
   if (current.trim()) parts.push(current.trim());
+
   for (const part of parts) {
     const eqIdx = part.indexOf('=');
     if (eqIdx === -1) continue;
@@ -165,7 +168,9 @@ export function parseDelphiFormat(
  */
 export function serializeDelphiFormat(fmt: TextStyleFormat): string {
   const parts: string[] = [];
-  parts.push(`Color=${hexToDelphiColor(fmt.color)}`);
+  if (fmt.color) {
+    parts.push(`Color=${hexToDelphiColor(fmt.color)}`);
+  }
 
   const styles: string[] = [];
   if (fmt.bold) styles.push('fsBold');
@@ -195,7 +200,6 @@ export function parseSongFormatOptions(tags: Record<string, string>): SongFormat
     lang4Format: { ...DEFAULT_FORMAT_OPTIONS.lang4Format },
   };
 
-  // Find tags case-insensitively
   const findTag = (name: string): string | undefined => {
     const low = name.toLowerCase();
     for (const [k, v] of Object.entries(tags)) {
@@ -203,6 +207,21 @@ export function parseSongFormatOptions(tags: Record<string, string>): SongFormat
     }
     return undefined;
   };
+
+  const ownProfile = findTag('useownbackgroundprofile');
+  const hasFormattingTags =
+    findTag('font') ||
+    findTag('fontlang2') ||
+    findTag('fontsize') ||
+    findTag('format') ||
+    findTag('titleformat') ||
+    findTag('chordcolor');
+
+  // Opt-in check: active if explicitly set or if custom formatting tags exist
+  opts.useOwnBackgroundProfile =
+    ownProfile !== undefined
+      ? ownProfile === '1' || ownProfile.toLowerCase() === 'true'
+      : !!hasFormattingTags;
 
   const font = findTag('font');
   if (font) opts.fontFamily = font;
@@ -218,43 +237,37 @@ export function parseSongFormatOptions(tags: Record<string, string>): SongFormat
 
   const titleFmt = findTag('titleformat');
   if (titleFmt) {
-    opts.titleFormat = parseDelphiFormat(titleFmt, 'center', DEFAULT_FORMAT_OPTIONS.titleFormat.color);
+    opts.titleFormat = parseDelphiFormat(titleFmt, 'center', '');
   }
 
   const lang1Fmt = findTag('format');
   if (lang1Fmt) {
-    opts.lang1Format = parseDelphiFormat(lang1Fmt, 'center', DEFAULT_FORMAT_OPTIONS.lang1Format.color);
+    opts.lang1Format = parseDelphiFormat(lang1Fmt, 'center', '');
   }
 
   const lang2Fmt = findTag('formatlang2');
   if (lang2Fmt) {
-    opts.lang2Format = parseDelphiFormat(lang2Fmt, 'center', DEFAULT_FORMAT_OPTIONS.lang2Format.color);
+    opts.lang2Format = parseDelphiFormat(lang2Fmt, 'center', '');
   }
 
   const lang3Fmt = findTag('formatlang3');
   if (lang3Fmt) {
-    opts.lang3Format = parseDelphiFormat(lang3Fmt, 'center', DEFAULT_FORMAT_OPTIONS.lang3Format.color);
+    opts.lang3Format = parseDelphiFormat(lang3Fmt, 'center', '');
   }
 
   const lang4Fmt = findTag('formatlang4');
   if (lang4Fmt) {
-    opts.lang4Format = parseDelphiFormat(lang4Fmt, 'center', DEFAULT_FORMAT_OPTIONS.lang4Format.color);
+    opts.lang4Format = parseDelphiFormat(lang4Fmt, 'center', '');
   }
 
   const chordCol = findTag('chordcolor');
-  if (chordCol) opts.chordColor = delphiColorToHex(chordCol, opts.chordColor);
+  if (chordCol) opts.chordColor = delphiColorToHex(chordCol, '');
 
   const copyCol = findTag('copyrightcolor');
-  if (copyCol) opts.copyrightColor = delphiColorToHex(copyCol, opts.copyrightColor);
-
-  const tpLeft = findTag('tpleftcolor');
-  if (tpLeft) opts.tpLeftColor = delphiColorToHex(tpLeft, opts.tpLeftColor);
-
-  const tpRight = findTag('tprightcolor');
-  if (tpRight) opts.tpRightColor = delphiColorToHex(tpRight, opts.tpRightColor);
+  if (copyCol) opts.copyrightColor = delphiColorToHex(copyCol, '');
 
   const outlineCol = findTag('outlinecolor');
-  if (outlineCol) opts.outlineColor = delphiColorToHex(outlineCol, opts.outlineColor);
+  if (outlineCol) opts.outlineColor = delphiColorToHex(outlineCol, '#000000');
 
   const outlineVal = findTag('outline') ?? findTag('textstyleoutline');
   if (outlineVal !== undefined) {
@@ -262,38 +275,35 @@ export function parseSongFormatOptions(tags: Record<string, string>): SongFormat
   }
 
   const shadowCol = findTag('shadowcolor');
-  if (shadowCol) opts.shadowColor = delphiColorToHex(shadowCol, opts.shadowColor);
+  if (shadowCol) opts.shadowColor = delphiColorToHex(shadowCol, '#000000');
 
   const shadowVal = findTag('shadow') ?? findTag('textstyleshadow');
   if (shadowVal !== undefined) {
     opts.shadow = shadowVal === '1' || shadowVal.toLowerCase() === 'true';
   }
 
-  const ownProfile = findTag('useownbackgroundprofile');
-  if (ownProfile !== undefined) {
-    opts.useOwnBackgroundProfile = ownProfile === '1' || ownProfile.toLowerCase() === 'true';
-  }
-
-  const preLine = findTag('formatpreline');
-  if (preLine !== undefined) opts.formatPreLine = preLine;
-
-  const prePage = findTag('formatprepage');
-  if (prePage !== undefined) opts.formatPrePage = prePage;
-
   return opts;
 }
 
 /**
  * Serializes SongFormatOptions into dictionary of .sng tags.
+ * STRICTLY ONLY writes tags when useOwnBackgroundProfile is explicitly enabled!
  */
 export function serializeSongFormatOptions(opts: SongFormatOptions): Record<string, string> {
   const tags: Record<string, string> = {};
 
-  if (opts.fontFamily && opts.fontFamily !== 'Arial') {
-    tags['Font'] = opts.fontFamily;
+  if (!opts.useOwnBackgroundProfile) {
+    // Song inherits default profile: do not write any custom formatting tags
+    return tags;
   }
-  if (opts.fontFamilyLang2) {
-    tags['FontLang2'] = opts.fontFamilyLang2;
+
+  tags['UseOwnBackgroundProfile'] = '1';
+
+  if (opts.fontFamily && opts.fontFamily.trim().length > 0) {
+    tags['Font'] = opts.fontFamily.trim();
+  }
+  if (opts.fontFamilyLang2 && opts.fontFamilyLang2.trim().length > 0) {
+    tags['FontLang2'] = opts.fontFamilyLang2.trim();
   }
   if (opts.fontSize > 0) {
     tags['FontSize'] = opts.fontSize.toString();
@@ -312,28 +322,91 @@ export function serializeSongFormatOptions(opts: SongFormatOptions): Record<stri
     tags['FormatLang4'] = serializeDelphiFormat(opts.lang4Format);
   }
 
-  if (opts.chordColor && opts.chordColor !== DEFAULT_FORMAT_OPTIONS.chordColor) {
+  if (opts.chordColor) {
     tags['ChordColor'] = hexToDelphiColor(opts.chordColor);
   }
-  if (opts.copyrightColor && opts.copyrightColor !== DEFAULT_FORMAT_OPTIONS.copyrightColor) {
+  if (opts.copyrightColor) {
     tags['CopyrightColor'] = hexToDelphiColor(opts.copyrightColor);
   }
-  if (opts.outlineColor && opts.outlineColor !== DEFAULT_FORMAT_OPTIONS.outlineColor) {
+  if (opts.outlineColor) {
     tags['OutlineColor'] = hexToDelphiColor(opts.outlineColor);
   }
-  if (opts.shadowColor && opts.shadowColor !== DEFAULT_FORMAT_OPTIONS.shadowColor) {
+  if (opts.shadowColor) {
     tags['ShadowColor'] = hexToDelphiColor(opts.shadowColor);
   }
 
-  if (opts.useOwnBackgroundProfile) {
-    tags['UseOwnBackgroundProfile'] = '1';
-  }
-  if (opts.formatPreLine) {
-    tags['FormatPreLine'] = opts.formatPreLine;
-  }
-  if (opts.formatPrePage) {
-    tags['FormatPrePage'] = opts.formatPrePage;
+  return tags;
+}
+
+/**
+ * Computes live CSS text styling for a slide lyric line based on SongFormatOptions.
+ * Used for 100% WYSIWYG parity in both SlideDeck and BeamerView.
+ */
+export function getLineRenderStyle(
+  line: LyricLine,
+  formatOpts: SongFormatOptions | null | undefined
+): {
+  textStyle: string;
+  chordStyle: string;
+  textAlign: string;
+} {
+  // If no format options or custom adaptations are not enabled, return standard presentation defaults
+  if (!formatOpts || !formatOpts.useOwnBackgroundProfile) {
+    return {
+      textStyle: 'color: #ffffff; font-weight: bold; text-shadow: 0 4px 12px rgba(0,0,0,0.95);',
+      chordStyle: 'color: #f87171; font-weight: bold;',
+      textAlign: 'center',
+    };
   }
 
-  return tags;
+  // Determine language format for this line
+  const langIdx = line.language_index ?? 0;
+  let fmt: TextStyleFormat = formatOpts.lang1Format;
+  let defaultColor = DEFAULT_PRESENTATION_COLORS.lang1;
+
+  if (langIdx === 1 && formatOpts.lang2Format) {
+    fmt = formatOpts.lang2Format;
+    defaultColor = DEFAULT_PRESENTATION_COLORS.lang2;
+  } else if (langIdx === 2 && formatOpts.lang3Format) {
+    fmt = formatOpts.lang3Format;
+    defaultColor = DEFAULT_PRESENTATION_COLORS.lang3;
+  } else if (langIdx >= 3 && formatOpts.lang4Format) {
+    fmt = formatOpts.lang4Format;
+    defaultColor = DEFAULT_PRESENTATION_COLORS.lang4;
+  }
+
+  const fontFam =
+    langIdx > 0 && formatOpts.fontFamilyLang2
+      ? formatOpts.fontFamilyLang2
+      : formatOpts.fontFamily || 'inherit';
+
+  const color = fmt.color && fmt.color.trim().length > 0 ? fmt.color : defaultColor;
+  const weight = fmt.bold !== false ? 'bold' : 'normal';
+  const fontStyle = fmt.italic ? 'italic' : 'normal';
+  const textDecor = fmt.underline ? 'underline' : 'none';
+  const align = fmt.align || 'center';
+
+  // Build shadow / outline style
+  const shadows: string[] = [];
+  if (formatOpts.outline && formatOpts.outlineColor) {
+    const oc = formatOpts.outlineColor;
+    shadows.push(`-1px -1px 0 ${oc}`, `1px -1px 0 ${oc}`, `-1px 1px 0 ${oc}`, `1px 1px 0 ${oc}`);
+  }
+  if (formatOpts.shadow && formatOpts.shadowColor) {
+    shadows.push(`0 4px 14px ${formatOpts.shadowColor}`);
+  }
+  const textShadow = shadows.length > 0 ? `text-shadow: ${shadows.join(', ')};` : '';
+
+  const textStyle = `color: ${color}; font-family: '${fontFam}', sans-serif; font-weight: ${weight}; font-style: ${fontStyle}; text-decoration: ${textDecor}; text-align: ${align}; ${textShadow}`;
+  const chordColor =
+    formatOpts.chordColor && formatOpts.chordColor.trim().length > 0
+      ? formatOpts.chordColor
+      : DEFAULT_PRESENTATION_COLORS.chord;
+  const chordStyle = `color: ${chordColor}; font-weight: bold;`;
+
+  return {
+    textStyle,
+    chordStyle,
+    textAlign: align,
+  };
 }

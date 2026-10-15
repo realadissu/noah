@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { DisplayMode, Song, Slide, BeamerEvent, BeamerStateResponse, AspectRatio } from '$lib/types';
-  import { getAudienceLines, calculateSlideFontSize } from '$lib/utils/slideTypography';
+  import { calculateSlideFontSize } from '$lib/utils/slideTypography';
   import { DEFAULT_SONG } from '$lib/stores/presentation.svelte';
+  import { parseSongFormatOptions, getLineRenderStyle } from '$lib/utils/formatUtils';
 
   // State managed inside the Beamer webview process
   let activeSong = $state<Song | null>(null);
@@ -15,6 +16,11 @@
   let currentLayer = $state<'A' | 'B'>('A');
   let slideA = $state<Slide | null>(null);
   let slideB = $state<Slide | null>(null);
+
+  const formatOpts = $derived.by(() => {
+    const tags = activeSong?.metadata?.custom_tags;
+    return tags ? parseSongFormatOptions(tags) : null;
+  });
 
   const beamerBg = $derived.by<string>(() => {
     const tags = activeSong?.metadata?.custom_tags;
@@ -260,9 +266,14 @@
         class="w-full text-center font-bold"
         style="font-size: {calculateSlideFontSize(slideA, false, aspectRatio)}; line-height: 1.35;"
       >
-        {#each getAudienceLines(slideA) as line}
-          <p class="whitespace-nowrap overflow-visible m-0 p-0 text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]" style="line-height: inherit;">
-            {line}
+        {#each slideA.lines as line}
+          {@const renderStyle = getLineRenderStyle(line, formatOpts)}
+          {@const text = line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
+          <p
+            class="whitespace-nowrap overflow-visible m-0 p-0"
+            style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}"
+          >
+            {text}
           </p>
         {/each}
       </div>
@@ -279,9 +290,14 @@
         class="w-full text-center font-bold"
         style="font-size: {calculateSlideFontSize(slideB, false, aspectRatio)}; line-height: 1.35;"
       >
-        {#each getAudienceLines(slideB) as line}
-          <p class="whitespace-nowrap overflow-visible m-0 p-0 text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] drop-shadow-[0_2px_6px_rgba(0,0,0,1)]" style="line-height: inherit;">
-            {line}
+        {#each slideB.lines as line}
+          {@const renderStyle = getLineRenderStyle(line, formatOpts)}
+          {@const text = line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
+          <p
+            class="whitespace-nowrap overflow-visible m-0 p-0"
+            style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}"
+          >
+            {text}
           </p>
         {/each}
       </div>

@@ -3,6 +3,7 @@
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { AspectRatio } from '$lib/types/models';
   import { calculateSlideFontSize } from '$lib/utils/slideTypography';
+  import { parseSongFormatOptions, getLineRenderStyle } from '$lib/utils/formatUtils';
 
   function getAspectRatioClass(ratio: AspectRatio): string {
     switch (ratio) {
@@ -19,6 +20,11 @@
   function handleSlideClick(index: number) {
     presentation.selectSlide(index);
   }
+
+  const formatOpts = $derived.by(() => {
+    const tags = presentation.activeSong?.metadata?.custom_tags;
+    return tags ? parseSongFormatOptions(tags) : null;
+  });
 
   const activeSongBg = $derived.by<string>(() => {
     const tags = presentation.activeSong?.metadata?.custom_tags;
@@ -99,21 +105,25 @@
               >
                 <div class="w-full flex flex-col items-center justify-center" style="gap: 0.2em;">
                   {#each slide.lines as line}
-                    <div class="text-center w-full">
+                    {@const renderStyle = getLineRenderStyle(line, formatOpts)}
+                    <div class="w-full" style="text-align: {renderStyle.textAlign};">
                       {#if presentation.showChords}
-                        <div class="inline-flex flex-wrap items-end justify-center leading-normal">
+                        <div
+                          class="inline-flex flex-wrap items-end leading-normal"
+                          style="justify-content: {renderStyle.textAlign === 'left' ? 'flex-start' : renderStyle.textAlign === 'right' ? 'flex-end' : 'center'};"
+                        >
                           {#each line.tokens as token}
                             {#if token.kind === 'Chord'}
                               <span class="inline-flex flex-col items-center justify-end mr-[0.3em]">
-                                <span style="font-size: 0.72em;" class="font-mono font-bold text-amber-400 leading-none select-none">{token.chord}</span>
+                                <span style="{renderStyle.chordStyle} font-size: 0.72em;" class="font-mono leading-none select-none">{token.chord}</span>
                                 <span class="h-0 select-none">&nbsp;</span>
                               </span>
                             {:else}
                               <span class="inline-flex flex-col items-start justify-end">
-                                <span style="font-size: 0.72em;" class="font-mono font-bold text-amber-400 leading-none select-none">
+                                <span style="{renderStyle.chordStyle} font-size: 0.72em;" class="font-mono leading-none select-none">
                                   {token.kind === 'ChordAndText' ? token.chord : '\u00A0'}
                                 </span>
-                                <span class="font-bold whitespace-pre text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
+                                <span class="whitespace-pre" style="{renderStyle.textStyle}">
                                   {token.text}
                                 </span>
                               </span>
@@ -121,7 +131,7 @@
                           {/each}
                         </div>
                       {:else}
-                        <p class="font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)] whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit;">
+                        <p class="whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}">
                           {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
                         </p>
                       {/if}
