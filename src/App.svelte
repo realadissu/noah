@@ -10,7 +10,6 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import SongEditorModal from '$lib/components/SongEditorModal.svelte';
   import SearchSongModal from '$lib/components/SearchSongModal.svelte';
-  import SongSelectModal from '$lib/components/SongSelectModal.svelte';
   import type { Song, Slide, LyricLine } from '$lib/types/models';
   import { parseSng } from '$lib/utils/sngParser';
 
@@ -281,10 +280,6 @@
     {#if presentation.isSongSearchModalOpen}
       <SearchSongModal />
     {/if}
-
-    {#if presentation.isSongSelectModalOpen}
-      <SongSelectModal />
-    {/if}
   </div>
 {:else}
   <div
@@ -438,10 +433,6 @@
 
     {#if presentation.isSongSearchModalOpen}
       <SearchSongModal />
-    {/if}
-
-    {#if presentation.isSongSelectModalOpen}
-      <SongSelectModal />
     {/if}
   </div>
 

@@ -585,7 +585,7 @@
           class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700"
           style="width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale));"
           title={t('toolbar.ccli')}
-          onclick={() => presentation.openSongSelectModal()}
+          onclick={() => presentation.openSongSearchModal('songselect')}
         >
           <SongBeamerIcon name="ccli" size={iconPx} />
         </button>

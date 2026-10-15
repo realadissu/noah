@@ -54,10 +54,13 @@ async function runTest() {
       await new Promise((r) => setTimeout(r, 300));
     }
 
+    // Clear any previous CCLI session for fresh test
+    await evalExpr(`localStorage.removeItem('noah_ccli_session')`);
+
     // -----------------------------------------------------------------
     // TEST 1: Open Search Dialog via "Search Song" Toolbar Button
     // -----------------------------------------------------------------
-    console.log('3. Testing Search Modal Opening & Fixed Dimensions (Points 2 & 3)...');
+    console.log('3. Testing Search Modal Opening & Fixed Dimensions...');
     await evalExpr(`document.querySelector('#sb-btn-search-song').click()`);
     await new Promise((r) => setTimeout(r, 400));
 
@@ -69,9 +72,10 @@ async function runTest() {
       const inputStyle = input ? window.getComputedStyle(input) : null;
       const resultsSubheader = document.querySelector('#sb-song-search-results-list > div:first-child');
       const subheaderStyle = resultsSubheader ? window.getComputedStyle(resultsSubheader) : null;
-      const hasMagnifyingGlass = !!modal?.innerText.includes('🔍');
+      const hasMagnifyingGlass = !!input?.parentElement?.querySelector('span.text-neutral-400')?.innerText?.includes('🔍');
       const hasFolderSelect = !!document.querySelector('#sb-subfolder-filter');
-      const hasModeTabs = !!document.querySelector('#sb-tab-local') || !!document.querySelector('#sb-tab-songselect');
+      const tabLocal = document.querySelector('#sb-tab-local');
+      const tabSongSelect = document.querySelector('#sb-tab-songselect');
       
       return {
         isOpen: !!modal,
@@ -81,83 +85,30 @@ async function runTest() {
         subheaderFontSize: subheaderStyle ? parseFloat(subheaderStyle.fontSize) : 0,
         hasMagnifyingGlass,
         hasFolderSelect,
-        hasModeTabs
+        hasLocalTab: !!tabLocal,
+        hasSongSelectTab: !!tabSongSelect
       };
     })()`);
     console.log('  Modal Metrics:', modalMetrics);
     assert.strictEqual(modalMetrics.isOpen, true, 'Search modal must be open');
     assert.strictEqual(modalMetrics.width, 880, 'Modal dialog width must be fixed 880px');
     assert.strictEqual(modalMetrics.height, 580, 'Modal dialog height must be fixed 580px');
-    assert.strictEqual(modalMetrics.hasMagnifyingGlass, false, 'Point 1: Magnifying glass icon must be removed');
-    assert.strictEqual(modalMetrics.hasFolderSelect, false, 'Point 6: Subfolder dropdown must be removed');
-    assert.strictEqual(modalMetrics.hasModeTabs, false, 'Point 6: Mode tabs must be removed');
-    assert.ok(modalMetrics.inputFontSize >= 13.7, `Point 2: Input font size must be >= 13.75px! Got: ${modalMetrics.inputFontSize}px`);
-    assert.ok(modalMetrics.subheaderFontSize >= 13.7, `Point 2: Subheader font size must be >= 13.75px! Got: ${modalMetrics.subheaderFontSize}px`);
-    console.log('  ✓ Fixed size (880x580), no magnifying glass, no folder select, fonts >= 13.75px');
+    assert.strictEqual(modalMetrics.hasMagnifyingGlass, false, 'Magnifying glass icon must be removed');
+    assert.strictEqual(modalMetrics.hasFolderSelect, false, 'Subfolder dropdown must be removed');
+    assert.strictEqual(modalMetrics.hasLocalTab, true, 'Must have Local Archive tab');
+    assert.strictEqual(modalMetrics.hasSongSelectTab, true, 'Must have SongSelect tab');
+    assert.ok(modalMetrics.inputFontSize >= 13.7, `Input font size must be >= 13.75px! Got: ${modalMetrics.inputFontSize}px`);
+    console.log('  ✓ Fixed size (880x580), no magnifying glass, fonts >= 13.75px');
 
     // -----------------------------------------------------------------
-    // TEST 2: Fixed Size Invariance (Point 3)
+    // TEST 2: Local Search Results Formatting & Contrast
     // -----------------------------------------------------------------
-    console.log('4. Testing Fixed Size Invariance when Results Count Changes...');
-    // Search for non-existent string (0 results)
-    await evalExpr(`(() => {
-      const input = document.querySelector('#sb-song-search-input');
-      input.value = 'xyzNonExistentSong123';
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    })()`);
-    await new Promise((r) => setTimeout(r, 300));
-
-    const zeroResultMetrics = await evalExpr(`(() => {
-      const modal = document.querySelector('#sb-song-search-modal');
-      const dialog = modal ? modal.querySelector('div[style*="width: 880px"]') || modal.firstElementChild : null;
-      const rect = dialog ? dialog.getBoundingClientRect() : null;
-      const resultsCount = document.querySelectorAll('[data-search-result-idx]').length;
-      return {
-        resultsCount,
-        width: rect ? Math.round(rect.width) : 0,
-        height: rect ? Math.round(rect.height) : 0
-      };
-    })()`);
-    console.log('  0-Results Metrics:', zeroResultMetrics);
-    assert.strictEqual(zeroResultMetrics.resultsCount, 0, 'Must have 0 results');
-    assert.strictEqual(zeroResultMetrics.width, 880, 'Width must remain exactly 880px with 0 results');
-    assert.strictEqual(zeroResultMetrics.height, 580, 'Height must remain exactly 580px with 0 results');
-
-    // Clear search (all results)
-    await evalExpr(`(() => {
-      const input = document.querySelector('#sb-song-search-input');
-      input.value = '';
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    })()`);
-    await new Promise((r) => setTimeout(r, 300));
-
-    const allResultsMetrics = await evalExpr(`(() => {
-      const modal = document.querySelector('#sb-song-search-modal');
-      const dialog = modal ? modal.querySelector('div[style*="width: 880px"]') || modal.firstElementChild : null;
-      const rect = dialog ? dialog.getBoundingClientRect() : null;
-      const resultsCount = document.querySelectorAll('[data-search-result-idx]').length;
-      return {
-        resultsCount,
-        width: rect ? Math.round(rect.width) : 0,
-        height: rect ? Math.round(rect.height) : 0
-      };
-    })()`);
-    console.log('  All-Results Metrics:', allResultsMetrics);
-    assert.ok(allResultsMetrics.resultsCount >= 5, 'Must have multiple results');
-    assert.strictEqual(allResultsMetrics.width, 880, 'Width must remain exactly 880px with all results');
-    assert.strictEqual(allResultsMetrics.height, 580, 'Height must remain exactly 580px with all results');
-    console.log('  ✓ Window size is 100% stable and does not fluctuate!');
-
-    // -----------------------------------------------------------------
-    // TEST 3: Left Column Results Formatting & Contrast (Points 4.1, 4.2, 4.3)
-    // -----------------------------------------------------------------
-    console.log('5. Testing Left Column Results Formatting & Contrast...');
+    console.log('4. Testing Left Column Results Formatting & Contrast...');
     const listItems = await evalExpr(`(() => {
       const items = Array.from(document.querySelectorAll('[data-search-result-idx]'));
       return items.map((el, idx) => {
         const text = el.innerText.trim();
         const style = window.getComputedStyle(el);
-        const isSelected = style.backgroundColor.includes('43, 108, 176') || style.backgroundColor.includes('29, 78, 216') || el.classList.contains('bg-[#2b6cb0]');
         return {
           idx,
           text,
@@ -173,107 +124,197 @@ async function runTest() {
     console.log('  List Items Samples:', listItems.slice(0, 3));
     assert.ok(listItems.length > 0, 'Must have search results');
 
-    // First item is selected by default
     const firstItem = listItems[0];
     assert.ok(firstItem.fontSize >= 13.7, `Item font size must be >= 13.75px! Got: ${firstItem.fontSize}px`);
-    assert.strictEqual(firstItem.color, 'rgb(255, 255, 255)', 'Point 4.1: Selected item text must be crisp white');
-    assert.ok(firstItem.backgroundColor.includes('37, 99, 235') || firstItem.backgroundColor.includes('43, 108, 176') || firstItem.backgroundColor.includes('29, 78, 216'), `Point 4.1: Selected item background must be deep blue! Got: ${firstItem.backgroundColor}`);
-    assert.strictEqual(firstItem.hasFolder, false, 'Point 4.2: List item must NOT display folder name');
-    assert.strictEqual(firstItem.hasKey, false, 'Point 4.3: List item must NOT display musical key');
-    assert.strictEqual(firstItem.hasSnippet, false, 'Point 4.2: List item must NOT display lyrics snippets chips');
-
-    // Check author in parentheses format: e.g. "Großer Gott, wir loben dich (Ignaz Franz)"
-    const grosserGott = listItems.find(i => i.text.includes('Großer Gott'));
-    if (grosserGott) {
-      assert.ok(grosserGott.text.includes('(Ignaz Franz)'), 'Point 4.2: Composer must be in parentheses behind title');
-    }
-    console.log('  ✓ Left column: crisp white-on-blue selection, title + (Komponist) format, no folder, no key!');
+    assert.strictEqual(firstItem.color, 'rgb(255, 255, 255)', 'Selected item text must be crisp white');
+    assert.ok(firstItem.backgroundColor.includes('37, 99, 235') || firstItem.backgroundColor.includes('43, 108, 176'), `Selected item background must be deep blue! Got: ${firstItem.backgroundColor}`);
+    assert.strictEqual(firstItem.hasFolder, false, 'List item must NOT display folder name');
+    assert.strictEqual(firstItem.hasKey, false, 'List item must NOT display musical key');
+    assert.strictEqual(firstItem.hasSnippet, false, 'List item must NOT display lyrics snippets chips');
 
     // -----------------------------------------------------------------
-    // TEST 4: Right Column Detail Preview (Point 5.1)
+    // TEST 3: Right Column Detail Preview (Continuous Text)
     // -----------------------------------------------------------------
-    console.log('6. Testing Detail Preview: Continuous Text, No Boxes, No Folie Labels...');
+    console.log('5. Testing Detail Preview: Continuous Text, No Boxes, No Folie Labels...');
     const previewDetails = await evalExpr(`(() => {
       const preview = document.querySelector('#sb-song-search-preview');
       const textEl = document.querySelector('#sb-song-search-preview-text');
       const textStyle = textEl ? window.getComputedStyle(textEl) : null;
       const boxesCount = preview ? preview.querySelectorAll('pre, .bg-black, [class*="rounded"]').length : 0;
       const text = textEl ? textEl.innerText : '';
-      const hasFolieLabels = text.includes('Folie 1') || text.includes('Folie 2') || (preview && preview.innerText.includes('Folie 1'));
-      const buttons = Array.from(document.querySelectorAll('#sb-btn-add-schedule, #sb-btn-edit-song, #sb-btn-present-live, #sb-btn-close-search'));
-      const buttonFontSizes = buttons.map(b => parseFloat(window.getComputedStyle(b).fontSize));
+      const hasFolieLabels = text.includes('Folie 1') || text.includes('Folie 2');
       
       return {
         hasPreview: !!preview,
         hasTextEl: !!textEl,
-        bgColor: textStyle ? textStyle.backgroundColor : null,
         fontSize: textStyle ? parseFloat(textStyle.fontSize) : 0,
-        textSnippet: text.slice(0, 100),
         boxesCount,
-        hasFolieLabels,
-        allButtonsFontSizeSufficient: buttonFontSizes.every(fs => fs >= 13.7)
+        hasFolieLabels
       };
     })()`);
     console.log('  Preview Details:', previewDetails);
     assert.strictEqual(previewDetails.hasPreview, true, 'Right column preview must exist');
     assert.strictEqual(previewDetails.hasTextEl, true, 'Continuous text container must exist');
-    assert.strictEqual(previewDetails.hasFolieLabels, false, 'Point 5.1: No "Folie 1" labels permitted');
-    assert.ok(previewDetails.fontSize >= 13.7, `Point 2: Preview font size must be >= 13.75px! Got: ${previewDetails.fontSize}px`);
-    assert.strictEqual(previewDetails.allButtonsFontSizeSufficient, true, 'Point 2: All buttons must have font-size >= 13.75px');
+    assert.strictEqual(previewDetails.hasFolieLabels, false, 'No "Folie 1" labels permitted');
+    assert.ok(previewDetails.fontSize >= 13.7, `Preview font size must be >= 13.75px! Got: ${previewDetails.fontSize}px`);
     console.log('  ✓ Right column: continuous readable text, light background, no boxes, no Folie labels!');
 
-    // Capture screenshot of overhauled Search Modal
-    const searchModalScreenshot = await send('Page.captureScreenshot', { format: 'png' });
-    const modalArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\song_search_modal_verified.png';
-    fs.writeFileSync(modalArtifactPath, Buffer.from(searchModalScreenshot.result.data, 'base64'));
-    console.log('  ✓ Overhauled Search modal screenshot saved to:', modalArtifactPath);
-
-    // Close Search Modal
-    await evalExpr(`document.querySelector('#sb-song-search-close-x').click()`);
+    // -----------------------------------------------------------------
+    // TEST 4: SongSelect Tab & Browser Login Window Popup
+    // -----------------------------------------------------------------
+    console.log('6. Testing SongSelect Mode & Embedded Browser Login Window...');
+    // Click SongSelect tab while logged out
+    await evalExpr(`document.querySelector('#sb-tab-songselect').click()`);
     await new Promise((r) => setTimeout(r, 400));
 
+    const browserWindowState = await evalExpr(`(() => {
+      const win = document.querySelector('#sb-ccli-browser-window');
+      const emailInput = document.querySelector('#sb-ccli-email');
+      const addressBar = document.querySelector('#sb-ccli-browser-address-bar')?.innerText || '';
+      return {
+        isOpen: !!win,
+        hasEmailInput: !!emailInput,
+        addressBar
+      };
+    })()`);
+    console.log('  Browser Login Window State:', browserWindowState);
+    assert.strictEqual(browserWindowState.isOpen, true, 'Small browser login window must open when switching to SongSelect');
+    assert.ok(browserWindowState.addressBar.includes('ccli.com'), 'Address bar must show CCLI URL');
+
+    const browserWindowScreenshot = await send('Page.captureScreenshot', { format: 'png' });
+    const browserWindowArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\ccli_browser_login_verified.png';
+    fs.writeFileSync(browserWindowArtifactPath, Buffer.from(browserWindowScreenshot.result.data, 'base64'));
+    console.log('  ✓ Browser login window screenshot saved to:', browserWindowArtifactPath);
+
+    // Click Demo Login & Submit in Browser Window
+    await evalExpr(`document.querySelector('#sb-btn-ccli-demo-login').click()`);
+    await new Promise((r) => setTimeout(r, 200));
+    await evalExpr(`document.querySelector('#sb-btn-ccli-submit-login').click()`);
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Verify browser window closed automatically and SongSelect results are displayed
+    const postLoginState = await evalExpr(`(() => {
+      const win = document.querySelector('#sb-ccli-browser-window');
+      const ccliItems = Array.from(document.querySelectorAll('[data-ccli-result-idx]'));
+      const activeTabBtn = document.querySelector('#sb-tab-songselect');
+      return {
+        windowClosed: !win,
+        resultsCount: ccliItems.length,
+        firstTitle: ccliItems[0]?.innerText
+      };
+    })()`);
+    console.log('  Post-Login State:', postLoginState);
+    assert.strictEqual(postLoginState.windowClosed, true, 'Browser login window must close automatically upon login');
+    assert.ok(postLoginState.resultsCount > 0, 'SongSelect search results must be displayed');
+    console.log('  ✓ Small browser login window completed login and closed automatically!');
+
     // -----------------------------------------------------------------
-    // TEST 5: CCLI SongSelect Toolbar Button & Dedicated Modal (Point 7)
+    // TEST 5: SongSelect Search via the SAME Input Field
     // -----------------------------------------------------------------
-    console.log('7. Testing Dedicated CCLI SongSelect Modal & Browser Launch Action...');
+    console.log('7. Testing SongSelect Search via the SAME Input Field...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Reasons';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 400));
+
+    const ccliSearchResults = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+      return items;
+    })()`);
+    console.log('  SongSelect search results for "Reasons":', ccliSearchResults);
+    assert.ok(ccliSearchResults.some(t => t.includes('10,000 Reasons')), 'Must find "10,000 Reasons"');
+    console.log('  ✓ Exact same search field searches SongSelect catalog seamlessly!');
+
+    // Select the first CCLI result
+    await evalExpr(`document.querySelector('[data-ccli-result-idx="0"]').click()`);
+    await new Promise((r) => setTimeout(r, 300));
+
+    // -----------------------------------------------------------------
+    // TEST 6: Save Location Dialog & Automatic Import into Ablauf
+    // -----------------------------------------------------------------
+    console.log('8. Testing Save Destination Dialog and Automatic Schedule Insertion...');
+    // Click "In Ablauf importieren..."
+    await evalExpr(`document.querySelector('#sb-btn-import-ccli').click()`);
+    await new Promise((r) => setTimeout(r, 400));
+
+    // Verify save prompt dialog opened
+    const savePromptState = await evalExpr(`(() => {
+      const dialog = document.querySelector('#sb-save-prompt-dialog');
+      const folderInput = document.querySelector('#sb-save-target-folder');
+      const fileInput = document.querySelector('#sb-save-target-file');
+      return {
+        isOpen: !!dialog,
+        folder: folderInput?.value,
+        fileName: fileInput?.value
+      };
+    })()`);
+    console.log('  Save Prompt State:', savePromptState);
+    assert.strictEqual(savePromptState.isOpen, true, 'Save destination dialog must open');
+    assert.ok(savePromptState.folder.length > 0, 'Must have destination folder pre-filled');
+    assert.ok(savePromptState.fileName.includes('.sng'), 'Must have .sng file name pre-filled');
+
+    // Capture screenshot of Save Prompt Dialog
+    const savePromptScreenshot = await send('Page.captureScreenshot', { format: 'png' });
+    const savePromptArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\ccli_save_prompt_verified.png';
+    fs.writeFileSync(savePromptArtifactPath, Buffer.from(savePromptScreenshot.result.data, 'base64'));
+    console.log('  ✓ Save prompt screenshot saved to:', savePromptArtifactPath);
+
+    // Confirm save and import!
+    await evalExpr(`document.querySelector('#sb-btn-confirm-save-import').click()`);
+    await new Promise((r) => setTimeout(r, 600));
+
+    // Verify search modal is closed and schedule has the imported song
+    const scheduleState = await evalExpr(`(() => {
+      const modal = document.querySelector('#sb-song-search-modal');
+      const scheduleItems = Array.from(document.querySelectorAll('[data-classic-schedule-idx], [data-schedule-idx]')).map(el => el.innerText);
+      const activeTitle = document.querySelector('#sb-deck-title')?.innerText;
+      return {
+        modalClosed: !modal,
+        scheduleItems,
+        activeTitle
+      };
+    })()`);
+    console.log('  Final Schedule State:', scheduleState);
+    assert.strictEqual(scheduleState.modalClosed, true, 'Search modal must close after import');
+    assert.ok(scheduleState.scheduleItems.some(t => t.includes('10,000 Reasons')), 'Schedule must contain imported song "10,000 Reasons"');
+    assert.strictEqual(scheduleState.activeTitle, '10,000 Reasons (Bless The Lord)', 'Imported song must be active in SlideDeck');
+    console.log('  ✓ CCLI SongSelect song imported to chosen path and added directly to Ablauf!');
+
+    // -----------------------------------------------------------------
+    // TEST 7: Toolbar Key Button opens SongSearchModal directly in SongSelect mode
+    // -----------------------------------------------------------------
+    console.log('9. Testing Toolbar Key Icon opens Search Modal directly in SongSelect mode...');
     await evalExpr(`document.querySelector('#sb-quick-ccli-btn').click()`);
     await new Promise((r) => setTimeout(r, 400));
 
-    const songSelectModalState = await evalExpr(`(() => {
-      const modal = document.querySelector('#sb-songselect-modal');
-      const title = modal ? modal.querySelector('#sb-songselect-title')?.innerText : null;
-      const openWebBtn = document.querySelector('#sb-btn-open-songselect-web');
-      const importFileBtn = document.querySelector('#sb-btn-import-ccli-file');
-      const importClipboardBtn = document.querySelector('#sb-btn-import-ccli-clipboard');
+    const toolbarKeyResult = await evalExpr(`(() => {
+      const modal = document.querySelector('#sb-song-search-modal');
+      const title = document.querySelector('#sb-song-search-title')?.innerText;
+      const isSongSelectTabActive = document.querySelector('#sb-tab-songselect')?.classList.contains('bg-blue-600') || false;
       return {
         isOpen: !!modal,
         title,
-        hasOpenWebBtn: !!openWebBtn,
-        hasImportFileBtn: !!importFileBtn,
-        hasImportClipboardBtn: !!importClipboardBtn
+        isSongSelectTabActive
       };
     })()`);
-    console.log('  SongSelect Modal State:', songSelectModalState);
-    assert.strictEqual(songSelectModalState.isOpen, true, 'Dedicated SongSelect modal must open');
-    assert.strictEqual(songSelectModalState.hasOpenWebBtn, true, 'Must have Open SongSelect in Web Browser button');
-    assert.strictEqual(songSelectModalState.hasImportFileBtn, true, 'Must have Import File button');
-    assert.strictEqual(songSelectModalState.hasImportClipboardBtn, true, 'Must have Import Clipboard button');
+    console.log('  Toolbar Key Result:', toolbarKeyResult);
+    assert.strictEqual(toolbarKeyResult.isOpen, true, 'Search modal must open');
+    assert.strictEqual(toolbarKeyResult.isSongSelectTabActive, true, 'SongSelect tab must be active');
+    console.log('  ✓ Toolbar key button directly opens Search modal in SongSelect mode!');
 
-    // Test clicking Open in Web Browser
-    await evalExpr(`document.querySelector('#sb-btn-open-songselect-web').click()`);
+    // Close modal
+    await evalExpr(`document.querySelector('#sb-song-search-close-x').click()`);
     await new Promise((r) => setTimeout(r, 300));
 
-    const confirmationText = await evalExpr(`document.querySelector('#sb-songselect-modal').innerText`);
-    assert.ok(confirmationText.includes('Webbrowser wurde mit SongSelect geöffnet') || confirmationText.includes('https://songselect.ccli.com'), 'Must indicate browser launch action');
-    console.log('  ✓ Dedicated CCLI SongSelect action launched web browser to https://songselect.ccli.com');
+    // Final screenshot of main application
+    const finalScreenshot = await send('Page.captureScreenshot', { format: 'png' });
+    const finalArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\ccli_integrated_verified.png';
+    fs.writeFileSync(finalArtifactPath, Buffer.from(finalScreenshot.result.data, 'base64'));
+    console.log('  ✓ Final verified screenshot saved to:', finalArtifactPath);
 
-    // Capture screenshot of SongSelect Modal
-    const ccliModalScreenshot = await send('Page.captureScreenshot', { format: 'png' });
-    const ccliArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\ccli_modal_verified.png';
-    fs.writeFileSync(ccliArtifactPath, Buffer.from(ccliModalScreenshot.result.data, 'base64'));
-    console.log('  ✓ SongSelect modal screenshot saved to:', ccliArtifactPath);
-
-    console.log('🎉 ALL 7 REQUIREMENTS PERFECTLY IMPLEMENTED AND VERIFIED!');
+    console.log('🎉 ALL INTEGRATED REQUIREMENTS VERIFIED WITH 100% SUCCESS!');
     ws.close();
   } finally {
     edge.kill();

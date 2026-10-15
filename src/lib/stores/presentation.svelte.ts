@@ -284,9 +284,6 @@ class PresentationStore {
   isSongSearchModalOpen = $state<boolean>(false);
   songSearchInitialTab = $state<'local' | 'songselect'>('local');
 
-  // Dedicated SongSelect (CCLI) Modal State
-  isSongSelectModalOpen = $state<boolean>(false);
-
   // Right Column Drawer visibility (hidden by default per user requirement)
   isRightPanelOpen = $state<boolean>(false);
 
@@ -1357,14 +1354,14 @@ class PresentationStore {
     };
   }
 
-  async importAndAddCcliSong(ccliSong: SongSelectSong): Promise<Song> {
+  async importAndAddCcliSong(ccliSong: SongSelectSong, customFilePath?: string): Promise<Song> {
     const song = convertSongSelectToSong(ccliSong);
     const sngContent = generateSngFromSongSelect(ccliSong);
 
     // 1. Determine destination path in configured songs directory
     const songsDir = this.songsDirectory || 'C:/Songs';
     const cleanTitle = ccliSong.title.replace(/[\\/:*?"<>|]/g, '');
-    const fullPath = `${songsDir}/${cleanTitle}.sng`;
+    const fullPath = customFilePath || `${songsDir}/${cleanTitle}.sng`;
 
     // 2. Try saving to disk via Tauri
     await invokeTauri('save_song_to_disk', { song, filePath: fullPath });
@@ -1730,14 +1727,6 @@ class PresentationStore {
 
   closeSongSearchModal() {
     this.isSongSearchModalOpen = false;
-  }
-
-  openSongSelectModal() {
-    this.isSongSelectModalOpen = true;
-  }
-
-  closeSongSelectModal() {
-    this.isSongSelectModalOpen = false;
   }
 
   async parseSongContent(content: string): Promise<Song | null> {
