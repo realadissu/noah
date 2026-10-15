@@ -131,7 +131,7 @@
                           {/each}
                         </div>
                       {:else}
-                        <p class="whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}">
+                        <p data-testid="slide-lyric-line" class="whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}">
                           {line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
                         </p>
                       {/if}

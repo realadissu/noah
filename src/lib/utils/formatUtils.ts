@@ -59,7 +59,11 @@ export function delphiColorToHex(delphiColor: string | undefined | null, fallbac
 
   // 3. Delphi Hex ($00BBGGRR or $BBGGRR)
   if (trimmed.startsWith('$')) {
-    let raw = trimmed.slice(1).replace(/[^0-9a-fA-F]/g, '');
+    const rawDigits = trimmed.slice(1);
+    if (!/^[0-9a-fA-F]{1,8}$/.test(rawDigits)) {
+      return fallback;
+    }
+    let raw = rawDigits;
     if (raw.length === 8) {
       raw = raw.slice(2); // discard Delphi leading 0x00 / flags byte
     }

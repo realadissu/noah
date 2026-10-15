@@ -4,6 +4,12 @@
   import SongBeamerIcon from '$lib/components/icons/SongBeamerIcon.svelte';
   import type { ScheduleItem, Slide, LyricLine, SongSearchResult } from '$lib/types/models';
   import { getAudienceLines, calculateSlideFontSize } from '$lib/utils/slideTypography';
+  import { parseSongFormatOptions, getLineRenderStyle } from '$lib/utils/formatUtils';
+
+  const formatOpts = $derived.by(() => {
+    const tags = presentation.activeSong?.metadata?.custom_tags;
+    return tags ? parseSongFormatOptions(tags) : null;
+  });
 
   // --- Clock ---
   let currentTime = $state<string>('');
@@ -811,11 +817,19 @@
                   >
                     <!-- Lyrics Text Preview (Prominent, bold, readable thumbnail parity) -->
                     <div
-                      class="w-full text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
+                      class="w-full font-bold"
                       style="font-size: {calculateSlideFontSize(slide, false, presentation.aspectRatio)}; line-height: 1.35;"
                     >
-                      {#each getAudienceLines(slide) as line}
-                        <p class="whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit;">{line}</p>
+                      {#each slide.lines as line}
+                        {@const renderStyle = getLineRenderStyle(line, formatOpts)}
+                        {@const text = getAudienceText(line)}
+                        <p
+                          data-testid="slide-lyric-line"
+                          class="whitespace-nowrap overflow-visible m-0 p-0"
+                          style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}"
+                        >
+                          {text}
+                        </p>
                       {/each}
                     </div>
                   </div>
@@ -869,11 +883,19 @@
               style="padding: 5cqh 6cqw;"
             >
               <div
-                class="w-full text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.98)] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
+                class="w-full font-bold"
                 style="font-size: {calculateSlideFontSize(presentation.activeSlide, false, presentation.aspectRatio)}; line-height: 1.35;"
               >
-                {#each getAudienceLines(presentation.activeSlide) as line}
-                  <p class="whitespace-nowrap overflow-visible m-0 p-0" style="line-height: inherit;">{line}</p>
+                {#each presentation.activeSlide.lines as line}
+                  {@const renderStyle = getLineRenderStyle(line, formatOpts)}
+                  {@const text = getAudienceText(line)}
+                  <p
+                    data-testid="audience-preview-line"
+                    class="whitespace-nowrap overflow-visible m-0 p-0"
+                    style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}"
+                  >
+                    {text}
+                  </p>
                 {/each}
               </div>
             </div>

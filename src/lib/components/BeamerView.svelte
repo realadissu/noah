@@ -270,6 +270,7 @@
           {@const renderStyle = getLineRenderStyle(line, formatOpts)}
           {@const text = line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
           <p
+            data-testid="beamer-lyric-line"
             class="whitespace-nowrap overflow-visible m-0 p-0"
             style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}"
           >
@@ -294,6 +295,7 @@
           {@const renderStyle = getLineRenderStyle(line, formatOpts)}
           {@const text = line.tokens.filter((t) => t.kind !== 'Chord').map((t) => t.text).join('')}
           <p
+            data-testid="beamer-lyric-line"
             class="whitespace-nowrap overflow-visible m-0 p-0"
             style="line-height: inherit; text-align: {renderStyle.textAlign}; {renderStyle.textStyle}"
           >
