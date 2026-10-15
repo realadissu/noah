@@ -8,18 +8,22 @@
     loginCcli,
     logoutCcli,
     searchSongSelect,
-    searchSongSelectCatalog,
     type SongSelectSong,
     type CcliSession,
   } from '$lib/services/ccli';
 
-  let activeTab = $state<'local' | 'songselect'>(presentation.songSearchInitialTab || 'local');
+  type UnifiedSearchResult =
+    | { kind: 'local'; item: SongSearchResult }
+    | { kind: 'ccli'; item: SongSelectSong };
+
+  let filterMode = $state<'all' | 'local' | 'songselect'>('all');
   let searchQuery = $state<string>('');
   let isSearching = $state<boolean>(false);
 
-  // Local Search State
+  // Search Results
   let localResults = $state<SongSearchResult[]>([]);
-  let selectedLocalIndex = $state<number>(0);
+  let ccliResults = $state<SongSelectSong[]>([]);
+  let selectedIndex = $state<number>(0);
   let selectedLocalSong = $state<Song | null>(null);
   let isLoadingDetails = $state<boolean>(false);
 
@@ -31,8 +35,6 @@
   let ccliLicense = $state<string>('7482910');
   let isLoggingIn = $state<boolean>(false);
   let loginError = $state<string>('');
-  let ccliResults = $state<SongSelectSong[]>([]);
-  let selectedCcliIndex = $state<number>(0);
 
   // Save Destination Prompt State (When importing from SongSelect)
   let isSavePromptOpen = $state<boolean>(false);
@@ -41,43 +43,76 @@
   let isImporting = $state<boolean>(false);
 
   let searchInputEl: HTMLInputElement | null = null;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let searchRequestId = 0;
 
-  // Selected song getter depending on active tab
+  // Unified results according to active filter mode
+  const filteredResults = $derived.by<UnifiedSearchResult[]>(() => {
+    if (filterMode === 'local') {
+      return localResults.map((r) => ({ kind: 'local' as const, item: r }));
+    }
+    if (filterMode === 'songselect') {
+      return ccliResults.map((r) => ({ kind: 'ccli' as const, item: r }));
+    }
+    // 'all': Local songs first, then SongSelect songs
+    const list: UnifiedSearchResult[] = [];
+    for (const l of localResults) {
+      list.push({ kind: 'local' as const, item: l });
+    }
+    for (const c of ccliResults) {
+      list.push({ kind: 'ccli' as const, item: c });
+    }
+    return list;
+  });
+
+  const selectedEntry = $derived<UnifiedSearchResult | null>(
+    filteredResults[selectedIndex] ?? null
+  );
+
   const currentCcliSong = $derived<SongSelectSong | null>(
-    activeTab === 'songselect' && ccliResults.length > selectedCcliIndex
-      ? ccliResults[selectedCcliIndex]
-      : null
+    selectedEntry?.kind === 'ccli' ? selectedEntry.item : null
   );
 
   // Continuous song lyrics text (no boxes, no labels, just natural stanzas)
   let continuousLyrics = $derived.by(() => {
-    if (activeTab === 'local') {
+    if (!selectedEntry) return '';
+    if (selectedEntry.kind === 'local') {
       if (!selectedLocalSong) return '';
       return selectedLocalSong.slides
         .map((s) => s.raw_content.trim())
         .filter(Boolean)
         .join('\n\n');
     } else {
-      if (!currentCcliSong) return '';
-      return currentCcliSong.sections
+      return selectedEntry.item.sections
         .map((sec) => sec.lines.join('\n').trim())
         .filter(Boolean)
         .join('\n\n');
     }
   });
 
-  // Load initial results when modal mounts
+  // Load song details whenever selected local song changes
   $effect(() => {
-    if (activeTab === 'songselect' && !ccliSession?.connected) {
-      isLoginBrowserOpen = true;
+    if (selectedEntry && selectedEntry.kind === 'local') {
+      loadSelectedLocalDetails(selectedEntry.item);
+    } else {
+      selectedLocalSong = null;
     }
-    executeSearch();
+  });
+
+  // Focus input on mount
+  $effect(() => {
     if (searchInputEl) {
       setTimeout(() => searchInputEl?.focus(), 50);
     }
   });
 
-  let searchRequestId = 0;
+  function handleSearchInput(value: string) {
+    searchQuery = value;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      executeSearch();
+    }, 250);
+  }
 
   async function executeSearch(queryOverride?: string) {
     if (queryOverride !== undefined) {
@@ -90,56 +125,29 @@
       localResults = [];
       ccliResults = [];
       selectedLocalSong = null;
-      selectedLocalIndex = 0;
-      selectedCcliIndex = 0;
+      selectedIndex = 0;
       isSearching = false;
       return;
     }
 
     isSearching = true;
     try {
-      if (activeTab === 'local') {
-        const res = await presentation.searchSongs(q, 200);
-        if (thisRequestId !== searchRequestId) return;
-        localResults = res;
-        selectedLocalIndex = 0;
-        if (res.length > 0) {
-          await loadSelectedLocalDetails(res[0]);
-        } else {
-          selectedLocalSong = null;
-        }
-      } else {
-        // Immediate response from curated catalog for zero-latency feedback
-        const instant = searchSongSelectCatalog(q);
-        ccliResults = instant;
-        selectedCcliIndex = 0;
+      // 1. Run local archive search
+      const localPromise = presentation.searchSongs(q, 100);
 
-        const res = await searchSongSelect(q);
-        if (thisRequestId !== searchRequestId) return;
-        ccliResults = res;
-        selectedCcliIndex = 0;
-      }
+      // 2. Run SongSelect search
+      const ccliPromise = searchSongSelect(q);
+
+      const [localRes, ccliRes] = await Promise.all([localPromise, ccliPromise]);
+      if (thisRequestId !== searchRequestId) return;
+
+      localResults = localRes;
+      ccliResults = ccliRes;
+      selectedIndex = 0;
     } finally {
       if (thisRequestId === searchRequestId) {
         isSearching = false;
       }
-    }
-  }
-
-  async function handleTabChange(tab: 'local' | 'songselect') {
-    activeTab = tab;
-    if (tab === 'songselect' && !ccliSession?.connected) {
-      isLoginBrowserOpen = true;
-    }
-    await executeSearch();
-    setTimeout(() => searchInputEl?.focus(), 50);
-  }
-
-  async function handleSelectLocal(idx: number) {
-    selectedLocalIndex = idx;
-    const target = localResults[idx];
-    if (target) {
-      await loadSelectedLocalDetails(target);
     }
   }
 
@@ -168,39 +176,22 @@
       return;
     }
 
-    if (activeTab === 'local') {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (selectedLocalIndex < localResults.length - 1) {
-          handleSelectLocal(selectedLocalIndex + 1);
-        }
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (selectedLocalIndex > 0) {
-          handleSelectLocal(selectedLocalIndex - 1);
-        }
-      } else if (e.key === 'Enter' && !isSavePromptOpen && !isLoginBrowserOpen) {
-        e.preventDefault();
-        if (selectedLocalSong) {
-          addSelectedLocalToSchedule();
-        }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (selectedIndex < filteredResults.length - 1) {
+        selectedIndex++;
       }
-    } else {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (selectedCcliIndex < ccliResults.length - 1) {
-          selectedCcliIndex++;
-        }
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (selectedCcliIndex > 0) {
-          selectedCcliIndex--;
-        }
-      } else if (e.key === 'Enter' && !isSavePromptOpen && !isLoginBrowserOpen) {
-        e.preventDefault();
-        if (currentCcliSong) {
-          openSavePromptForCcli();
-        }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (selectedIndex > 0) {
+        selectedIndex--;
+      }
+    } else if (e.key === 'Enter' && !isSavePromptOpen && !isLoginBrowserOpen) {
+      e.preventDefault();
+      if (selectedEntry?.kind === 'local' && selectedLocalSong) {
+        addSelectedLocalToSchedule();
+      } else if (selectedEntry?.kind === 'ccli' && currentCcliSong) {
+        openSavePromptForCcli();
       }
     }
   }
@@ -309,9 +300,9 @@
       style="background-color: #2563eb; color: #ffffff;"
     >
       <div class="flex items-center gap-2">
-        <SongBeamerIcon name={activeTab === 'local' ? 'song-search' : 'ccli'} size={16} />
+        <SongBeamerIcon name="song-search" size={16} />
         <span id="sb-song-search-title">
-          {activeTab === 'local' ? t('songSearch.title') : 'SongSelect (CCLI) - Liedersuche & Import'}
+          {t('songSearch.title')}
         </span>
       </div>
       <button
@@ -326,19 +317,19 @@
       </button>
     </div>
 
-    <!-- Modal Header Toolbar: Unified Search Input + Source Mode Tabs -->
+    <!-- Modal Header Toolbar: Unified Search Input + Source Filter Tabs -->
     <div
       class="p-2.5 bg-neutral-200 dark:bg-neutral-800 border-b border-neutral-300 dark:border-neutral-700 flex items-center justify-between gap-3 shrink-0"
     >
-      <!-- Same Search Input for both Local and SongSelect -->
+      <!-- Unified Search Input -->
       <div class="relative flex-1">
         <input
           id="sb-song-search-input"
           bind:this={searchInputEl}
           type="text"
-          bind:value={searchQuery}
-          oninput={(e) => executeSearch((e.target as HTMLInputElement).value)}
-          placeholder={activeTab === 'local' ? t('songSearch.placeholder') : 'SongSelect: Titel, Liedtext, Autor oder CCLI-Nummer...'}
+          value={searchQuery}
+          oninput={(e) => handleSearchInput((e.target as HTMLInputElement).value)}
+          placeholder="Lied suchen (Titel, Liedtext, Autor oder CCLI-Nummer)..."
           class="w-full h-9 px-3 pr-8 border border-neutral-400 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-none text-sm font-medium focus:outline-none focus:border-blue-600"
         />
         {#if searchQuery}
@@ -355,32 +346,58 @@
         {/if}
       </div>
 
-      <!-- Mode Switch: Lokales Archiv vs. SongSelect (CCLI) -->
+      <!-- Source Filters: Alle / Lokales Archiv / SongSelect -->
       <div class="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
-          id="sb-tab-local"
-          class="h-9 px-3.5 flex items-center gap-1.5 text-sm font-semibold border transition-colors cursor-pointer {activeTab === 'local'
+          id="sb-tab-all"
+          class="h-9 px-3 flex items-center gap-1.5 text-sm font-semibold border transition-colors cursor-pointer {filterMode === 'all'
             ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
             : 'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600'}"
-          style={activeTab === 'local' ? 'background-color: #2563eb; color: #ffffff;' : ''}
-          onclick={() => handleTabChange('local')}
+          style={filterMode === 'all' ? 'background-color: #2563eb; color: #ffffff;' : ''}
+          onclick={() => (filterMode = 'all')}
+        >
+          <span>Alle</span>
+          {#if searchQuery.trim().length >= 2}
+            <span class="text-xs opacity-85 font-mono">({localResults.length + ccliResults.length})</span>
+          {/if}
+        </button>
+
+        <button
+          type="button"
+          id="sb-tab-local"
+          class="h-9 px-3 flex items-center gap-1.5 text-sm font-semibold border transition-colors cursor-pointer {filterMode === 'local'
+            ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+            : 'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600'}"
+          style={filterMode === 'local' ? 'background-color: #2563eb; color: #ffffff;' : ''}
+          onclick={() => (filterMode = 'local')}
         >
           <span>📁</span>
           <span>{t('songSearch.tabLocal')}</span>
+          {#if searchQuery.trim().length >= 2}
+            <span class="text-xs opacity-85 font-mono">({localResults.length})</span>
+          {/if}
         </button>
 
         <button
           type="button"
           id="sb-tab-songselect"
-          class="h-9 px-3.5 flex items-center gap-1.5 text-sm font-semibold border transition-colors cursor-pointer {activeTab === 'songselect'
+          class="h-9 px-3 flex items-center gap-1.5 text-sm font-semibold border transition-colors cursor-pointer {filterMode === 'songselect'
             ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
             : 'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600'}"
-          style={activeTab === 'songselect' ? 'background-color: #2563eb; color: #ffffff;' : ''}
-          onclick={() => handleTabChange('songselect')}
+          style={filterMode === 'songselect' ? 'background-color: #2563eb; color: #ffffff;' : ''}
+          onclick={() => {
+            filterMode = 'songselect';
+            if (!ccliSession?.connected) {
+              isLoginBrowserOpen = true;
+            }
+          }}
         >
           <SongBeamerIcon name="ccli" size={15} />
           <span>{t('songSearch.tabSongSelect')}</span>
+          {#if searchQuery.trim().length >= 2}
+            <span class="text-xs opacity-85 font-mono">({ccliResults.length})</span>
+          {/if}
           {#if ccliSession?.connected}
             <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title={t('songSearch.ccliConnected')}></span>
           {/if}
@@ -413,86 +430,79 @@
         <!-- Sub-header: Count -->
         <div class="px-3 py-2 bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-700 dark:text-neutral-300 flex items-center justify-between shrink-0">
           <span>
-            {#if activeTab === 'local'}
-              {localResults.length > 0
-                ? t('songSearch.songsFound', { count: localResults.length })
-                : t('songSearch.tabLocal')}
+            {#if searchQuery.trim().length < 2}
+              Liedersuche
+            {:else if filteredResults.length > 0}
+              {t('songSearch.songsFound', { count: filteredResults.length })}
+              {#if filterMode === 'all'}
+                <span class="font-normal text-xs text-neutral-500 ml-1">
+                  ({localResults.length} Lokal, {ccliResults.length} SongSelect)
+                </span>
+              {/if}
             {:else}
-              {ccliResults.length > 0
-                ? `SongSelect: ${ccliResults.length} Lieder`
-                : 'SongSelect'}
+              Keine Lieder
             {/if}
           </span>
           {#if isSearching}
-            <span class="text-blue-600 animate-pulse text-sm">...</span>
+            <span class="text-blue-600 animate-pulse text-sm">Suche...</span>
           {/if}
         </div>
 
         <!-- Results List Scroll Area -->
         <div class="flex-1 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
-          {#if activeTab === 'local'}
-            {#if localResults.length === 0}
-              <div class="p-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-                {searchQuery.trim().length >= 2 ? t('songSearch.noSongsFound', { query: searchQuery }) : t('songSearch.searchPrompt')}
-              </div>
-            {:else}
-              {#each localResults as item, idx}
-                {@const isSelected = selectedLocalIndex === idx}
-                <div
-                  role="button"
-                  tabindex="0"
-                  data-search-result-idx={idx}
-                  style={isSelected ? 'background-color: #2563eb; color: #ffffff;' : ''}
-                  class="px-3 py-2 text-left cursor-pointer transition-colors {isSelected
-                    ? 'bg-blue-600 text-white font-semibold'
-                    : 'bg-white dark:bg-[#181a1f] text-neutral-900 dark:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800'}"
-                  onclick={() => handleSelectLocal(idx)}
-                  ondblclick={addSelectedLocalToSchedule}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter') addSelectedLocalToSchedule();
-                  }}
-                >
-                  <!-- Title only, with composer in parentheses if present; no folders, no key badges -->
-                  <span class="text-sm select-none break-words">
-                    {item.title}{item.author ? ` (${item.author})` : ''}
-                  </span>
-                </div>
-              {/each}
-            {/if}
+          {#if filteredResults.length === 0}
+            <div class="p-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+              {searchQuery.trim().length >= 2 ? t('songSearch.noSongsFound', { query: searchQuery }) : t('songSearch.searchPrompt')}
+            </div>
           {:else}
-            <!-- SongSelect Results List -->
-            {#if ccliResults.length === 0}
-              <div class="p-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-                {searchQuery.trim().length >= 2 ? t('songSearch.noSongsFound', { query: searchQuery }) : t('songSearch.searchPrompt')}
-              </div>
-            {:else}
-              {#each ccliResults as ccliItem, idx}
-                {@const isSelected = selectedCcliIndex === idx}
-                <div
-                  role="button"
-                  tabindex="0"
-                  data-ccli-result-idx={idx}
-                  style={isSelected ? 'background-color: #2563eb; color: #ffffff;' : ''}
-                  class="px-3 py-2 text-left cursor-pointer transition-colors {isSelected
-                    ? 'bg-blue-600 text-white font-semibold'
-                    : 'bg-white dark:bg-[#181a1f] text-neutral-900 dark:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800'}"
-                  onclick={() => (selectedCcliIndex = idx)}
-                  ondblclick={openSavePromptForCcli}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter') openSavePromptForCcli();
-                  }}
-                >
-                  <div class="flex items-start justify-between gap-1">
+            {#each filteredResults as res, idx}
+              {@const isSelected = selectedIndex === idx}
+              <div
+                role="button"
+                tabindex="0"
+                data-search-result-idx={idx}
+                style={isSelected ? 'background-color: #2563eb; color: #ffffff;' : ''}
+                class="px-3 py-2 text-left cursor-pointer transition-colors {isSelected
+                  ? 'bg-blue-600 text-white font-semibold'
+                  : 'bg-white dark:bg-[#181a1f] text-neutral-900 dark:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800'}"
+                onclick={() => (selectedIndex = idx)}
+                ondblclick={() => {
+                  if (res.kind === 'local') addSelectedLocalToSchedule();
+                  else openSavePromptForCcli();
+                }}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (res.kind === 'local') addSelectedLocalToSchedule();
+                    else openSavePromptForCcli();
+                  }
+                }}
+              >
+                {#if res.kind === 'local'}
+                  <div class="flex items-center justify-between gap-1.5">
+                    <span class="text-sm select-none break-words">
+                      {res.item.title}{res.item.author ? ` (${res.item.author})` : ''}
+                    </span>
+                    {#if filterMode === 'all'}
+                      <span class="text-[10px] px-1.5 py-0.5 rounded font-sans uppercase font-bold shrink-0 {isSelected ? 'bg-blue-700 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'}">
+                        Lokal
+                      </span>
+                    {/if}
+                  </div>
+                {:else}
+                  <div class="flex items-center justify-between gap-1.5">
                     <span class="text-sm select-none break-words font-medium">
-                      {ccliItem.title}{ccliItem.authors ? ` (${ccliItem.authors})` : ''}
+                      {res.item.title}{res.item.authors ? ` (${res.item.authors})` : ''}
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-sans uppercase font-bold shrink-0 {isSelected ? 'bg-blue-700 text-white' : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'}">
+                      CCLI
                     </span>
                   </div>
                   <div class="text-xs {isSelected ? 'text-blue-100' : 'text-neutral-500 dark:text-neutral-400'} font-mono mt-0.5">
-                    CCLI #{ccliItem.ccliNumber} {#if ccliItem.titleSecondary}• {ccliItem.titleSecondary}{/if}
+                    CCLI #{res.item.ccliNumber} {#if res.item.titleSecondary}• {res.item.titleSecondary}{/if}
                   </div>
-                </div>
-              {/each}
-            {/if}
+                {/if}
+              </div>
+            {/each}
           {/if}
         </div>
       </div>
@@ -504,22 +514,28 @@
         id="sb-song-search-preview"
         class="flex-1 flex flex-col bg-white dark:bg-[#21252b] overflow-hidden min-w-0"
       >
-        {#if (activeTab === 'local' && selectedLocalSong) || (activeTab === 'songselect' && currentCcliSong)}
+        {#if selectedEntry}
           <!-- Metadata Bar: Clean title & composer -->
           <div class="px-4 py-2.5 bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-300 dark:border-neutral-700 shrink-0 flex items-center justify-between gap-2">
             <div class="truncate">
               <h3 class="text-sm font-bold text-neutral-900 dark:text-white truncate">
-                {activeTab === 'local' ? selectedLocalSong?.metadata.title : currentCcliSong?.title}
+                {selectedEntry.kind === 'local' ? selectedLocalSong?.metadata.title || selectedEntry.item.title : selectedEntry.item.title}
               </h3>
               <div class="text-sm text-neutral-600 dark:text-neutral-400 truncate">
-                {activeTab === 'local' ? selectedLocalSong?.metadata.author : currentCcliSong?.authors}
+                {selectedEntry.kind === 'local' ? selectedLocalSong?.metadata.author || selectedEntry.item.author : selectedEntry.item.authors}
               </div>
             </div>
-            {#if isLoadingDetails}
-              <span class="text-xs text-blue-500 animate-pulse">Lade...</span>
-            {:else if activeTab === 'songselect' && currentCcliSong}
+            {#if selectedEntry.kind === 'local'}
+              {#if isLoadingDetails}
+                <span class="text-xs text-blue-500 animate-pulse">Lade...</span>
+              {:else}
+                <span class="text-xs font-mono px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300">
+                  📁 Lokale Datei
+                </span>
+              {/if}
+            {:else}
               <span class="text-xs font-mono px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                CCLI #{currentCcliSong.ccliNumber}
+                CCLI #{selectedEntry.item.ccliNumber}
               </span>
             {/if}
           </div>
@@ -538,7 +554,7 @@
             <p class="text-sm">
               {#if searchQuery.trim().length < 2}
                 {t('songSearch.searchPrompt')}
-              {:else if (activeTab === 'local' ? localResults.length : ccliResults.length) === 0}
+              {:else if filteredResults.length === 0}
                 {t('songSearch.noSongsFound', { query: searchQuery })}
               {:else}
                 {t('songSearch.selectSongToPreview')}
@@ -554,7 +570,7 @@
       class="h-12 px-3 bg-neutral-200 dark:bg-neutral-800 border-t border-neutral-300 dark:border-neutral-700 flex items-center justify-between shrink-0 select-none"
     >
       <div class="flex items-center gap-2">
-        {#if activeTab === 'local'}
+        {#if selectedEntry?.kind === 'local'}
           <button
             type="button"
             id="sb-btn-add-schedule"
@@ -586,7 +602,7 @@
             <span>▶</span>
             <span>{t('songSearch.presentLive')}</span>
           </button>
-        {:else}
+        {:else if selectedEntry?.kind === 'ccli'}
           <!-- SongSelect Import Action: Asks where to save and inserts into schedule -->
           <button
             type="button"
@@ -799,17 +815,17 @@
                   />
                   <button
                     type="button"
-                    class="h-8 px-3 border border-neutral-300 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-700 text-xs font-medium hover:bg-neutral-200 dark:hover:bg-neutral-600 cursor-pointer shrink-0"
+                    class="h-8 px-3 border border-neutral-300 dark:border-neutral-600 text-xs font-medium hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer"
                     onclick={handleBrowseFolder}
                   >
-                    📁 {t('songSearch.browseFolder')}
+                    Durchsuchen...
                   </button>
                 </div>
               </div>
 
               <div>
                 <label for="sb-save-target-file" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                  {t('songSearch.saveLocationFile')}
+                  {t('songSearch.saveLocationFileName')}
                 </label>
                 <input
                   id="sb-save-target-file"
@@ -833,12 +849,11 @@
                 type="button"
                 id="sb-btn-confirm-save-import"
                 style="background-color: #2563eb; color: #ffffff;"
-                class="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                class="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
                 disabled={isImporting || !targetFileName.trim()}
                 onclick={confirmSaveAndImportCcli}
               >
-                <span>✓</span>
-                <span>{isImporting ? 'Speichern...' : t('songSearch.saveAndImportBtn')}</span>
+                {isImporting ? 'Speichern...' : t('songSearch.saveAndImportBtn')}
               </button>
             </div>
           </div>

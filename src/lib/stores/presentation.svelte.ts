@@ -1119,8 +1119,21 @@ class PresentationStore {
         .replace(/\s+/g, ' ')
         .trim();
 
+    // Secondary diacritic folding (e.g. "Starke" matches "Stärke", "Furchten" matches "Fürchten")
+    const fold = (str: string) =>
+      str
+        .toLowerCase()
+        .replace(/ä/g, 'a')
+        .replace(/ö/g, 'o')
+        .replace(/ü/g, 'u')
+        .replace(/ß/g, 's')
+        .replace(/[\.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
     const terms = q ? q.split(/\s+/).filter(Boolean) : [];
     const normTerms = terms.map(normalize);
+    const foldTerms = terms.map(fold);
 
     // Helper to evaluate multi-term search
     const matchesQuery = (
@@ -1141,17 +1154,27 @@ class PresentationStore {
       const lNorm = normalize(lyrics);
       const fNorm = normalize(fileName || '');
 
+      const tFold = fold(title);
+      const aFold = fold(author);
+      const lFold = fold(lyrics);
+      const fFold = fold(fileName || '');
+
       const allMatch = terms.every((term, idx) => {
         const nTerm = normTerms[idx];
+        const fTerm = foldTerms[idx];
         return (
           tLow.includes(term) ||
           tNorm.includes(nTerm) ||
+          tFold.includes(fTerm) ||
           aLow.includes(term) ||
           aNorm.includes(nTerm) ||
+          aFold.includes(fTerm) ||
           fLow.includes(term) ||
           fNorm.includes(nTerm) ||
+          fFold.includes(fTerm) ||
           lLow.includes(term) ||
-          lNorm.includes(nTerm)
+          lNorm.includes(nTerm) ||
+          lFold.includes(fTerm)
         );
       });
       if (!allMatch) return { matches: false };

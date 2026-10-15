@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import fs from 'fs';
 
+const ccliSearchCache = new Map<string, { items: unknown[]; timestamp: number }>();
+
 function songArchiveApiPlugin(): Plugin {
   return {
     name: 'song-archive-api',
@@ -107,45 +109,70 @@ function songArchiveApiPlugin(): Plugin {
         }
 
         if (url.pathname === '/api/ccli/search') {
-          const q = (url.searchParams.get('q') || '').trim();
-          if (q.length < 2) {
+          const rawQ = (url.searchParams.get('q') || '').trim();
+          if (rawQ.length < 2) {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ items: [] }));
             return;
           }
 
+          const normKey = rawQ.toLowerCase();
+          const cached = ccliSearchCache.get(normKey);
+          const now = Date.now();
+          if (cached && now - cached.timestamp < 3600_000) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ items: cached.items }));
+            return;
+          }
+
+          // Query sanitization: clean up dots/commas (e.g. "10.000" -> "10000"), quotes, dashes
+          const cleanQ = rawQ
+            .replace(/(\d+)[.,](\d+)/g, '$1$2')
+            .replace(/["'*:{}=_~()]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
           try {
             const form = new FormData();
             form.append('numPerPage', '25');
-            form.append('search', q);
+            form.append('search', cleanQ || rawQ);
             form.append('page', '1');
-            form.append('expandToAllSongs', 'false');
+            form.append('expandToAllSongs', 'true');
 
             const ccliRes = await fetch('https://songselect.ccli.com/api/GetSongSearchResults', {
               method: 'POST',
               headers: {
                 'User-Agent':
                   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                Referer: `https://songselect.ccli.com/search/results?search=${encodeURIComponent(q)}`,
+                Referer: `https://songselect.ccli.com/search/results?search=${encodeURIComponent(cleanQ || rawQ)}`,
                 Origin: 'https://songselect.ccli.com',
               },
               body: form,
             });
 
             if (!ccliRes.ok) {
-              res.statusCode = ccliRes.status;
+              // Rate limit or server error -> return cached or empty array gracefully
               res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ error: `CCLI API error: ${ccliRes.status}`, items: [] }));
+              res.end(JSON.stringify({ items: cached ? cached.items : [] }));
               return;
             }
 
-            const json = (await ccliRes.json()) as { payload?: { items?: unknown[] } };
+            const rawText = await ccliRes.text();
+            let items: unknown[] = [];
+            try {
+              const json = JSON.parse(rawText) as { payload?: { items?: unknown[] } };
+              items = json.payload?.items || [];
+              ccliSearchCache.set(normKey, { items, timestamp: now });
+            } catch {
+              // Cloudflare challenge page returned instead of JSON
+              console.warn('CCLI returned non-JSON response (Cloudflare challenge)');
+            }
+
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ items: json.payload?.items || [] }));
+            res.end(JSON.stringify({ items }));
           } catch (err) {
-            res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: String(err), items: [] }));
+            res.end(JSON.stringify({ items: cached ? cached.items : [] }));
           }
           return;
         }

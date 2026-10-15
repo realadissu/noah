@@ -705,83 +705,6 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
       },
     ],
   },
-  {
-    ccliNumber: '6503888',
-    title: 'Meer',
-    titleSecondary: 'Oceans (Where Feet May Fail) - Dt.',
-    authors: 'Joel Houston, Martin Bruch, Matt Crocker, Salomon Ligthelm',
-    copyright: '© 2012 Hillsong Music Publishing Australia',
-    musicalKey: 'D',
-    hasChords: true,
-    hasLeadSheet: true,
-    lyricsPreview: 'Du rufst mich übers Wasser in das Unbekannte...',
-    sections: [
-      {
-        label: 'Vers 1',
-        type: 'Verse',
-        lines: [
-          'Du rufst mich übers Wasser in das Unbekannte,',
-          'wo Füße leicht den Halt verliern.',
-          'Dort find ich dich in tiefen Wassern, im Vertrauen,',
-          'denn du verlässt mich niemals mehr.',
-        ],
-      },
-      {
-        label: 'Refrain',
-        type: 'Chorus',
-        lines: [
-          'Und ich rufe deinen Namen an,',
-          'halte meinen Blick auf dich gewandt.',
-          'Wenn das Meer tobt und die Wogen gehn,',
-          'werd ich ruhn in deinen Armen,',
-          'denn ich bin dein und du bist mein.',
-        ],
-      },
-      {
-        label: 'Bridge',
-        type: 'Bridge',
-        lines: [
-          'Geist des Herrn, führ mich dorthin, wo mein Glaube wächst,',
-          'lass mich über Wasser gehen, wohin du mich rufst.',
-          'Führe mich noch tiefer als mein Fuß je wagte,',
-          'und mein Glaube wird gestärkt in deiner Gegenwart.',
-        ],
-      },
-    ],
-  },
-  {
-    ccliNumber: '7187726',
-    title: 'Friedefürst',
-    titleSecondary: 'Prince of Peace',
-    authors: 'Rene Luik',
-    copyright: '© 2021 Luik, Rene',
-    musicalKey: 'D',
-    hasChords: true,
-    hasLeadSheet: false,
-    lyricsPreview: 'Du bist der Friedefürst in jedem Sturm...',
-    sections: [
-      {
-        label: 'Vers 1',
-        type: 'Verse',
-        lines: [
-          'Du bist der Friedefürst in jedem Sturm,',
-          'mein Zufluchtsort, mein starker Turm.',
-          'In deiner Hand bin ich geborgen,',
-          'du nimmst die Last von meinen Sorgen.',
-        ],
-      },
-      {
-        label: 'Refrain',
-        type: 'Chorus',
-        lines: [
-          'Friedefürst, König der Herrlichkeit,',
-          'du regierst in aller Ewigkeit.',
-          'Jesus, mein Heiland und mein Herr,',
-          'ich brauche deine Gegenwart so sehr.',
-        ],
-      },
-    ],
-  },
 ];
 
 interface CcliApiItem {
@@ -821,7 +744,7 @@ async function fetchOnlineSongSelect(query: string): Promise<SongSelectSong[]> {
         form.append('numPerPage', '25');
         form.append('search', query);
         form.append('page', '1');
-        form.append('expandToAllSongs', 'false');
+        form.append('expandToAllSongs', 'true');
 
         const res = await fetch('https://songselect.ccli.com/api/GetSongSearchResults', {
           method: 'POST',
