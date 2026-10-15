@@ -163,6 +163,7 @@ async function runTest() {
       const slider = document.querySelector('#sb-slides-per-row');
       const label = document.querySelector('label[for="sb-slides-per-row"]');
       const valueBadge = document.querySelector('#sb-slides-per-row-value');
+      const title = document.querySelector('#sb-deck-title');
       const headerText = slider?.closest('div[style*="height"]')?.innerText || '';
 
       if (!slider) return { error: 'Slider not found' };
@@ -173,7 +174,9 @@ async function runTest() {
         step: slider.step,
         currentVal: slider.value,
         labelText: label ? label.innerText.trim() : null,
-        labelHasLargerFont: label ? (label.className.includes('text-xs') && label.className.includes('font-semibold')) : false,
+        titleFontSize: title ? window.getComputedStyle(title).fontSize : null,
+        labelFontSize: label ? window.getComputedStyle(label).fontSize : null,
+        valueFontSize: valueBadge ? window.getComputedStyle(valueBadge).fontSize : null,
         valueBadgeText: valueBadge ? valueBadge.innerText.trim() : null,
         hasSlideCountText: /\\d+\\s*(Folien|slides)/i.test(headerText)
       };
@@ -187,7 +190,8 @@ async function runTest() {
       sliderInfo.labelText === 'Folien pro Zeile' || sliderInfo.labelText === 'Slides per row',
       `Label must be 'Folien pro Zeile' or 'Slides per row', got: ${sliderInfo.labelText}`
     );
-    assert.ok(sliderInfo.labelHasLargerFont, 'Label font must be larger (text-xs font-semibold)');
+    assert.strictEqual(sliderInfo.labelFontSize, sliderInfo.titleFontSize, 'Label font-size must match title font-size');
+    assert.strictEqual(sliderInfo.valueFontSize, sliderInfo.titleFontSize, 'Value badge font-size must match title font-size');
     assert.strictEqual(sliderInfo.hasSlideCountText, false, 'Slide count text must be completely removed');
 
     // Change to 5 columns on the fly via slider

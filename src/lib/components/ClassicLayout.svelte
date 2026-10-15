@@ -819,13 +819,13 @@
           : 'bg-[#f4f4f4]'}"
         style="height: calc(26px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
       >
-        <span class="font-bold text-neutral-800 dark:text-white truncate">
+        <span id="sb-deck-title" class="font-bold text-neutral-800 dark:text-white truncate">
           {presentation.activeSong?.metadata.title ?? t('song.noSongLoaded')}
         </span>
         <div class="flex items-center gap-2 shrink-0">
           <!-- Gerasteter Slider: Folien pro Zeile (2 bis 6) -->
           <div class="flex items-center gap-2">
-            <label for="sb-slides-per-row" class="text-xs font-semibold text-neutral-700 dark:text-neutral-200 select-none whitespace-nowrap">
+            <label for="sb-slides-per-row" class="font-semibold text-neutral-700 dark:text-neutral-200 select-none whitespace-nowrap">
               {t('deck.slidesPerRow')}
             </label>
             <div class="flex items-center gap-1.5">
@@ -841,7 +841,7 @@
                 title="{presentation.slidesPerRow}"
                 aria-label="{t('deck.slidesPerRow')}"
               />
-              <span id="sb-slides-per-row-value" class="w-4 text-center font-mono font-bold text-xs text-[#316ac5] dark:text-blue-400 select-none">
+              <span id="sb-slides-per-row-value" class="w-4 text-center font-mono font-bold text-[#316ac5] dark:text-blue-400 select-none">
                 {presentation.slidesPerRow}
               </span>
             </div>
