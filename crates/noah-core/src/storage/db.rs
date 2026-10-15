@@ -231,9 +231,22 @@ impl SongDatabase {
             return Ok(results);
         }
 
-        // Clean FTS query: format for prefix search (e.g. "lobe*")
-        let clean_fts_term = trimmed.replace(['"', '*', '\''], "");
-        let fts_query = format!("\"{clean_fts_term}\"*");
+        // Clean FTS query: format for prefix search for each token (e.g. "Grosser"* "Gott"*)
+        let fts_terms: Vec<String> = trimmed
+            .split_whitespace()
+            .map(|term| {
+                let clean = term.replace(['"', '*', '\'', ':', '(', ')', '{', '}'], "");
+                format!("\"{clean}\"*")
+            })
+            .filter(|s| s.len() > 3)
+            .collect();
+
+        let fts_query = if fts_terms.is_empty() {
+            let clean = trimmed.replace(['"', '*', '\''], "");
+            format!("\"{clean}\"*")
+        } else {
+            fts_terms.join(" ")
+        };
 
         // Attempt FTS5 MATCH
         let fts_attempt = conn.prepare(

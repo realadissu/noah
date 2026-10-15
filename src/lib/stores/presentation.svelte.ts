@@ -14,6 +14,7 @@ import type {
 import { parseSng, expandSlidesByVerseOrder } from '$lib/utils/sngParser';
 import { t, i18n } from '$lib/i18n';
 import { PRESENTATION_BACKGROUNDS, type BackgroundItem, isImageBackground } from '$lib/data/backgrounds';
+import { convertSongSelectToSong, generateSngFromSongSelect, type SongSelectSong } from '$lib/services/ccli';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
@@ -278,6 +279,10 @@ class PresentationStore {
   isSongEditorOpen = $state<boolean>(false);
   editingSong = $state<Song | null>(null);
   editingSongFilePath = $state<string | null>(null);
+
+  // Dedicated Song Search & CCLI SongSelect Modal State
+  isSongSearchModalOpen = $state<boolean>(false);
+  songSearchInitialTab = $state<'local' | 'songselect'>('local');
 
   // Right Column Drawer visibility (hidden by default per user requirement)
   isRightPanelOpen = $state<boolean>(false);
@@ -1006,135 +1011,364 @@ class PresentationStore {
     }
   }
 
-  async searchSongs(query: string, limit = 20): Promise<SongSearchResult[]> {
+  async searchSongs(query = '', limit = 50, subfolderFilter?: string): Promise<SongSearchResult[]> {
     const q = query.trim().toLowerCase();
-    if (!q) return [];
 
-    // 1. Try native Tauri database search first
-    const backendResults = await invokeTauri<SongSearchResult[]>('search_songs', { query, limit });
-    if (backendResults && backendResults.length > 0) {
-      return backendResults;
+    // 1. Try native Tauri database search first if running inside desktop app
+    if (q) {
+      const backendResults = await invokeTauri<SongSearchResult[]>('search_songs', { query: q, limit });
+      if (backendResults && backendResults.length > 0) {
+        if (subfolderFilter && subfolderFilter !== 'all') {
+          return backendResults.filter((r) => r.file_path?.toLowerCase().includes(subfolderFilter.toLowerCase()));
+        }
+        return backendResults;
+      }
     }
 
-    // 2. Client-side Search across Schedule + Preset & Local Song Library
+    // 2. Comprehensive client-side search across Schedule + Subfolder Repertoire
     const results: SongSearchResult[] = [];
     const seenTitles = new Set<string>();
+
+    const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+
+    // Helper to evaluate multi-term search
+    const matchesQuery = (title: string, author: string, lyrics: string): { matches: boolean; snippet?: string } => {
+      if (terms.length === 0) return { matches: true };
+
+      const tLow = title.toLowerCase();
+      const aLow = author.toLowerCase();
+      const lLow = lyrics.toLowerCase();
+
+      const allMatch = terms.every((term) => tLow.includes(term) || aLow.includes(term) || lLow.includes(term));
+      if (!allMatch) return { matches: false };
+
+      // Find best match line in lyrics if title didn't match directly
+      let snippet: string | undefined;
+      const titleMatchesAll = terms.every((term) => tLow.includes(term));
+      if (!titleMatchesAll) {
+        const lines = lyrics.split('\n').map((l) => l.trim()).filter(Boolean);
+        for (const line of lines) {
+          if (terms.some((term) => line.toLowerCase().includes(term))) {
+            snippet = line.length > 55 ? line.slice(0, 52) + '...' : line;
+            break;
+          }
+        }
+      }
+      return { matches: true, snippet };
+    };
 
     // A. Current worship schedule items
     for (const item of this.schedule) {
       if (item.item_type.kind === 'Song') {
         const s = item.item_type.payload;
-        const titleMatch = s.metadata.title.toLowerCase().includes(q);
-        const authorMatch = s.metadata.author?.toLowerCase().includes(q);
-        const lyricsMatch = s.slides.some((sl) => sl.raw_content.toLowerCase().includes(q));
+        const lyrics = s.slides.map((sl) => sl.raw_content).join('\n');
+        const { matches, snippet } = matchesQuery(s.metadata.title, s.metadata.author || '', lyrics);
 
-        if (titleMatch || authorMatch || lyricsMatch) {
+        if (matches) {
           const normTitle = s.metadata.title.toLowerCase();
           if (!seenTitles.has(normTitle)) {
             seenTitles.add(normTitle);
+            const path = (s as unknown as { filePath?: string }).filePath || 'Ablaufplan/' + s.metadata.title + '.sng';
+            if (!subfolderFilter || subfolderFilter === 'all' || path.toLowerCase().includes(subfolderFilter.toLowerCase())) {
+              results.push({
+                id: s.id,
+                title: s.metadata.title,
+                author: s.metadata.author || '',
+                musical_key: s.metadata.musical_key || '',
+                file_path: path,
+                slide_count: s.slides.length,
+                snippet: snippet ? `Im Liedtext: „${snippet}“` : undefined,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // B. Built-in Worship Song Repertoire across multiple subfolders
+    const sampleLibrary: Array<{ song: Song; subfolderPath: string }> = [
+      {
+        song: DEFAULT_SONG,
+        subfolderPath: 'Lobpreis/Lobe den Herrn, meine Seele.sng',
+      },
+      {
+        song: {
+          id: 'lib-grosser-gott',
+          metadata: {
+            title: 'Großer Gott, wir loben dich',
+            author: 'Ignaz Franz',
+            musical_key: 'F',
+            ccli: '2151670',
+            verse_order: ['Vers 1', 'Vers 2'],
+            lang_count: 1,
+            custom_tags: { CCLI: '2151670' },
+          },
+          slides: [
+            {
+              id: 'sl-gg-1',
+              index: 0,
+              label: 'Vers 1',
+              section: { type: 'Verse', value: 1 },
+              raw_content: 'Großer Gott, wir loben dich;\nHerr, wir preisen deine Stärke.\nVor dir beugt der Erdkreis sich\nund bewundert deine Werke.',
+              lines: [],
+            },
+            {
+              id: 'sl-gg-2',
+              index: 1,
+              label: 'Vers 2',
+              section: { type: 'Verse', value: 2 },
+              raw_content: 'Alles, was dich preisen kann,\nCherubim und Seraphinen,\nstimmen dir ein Loblied an;\nalle Engel, die dir dienen.',
+              lines: [],
+            },
+          ],
+        },
+        subfolderPath: 'Traditionell/Großer Gott, wir loben dich.sng',
+      },
+      {
+        song: {
+          id: 'lib-herr-ich-komme',
+          metadata: {
+            title: 'Herr, ich komme zu dir',
+            author: 'Albert Frey',
+            musical_key: 'G',
+            verse_order: ['Vers 1', 'Refrain'],
+            lang_count: 1,
+            custom_tags: {},
+          },
+          slides: [
+            {
+              id: 'sl-hik-1',
+              index: 0,
+              label: 'Vers 1',
+              section: { type: 'Verse', value: 1 },
+              raw_content: 'Herr, ich komme zu dir,\nkann dir gar nichts bringen,\nwas dich erfreuen könnt.\nDoch du kennst mein Herz.',
+              lines: [],
+            },
+            {
+              id: 'sl-hik-2',
+              index: 1,
+              label: 'Refrain',
+              section: { type: 'Chorus' },
+              raw_content: 'Jesus, Herr, ich danke dir,\ndu vergibst und heilst mein Herz.\nDeine Gnade reicht für mich.',
+              lines: [],
+            },
+          ],
+        },
+        subfolderPath: 'Lobpreis/Herr, ich komme zu dir.sng',
+      },
+      {
+        song: {
+          id: 'lib-abba-vater',
+          metadata: {
+            title: 'Abba, Vater, du bist heilig',
+            author: 'Worship Team',
+            musical_key: 'E',
+            verse_order: ['Refrain'],
+            lang_count: 1,
+            custom_tags: {},
+          },
+          slides: [
+            {
+              id: 'sl-av-1',
+              index: 0,
+              label: 'Refrain',
+              section: { type: 'Chorus' },
+              raw_content: 'Abba, Vater, du bist heilig,\ndein Name sei erhöht in Ewigkeit.\nWir beugen uns vor deiner Herrlichkeit.',
+              lines: [],
+            },
+          ],
+        },
+        subfolderPath: 'Lobpreis/Abba, Vater, du bist heilig.sng',
+      },
+      {
+        song: {
+          id: 'lib-mutig-komm-ich',
+          metadata: {
+            title: 'Mutig komm ich vor den Thron',
+            author: 'Rend Collective, dt. Daniel Jakobi',
+            musical_key: 'D',
+            ccli: '7084128',
+            verse_order: ['Vers 1', 'Refrain', 'Vers 2'],
+            lang_count: 1,
+            custom_tags: { CCLI: '7084128' },
+          },
+          slides: [
+            {
+              id: 'sl-mk-1',
+              index: 0,
+              label: 'Vers 1',
+              section: { type: 'Verse', value: 1 },
+              raw_content: 'Die Gnade fließt wie ein breiter Strom,\ndie reinwäscht und vergibt.\nSie tilgt die Schuld, bricht der Sünde Macht,\ndamit mein Herz aufblüht.',
+              lines: [],
+            },
+            {
+              id: 'sl-mk-2',
+              index: 1,
+              label: 'Refrain',
+              section: { type: 'Chorus' },
+              raw_content: 'Mutig komm ich vor den Thron,\nfreigesprochen durch den Sohn.\nGnade tilgt die ganze Schuld,\nGott schenkt Liebe und Geduld.',
+              lines: [],
+            },
+          ],
+        },
+        subfolderPath: 'Jugend/Mutig komm ich vor den Thron.sng',
+      },
+      {
+        song: {
+          id: 'lib-in-christus',
+          metadata: {
+            title: 'In Christus ist mein Glaube fest',
+            author: 'Keith Getty, Stuart Townend',
+            musical_key: 'D',
+            ccli: '3350395',
+            verse_order: ['Vers 1', 'Vers 2'],
+            lang_count: 1,
+            custom_tags: { CCLI: '3350395' },
+          },
+          slides: [
+            {
+              id: 'sl-ic-1',
+              index: 0,
+              label: 'Vers 1',
+              section: { type: 'Verse', value: 1 },
+              raw_content: 'In Christus ist mein Glaube fest,\nEr ist mein Licht, mein Lied, mein Halt.\nDer Eckstein und das Fundament,\ndas Sturm und Flut gewaltig trotzt.',
+              lines: [],
+            },
+          ],
+        },
+        subfolderPath: 'Glaubenslieder/In Christus ist mein Glaube fest.sng',
+      },
+      {
+        song: {
+          id: 'lib-von-guten-maechten',
+          metadata: {
+            title: 'Von guten Mächten wunderbar geborgen',
+            author: 'Dietrich Bonhoeffer, Siegfried Fietz',
+            musical_key: 'Eb',
+            verse_order: ['Vers 1', 'Refrain'],
+            lang_count: 1,
+            custom_tags: {},
+          },
+          slides: [
+            {
+              id: 'sl-vgm-1',
+              index: 0,
+              label: 'Vers 1',
+              section: { type: 'Verse', value: 1 },
+              raw_content: 'Von guten Mächten treu und still umgeben,\nbehütet und getröstet wunderbar,\nso will ich diese Tage mit euch leben\nund mit euch gehen in ein neues Jahr.',
+              lines: [],
+            },
+            {
+              id: 'sl-vgm-2',
+              index: 1,
+              label: 'Refrain',
+              section: { type: 'Chorus' },
+              raw_content: 'Von guten Mächten wunderbar geborgen,\nerwarten wir getrost, was kommen mag.\nGott ist bei uns am Abend und am Morgen\nund ganz gewiss an jedem neuen Tag.',
+              lines: [],
+            },
+          ],
+        },
+        subfolderPath: 'Klassiker/Von guten Mächten wunderbar geborgen.sng',
+      },
+    ];
+
+    for (const item of sampleLibrary) {
+      const s = item.song;
+      const lyrics = s.slides.map((sl) => sl.raw_content).join('\n');
+      const { matches, snippet } = matchesQuery(s.metadata.title, s.metadata.author || '', lyrics);
+
+      if (matches) {
+        const normTitle = s.metadata.title.toLowerCase();
+        if (!seenTitles.has(normTitle)) {
+          seenTitles.add(normTitle);
+          if (!subfolderFilter || subfolderFilter === 'all' || item.subfolderPath.toLowerCase().includes(subfolderFilter.toLowerCase())) {
             results.push({
               id: s.id,
               title: s.metadata.title,
               author: s.metadata.author || '',
               musical_key: s.metadata.musical_key || '',
-              file_path: (s as unknown as { filePath?: string }).filePath || '',
-              match_snippet: lyricsMatch && !titleMatch ? 'Im Liedtext gefunden' : undefined,
+              file_path: item.subfolderPath,
+              slide_count: s.slides.length,
+              snippet: snippet ? `Im Liedtext: „${snippet}“` : undefined,
             });
           }
         }
       }
     }
 
-    // B. Built-in Worship Song Repertoire
-    const sampleLibrary: Song[] = [
-      DEFAULT_SONG,
-      {
-        id: 'lib-grosser-gott',
-        metadata: {
-          title: 'Großer Gott, wir loben dich',
-          author: 'Ignaz Franz',
-          musical_key: 'F',
-          verse_order: ['Vers 1', 'Vers 2'],
-          lang_count: 1,
-          custom_tags: {},
-        },
-        slides: [
-          {
-            id: 'sl-gg-1',
-            index: 0,
-            label: 'Vers 1',
-            section: { type: 'Verse', value: 1 },
-            raw_content: 'Großer Gott, wir loben dich;\nHerr, wir preisen deine Stärke.\nVor dir beugt der Erdkreis sich\nund bewundert deine Werke.',
-            lines: [],
-          },
-        ],
-      },
-      {
-        id: 'lib-herr-ich-komme',
-        metadata: {
-          title: 'Herr, ich komme zu dir',
-          author: 'Albert Frey',
-          musical_key: 'G',
-          verse_order: ['Vers 1', 'Refrain'],
-          lang_count: 1,
-          custom_tags: {},
-        },
-        slides: [
-          {
-            id: 'sl-hik-1',
-            index: 0,
-            label: 'Vers 1',
-            section: { type: 'Verse', value: 1 },
-            raw_content: 'Herr, ich komme zu dir,\nkann dir gar nichts bringen,\nwas dich erfreuen könnt.\nDoch du kennst mein Herz.',
-            lines: [],
-          },
-        ],
-      },
-      {
-        id: 'lib-abba-vater',
-        metadata: {
-          title: 'Abba, Vater, du bist heilig',
-          author: 'Worship',
-          musical_key: 'E',
-          verse_order: ['Refrain'],
-          lang_count: 1,
-          custom_tags: {},
-        },
-        slides: [
-          {
-            id: 'sl-av-1',
-            index: 0,
-            label: 'Refrain',
-            section: { type: 'Chorus' },
-            raw_content: 'Abba, Vater, du bist heilig,\ndein Name sei erhöht in Ewigkeit.',
-            lines: [],
-          },
-        ],
-      },
-    ];
+    return results.slice(0, limit);
+  }
 
-    for (const s of sampleLibrary) {
-      const titleMatch = s.metadata.title.toLowerCase().includes(q);
-      const authorMatch = s.metadata.author?.toLowerCase().includes(q);
-      const lyricsMatch = s.slides.some((sl) => sl.raw_content.toLowerCase().includes(q));
+  async getSongDetails(item: SongSearchResult): Promise<Song | null> {
+    // 1. In schedule?
+    const inSchedule = this.schedule.find(
+      (s) => s.item_type.kind === 'Song' && (s.item_type.payload.id === item.id || s.title.toLowerCase() === item.title.toLowerCase())
+    );
+    if (inSchedule && inSchedule.item_type.kind === 'Song') {
+      return inSchedule.item_type.payload;
+    }
 
-      if (titleMatch || authorMatch || lyricsMatch) {
-        const normTitle = s.metadata.title.toLowerCase();
-        if (!seenTitles.has(normTitle)) {
-          seenTitles.add(normTitle);
-          results.push({
-            id: s.id,
-            title: s.metadata.title,
-            author: s.metadata.author || '',
-            musical_key: s.metadata.musical_key || '',
-            file_path: '',
-            match_snippet: lyricsMatch && !titleMatch ? 'Im Liedtext gefunden' : undefined,
-          });
-        }
+    // 2. Load from file if running native desktop
+    if (item.file_path && item.file_path.includes(':')) {
+      const loaded = await invokeTauri<FileLoadResult>('load_sng_file', { path: item.file_path });
+      if (loaded?.song) {
+        return loaded.song;
       }
     }
 
-    return results.slice(0, limit);
+    // 3. Match from local sample library
+    const allKnown = await this.searchSongs('', 100);
+    // Construct realistic song with slides
+    const res = await this.searchSongs(item.title, 5);
+    const target = res.find((r) => r.title.toLowerCase() === item.title.toLowerCase()) || item;
+
+    // Build complete Song model
+    return {
+      id: target.id || 'song-' + Date.now(),
+      metadata: {
+        title: target.title,
+        author: target.author || '',
+        musical_key: target.musical_key || '',
+        verse_order: ['Vers 1', 'Refrain'],
+        lang_count: 1,
+        custom_tags: {
+          FilePath: target.file_path || '',
+        },
+      },
+      slides: [
+        {
+          id: 'preview-slide-1',
+          index: 0,
+          label: 'Vers 1',
+          section: { type: 'Verse', value: 1 },
+          raw_content: target.snippet ? target.snippet.replace(/^Im Liedtext: „?|“?$/g, '') : `${target.title}\n(${target.author || 'Liedtext'})`,
+          lines: [
+            {
+              raw_text: target.title,
+              language_index: 0,
+              tokens: [{ kind: 'Text', text: target.title }],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  async importAndAddCcliSong(ccliSong: SongSelectSong): Promise<Song> {
+    const song = convertSongSelectToSong(ccliSong);
+    const sngContent = generateSngFromSongSelect(ccliSong);
+
+    // 1. Determine destination path in configured songs directory
+    const songsDir = this.songsDirectory || 'C:/Songs';
+    const cleanTitle = ccliSong.title.replace(/[\\/:*?"<>|]/g, '');
+    const fullPath = `${songsDir}/${cleanTitle}.sng`;
+
+    // 2. Try saving to disk via Tauri
+    await invokeTauri('save_song_to_disk', { song, filePath: fullPath });
+
+    // 3. Add to schedule and select
+    this.addSongToSchedule(song);
+    return song;
   }
 
   addSongToSchedule(song: Song) {
@@ -1484,6 +1718,15 @@ class PresentationStore {
     this.isSongEditorOpen = false;
     this.editingSong = null;
     this.editingSongFilePath = null;
+  }
+
+  openSongSearchModal(initialTab: 'local' | 'songselect' = 'local') {
+    this.songSearchInitialTab = initialTab;
+    this.isSongSearchModalOpen = true;
+  }
+
+  closeSongSearchModal() {
+    this.isSongSearchModalOpen = false;
   }
 
   async parseSongContent(content: string): Promise<Song | null> {

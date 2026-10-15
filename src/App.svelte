@@ -9,6 +9,7 @@
   import BeamerView from '$lib/components/BeamerView.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import SongEditorModal from '$lib/components/SongEditorModal.svelte';
+  import SearchSongModal from '$lib/components/SearchSongModal.svelte';
   import type { Song, Slide, LyricLine } from '$lib/types/models';
   import { parseSng } from '$lib/utils/sngParser';
 
@@ -275,6 +276,10 @@
     {#if presentation.isSongEditorOpen}
       <SongEditorModal />
     {/if}
+
+    {#if presentation.isSongSearchModalOpen}
+      <SearchSongModal />
+    {/if}
   </div>
 {:else}
   <div
@@ -424,6 +429,10 @@
 
     {#if presentation.isSongEditorOpen}
       <SongEditorModal />
+    {/if}
+
+    {#if presentation.isSongSearchModalOpen}
+      <SearchSongModal />
     {/if}
   </div>
 

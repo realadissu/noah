@@ -218,9 +218,19 @@
         isSearchDropdownOpen = false;
       }
     }
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        presentation.openSongSearchModal('local');
+      }
+    }
     if (typeof window !== 'undefined') {
       window.addEventListener('click', handleDocumentClick);
-      return () => window.removeEventListener('click', handleDocumentClick);
+      window.addEventListener('keydown', handleGlobalKeyDown);
+      return () => {
+        window.removeEventListener('click', handleDocumentClick);
+        window.removeEventListener('keydown', handleGlobalKeyDown);
+      };
     }
   });
 
@@ -373,13 +383,11 @@
       </button>
       <button
         type="button"
+        id="sb-btn-search-song"
         class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.search')}
-        onclick={() => {
-          const el = document.getElementById('sb-quick-search');
-          if (el) el.focus();
-        }}
+        onclick={() => presentation.openSongSearchModal('local')}
       >
         <SongBeamerIcon name="song-search" size={iconPx} />
       </button>
@@ -573,9 +581,11 @@
 
         <button
           type="button"
+          id="sb-quick-ccli-btn"
           class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700"
           style="width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale));"
           title={t('toolbar.ccli')}
+          onclick={() => presentation.openSongSearchModal('songselect')}
         >
           <SongBeamerIcon name="ccli" size={iconPx} />
         </button>
