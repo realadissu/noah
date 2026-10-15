@@ -3,6 +3,9 @@
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { Song } from '$lib/types/models';
   import { PRESENTATION_BACKGROUNDS, type BackgroundItem, type BackgroundCategory } from '$lib/data/backgrounds';
+  import SongEditorFormatTab from './editor/SongEditorFormatTab.svelte';
+  import { type SongFormatOptions, DEFAULT_FORMAT_OPTIONS } from '$lib/types/format';
+  import { parseSongFormatOptions, serializeSongFormatOptions } from '$lib/utils/formatUtils';
 
   type EditorTab = 'text' | 'format' | 'background' | 'categories' | 'media' | 'copyrights';
 
@@ -13,6 +16,9 @@
   let editorText = $state<string>('');
   let verseOrder = $state<string[]>([]);
   let langCount = $state<number>(1);
+
+  // Formatting state
+  let formatOptions = $state<SongFormatOptions>({ ...DEFAULT_FORMAT_OPTIONS });
 
   // Background state (20 curated presets & custom tags)
   let selectedBgCategory = $state<BackgroundCategory | 'all'>('all');
@@ -457,7 +463,12 @@
     speed = s.metadata.speed;
     transpose = s.metadata.transpose ?? 0;
     titleLang2 = s.metadata.title_lang2 ?? '';
-    fontSize = s.metadata.font_size ?? 36;
+    fontSize = s.metadata.font_size ?? 0;
+    formatOptions = parseSongFormatOptions(s.metadata.custom_tags || {});
+    if (s.metadata.font_size !== undefined && s.metadata.font_size > 0) {
+      formatOptions.fontSize = s.metadata.font_size;
+    }
+    fontFamily = formatOptions.fontFamily;
     categories = s.metadata.custom_tags['category']
       ? s.metadata.custom_tags['category'].split(',').map((x) => x.trim())
       : [];
@@ -854,7 +865,7 @@
     if (musicalKey.trim()) sngContent += `#Key=${musicalKey.trim()}\n`;
     if (speed) sngContent += `#Speed=${speed}\n`;
     if (transpose !== 0) sngContent += `#Transpose=${transpose}\n`;
-    if (fontSize) sngContent += `#FontSize=${fontSize}\n`;
+    if (formatOptions.fontSize > 0) sngContent += `#FontSize=${formatOptions.fontSize}\n`;
     if (verseOrder.length > 0) sngContent += `#VerseOrder=${verseOrder.join(',')}\n`;
     if (langCount > 1) sngContent += `#LangCount=${langCount}\n`;
     if (titleLang2.trim()) sngContent += `#TitleLang2=${titleLang2.trim()}\n`;
@@ -862,7 +873,15 @@
     if (audioFile.trim()) sngContent += `#AudioFile=${audioFile.trim()}\n`;
     if (chordsheetFile.trim()) sngContent += `#Chordsheet=${chordsheetFile.trim()}\n`;
 
-    // Preserve custom tags from original song (like #Format, #BackgroundImage, etc.)
+    // Save formatting options
+    const formatTags = serializeSongFormatOptions(formatOptions);
+    for (const [k, v] of Object.entries(formatTags)) {
+      if (k.toLowerCase() !== 'fontsize') {
+        sngContent += `#${k}=${v}\n`;
+      }
+    }
+
+    // Preserve custom tags from original song (excluding managed tags)
     if (song?.metadata?.custom_tags) {
       for (const [k, v] of Object.entries(song.metadata.custom_tags)) {
         const lowerK = k.toLowerCase();
@@ -886,7 +905,27 @@
           lowerK !== 'backgroundimage' &&
           lowerK !== 'backgrounddimmer' &&
           lowerK !== 'format.background' &&
-          lowerK !== 'background'
+          lowerK !== 'background' &&
+          lowerK !== 'font' &&
+          lowerK !== 'fontlang2' &&
+          lowerK !== 'titleformat' &&
+          lowerK !== 'format' &&
+          lowerK !== 'formatlang2' &&
+          lowerK !== 'formatlang3' &&
+          lowerK !== 'formatlang4' &&
+          lowerK !== 'chordcolor' &&
+          lowerK !== 'copyrightcolor' &&
+          lowerK !== 'tpleftcolor' &&
+          lowerK !== 'tprightcolor' &&
+          lowerK !== 'outlinecolor' &&
+          lowerK !== 'outline' &&
+          lowerK !== 'textstyleoutline' &&
+          lowerK !== 'shadowcolor' &&
+          lowerK !== 'shadow' &&
+          lowerK !== 'textstyleshadow' &&
+          lowerK !== 'useownbackgroundprofile' &&
+          lowerK !== 'formatpreline' &&
+          lowerK !== 'formatprepage'
         ) {
           sngContent += `#${k}=${v}\n`;
         }
@@ -1649,45 +1688,53 @@
         {:else if activeTab === 'format'}
           <!-- 3. Formatting Tab -->
           <div
-            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 {presentation.theme === 'dark'
+            class="flex-1 flex flex-col gap-3 rounded-lg border p-4 overflow-y-auto {presentation.theme === 'dark'
               ? 'bg-neutral-950 border-neutral-700'
               : 'bg-white border-neutral-300'}"
           >
-            <div class="font-bold text-base border-b pb-1.5">{t('editor.formatTitle')}</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
-              <div class="flex flex-col gap-1.5">
-                <label for="font-family-select" class="font-semibold text-sm">{t('editor.fontLabel')}</label>
-                <select
-                  id="font-family-select"
-                  bind:value={fontFamily}
-                  class="px-3 py-2 rounded border focus:outline-none text-sm {presentation.theme === 'dark'
-                    ? 'bg-neutral-900 border-neutral-700 text-white'
-                    : 'bg-white border-neutral-300'}"
-                >
-                  <option value="Arial">{t('editor.fontArialStandard')}</option>
-                  <option value="Segoe UI">Segoe UI</option>
-                  <option value="Inter">Inter</option>
-                  <option value="Roboto">Roboto</option>
-                  <option value="Times New Roman">Times New Roman</option>
-                  <option value="Georgia">Georgia</option>
-                </select>
+            <!-- Top Action Header on Format Tab (Title, OK, Cancel, Chords) -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 pb-3 border-b border-neutral-200 dark:border-neutral-800">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-neutral-800 dark:text-neutral-200">{title || t('editor.newSong')}</span>
+                <span class="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold">{t('editor.tabs.format')}</span>
               </div>
-
-              <div class="flex flex-col gap-1.5">
-                <label for="font-size-input" class="font-semibold text-sm">{t('editor.fontSizeLabel', { size: fontSize })}</label>
-                <div class="flex items-center gap-3">
-                  <input
-                    id="font-size-input"
-                    type="range"
-                    min="14"
-                    max="64"
-                    bind:value={fontSize}
-                    class="flex-1"
-                  />
-                  <span class="w-12 text-right font-mono text-base font-bold">{fontSize}</span>
-                </div>
+              <div class="flex items-center gap-2 shrink-0 justify-end">
+                <button
+                  type="button"
+                  class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+                    ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border-emerald-500/50'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-xs'}"
+                  onclick={handleSave}
+                >
+                  <span>✓</span>
+                  <span>{t('editor.ok')}</span>
+                </button>
+                <button
+                  type="button"
+                  class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+                    ? 'bg-red-600/30 hover:bg-red-600/50 text-red-300 border-red-500/50'
+                    : 'bg-red-600 hover:bg-red-700 text-white border-red-700 shadow-xs'}"
+                  onclick={handleCancel}
+                >
+                  <span>✕</span>
+                  <span>{t('editor.cancel')}</span>
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+                    ? 'bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border-neutral-700'
+                    : 'bg-white hover:bg-neutral-100 text-emerald-700 border-neutral-400'}"
+                  onclick={() => (isChordModalOpen = !isChordModalOpen)}
+                  title={t('editor.chordsBtn')}
+                >
+                  <span class="font-bold">C#</span>
+                  <span>{t('editor.chordsBtn')}</span>
+                </button>
               </div>
             </div>
+
+            <!-- Format Tab Controls -->
+            <SongEditorFormatTab bind:formatOptions {langCount} />
           </div>
         {:else if activeTab === 'background'}
           <!-- 4. Background Tab: 20 Curated Presets across 4 Categories with Contrast Dimmer & Live Preview -->
