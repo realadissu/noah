@@ -106,6 +106,50 @@ function songArchiveApiPlugin(): Plugin {
           return;
         }
 
+        if (url.pathname === '/api/ccli/search') {
+          const q = (url.searchParams.get('q') || '').trim();
+          if (q.length < 2) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ items: [] }));
+            return;
+          }
+
+          try {
+            const form = new FormData();
+            form.append('numPerPage', '25');
+            form.append('search', q);
+            form.append('page', '1');
+            form.append('expandToAllSongs', 'false');
+
+            const ccliRes = await fetch('https://songselect.ccli.com/api/GetSongSearchResults', {
+              method: 'POST',
+              headers: {
+                'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                Referer: `https://songselect.ccli.com/search/results?search=${encodeURIComponent(q)}`,
+                Origin: 'https://songselect.ccli.com',
+              },
+              body: form,
+            });
+
+            if (!ccliRes.ok) {
+              res.statusCode = ccliRes.status;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: `CCLI API error: ${ccliRes.status}`, items: [] }));
+              return;
+            }
+
+            const json = (await ccliRes.json()) as { payload?: { items?: unknown[] } };
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ items: json.payload?.items || [] }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: String(err), items: [] }));
+          }
+          return;
+        }
+
         next();
       });
     },

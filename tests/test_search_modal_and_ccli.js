@@ -306,6 +306,93 @@ async function runTest() {
     assert.ok(allesKommtResults.previewText.includes('Alles kommt von dir, Herr, alles ist dein Werk'), 'Preview text must contain lyrics');
     console.log('  ✓ SongSelect search for "Alles kommt von dir" successfully returned song & lyrics!');
 
+    // Test CCLI live search for "Oceans"
+    console.log('9b. Testing SongSelect Search for "Oceans"...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Oceans';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 150));
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      const state = await evalExpr(`(() => {
+        const hasPulse = !!document.querySelector('#sb-song-search-results-list span.animate-pulse');
+        const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+        return { hasPulse, count: items.length, hasMatch: items.some(t => t.includes('Oceans')) };
+      })()`);
+      if (!state.hasPulse && state.hasMatch && state.count >= 10) break;
+    }
+
+    const oceansResults = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+      const previewText = document.querySelector('#sb-song-search-preview-text')?.innerText || '';
+      return { items, previewText };
+    })()`);
+    console.log('  SongSelect results for "Oceans": count =', oceansResults.items.length);
+    assert.ok(oceansResults.items.length >= 10, 'Must return at least 10 results for "Oceans"');
+    assert.ok(oceansResults.items.some(t => t.includes('Oceans (Where Feet May Fail)')), 'Must find "Oceans (Where Feet May Fail)"');
+    assert.ok(oceansResults.items.some(t => t.includes('6428767')), 'Must include CCLI #6428767');
+    console.log('  ✓ SongSelect search for "Oceans" verified!');
+
+    // Test CCLI live search for "Meer"
+    console.log('9c. Testing SongSelect Search for "Meer"...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Meer';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 150));
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      const state = await evalExpr(`(() => {
+        const hasPulse = !!document.querySelector('#sb-song-search-results-list span.animate-pulse');
+        const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+        return { hasPulse, count: items.length, hasMatch: items.some(t => t.includes('Meer')) };
+      })()`);
+      if (!state.hasPulse && state.hasMatch && state.count >= 10) break;
+    }
+
+    const meerResults = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+      const previewText = document.querySelector('#sb-song-search-preview-text')?.innerText || '';
+      return { items, previewText };
+    })()`);
+    console.log('  SongSelect results for "Meer": count =', meerResults.items.length);
+    assert.ok(meerResults.items.length >= 10, 'Must return at least 10 results for "Meer"');
+    assert.ok(meerResults.items.some(t => t.includes('Meer')), 'Must find "Meer"');
+    console.log('  ✓ SongSelect search for "Meer" verified!');
+
+    // Test CCLI live search for "friedefürst"
+    console.log('9d. Testing SongSelect Search for "friedefürst"...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'friedefürst';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 150));
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      const state = await evalExpr(`(() => {
+        const hasPulse = !!document.querySelector('#sb-song-search-results-list span.animate-pulse');
+        const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+        return { hasPulse, count: items.length, hasMatch: items.some(t => t.includes('Friedefürst')) };
+      })()`);
+      if (!state.hasPulse && state.hasMatch && state.count >= 10) break;
+    }
+
+    const friedeResults = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]')).map(el => el.innerText);
+      const previewText = document.querySelector('#sb-song-search-preview-text')?.innerText || '';
+      return { items, previewText };
+    })()`);
+    console.log('  SongSelect results for "friedefürst": count =', friedeResults.items.length);
+    assert.ok(friedeResults.items.length >= 10, 'Must return at least 10 results for "friedefürst"');
+    assert.ok(friedeResults.items.some(t => t.includes('Friedefürst Wunderrat')), 'Must find "Friedefürst Wunderrat"');
+    assert.ok(friedeResults.items.some(t => t.includes('5321391')), 'Must include CCLI #5321391');
+    assert.ok(friedeResults.previewText.includes('Friedefürst, Wunderrat, mächtiger Gott'), 'Preview must show lyrics');
+    console.log('  ✓ SongSelect search for "friedefürst" verified!');
+
     // Test CCLI search with non-existent / gibberish query
     console.log('10. Testing SongSelect Search for non-existent query ("sdkjfasjkdhkas")...');
     await evalExpr(`(() => {
@@ -313,7 +400,12 @@ async function runTest() {
       input.value = 'sdkjfasjkdhkas';
       input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 150));
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      const hasSearching = await evalExpr(`!!document.querySelector('#sb-song-search-results-list span.animate-pulse')`);
+      if (!hasSearching) break;
+    }
 
     const gibberishState = await evalExpr(`(() => {
       const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]'));
@@ -337,7 +429,12 @@ async function runTest() {
       input.value = 'Alles kommt von dir';
       input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 150));
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      const hasItem = await evalExpr(`document.querySelectorAll('[data-ccli-result-idx]').length > 0`);
+      if (hasItem) break;
+    }
 
     // -----------------------------------------------------------------
     // TEST 7: Save Location Dialog & Automatic Import into Ablauf

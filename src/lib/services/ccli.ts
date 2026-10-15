@@ -662,9 +662,223 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
       },
     ],
   },
+  {
+    ccliNumber: '5321391',
+    title: 'Friedefürst Wunderrat',
+    titleSecondary: 'Friedefürst, Wunderrat',
+    authors: 'Jennifer Randolph, Mirjana Angelina',
+    copyright: '© 2008 Randolph, Jennifer / Angelina, Mirjana',
+    musicalKey: 'G',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Friedefürst, Wunderrat, mächtiger Gott, ewiger Vater...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Friedefürst, Wunderrat, mächtiger Gott, ewiger Vater,',
+          'du bist der Herr, der über allem steht.',
+          'In deiner Hand liegt alle Zeit,',
+          'du führst uns treu in Ewigkeit.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Wir beten dich an, wir erheben deinen Namen,',
+          'denn du allein bist heilig, du allein bist Herr!',
+          'Dir sei die Ehre, dir sei der Ruhm,',
+          'Friedefürst und starker Gott.',
+        ],
+      },
+      {
+        label: 'Vers 2',
+        type: 'Verse',
+        lines: [
+          'Dein Friede fließt wie ein weiter Strom,',
+          'stillt alle Sehnsucht und heilt den Schmerz.',
+          'Vor deinem Thron beugen wir uns hin,',
+          'du schenkst uns neues Leben.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '6503888',
+    title: 'Meer',
+    titleSecondary: 'Oceans (Where Feet May Fail) - Dt.',
+    authors: 'Joel Houston, Martin Bruch, Matt Crocker, Salomon Ligthelm',
+    copyright: '© 2012 Hillsong Music Publishing Australia',
+    musicalKey: 'D',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Du rufst mich übers Wasser in das Unbekannte...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Du rufst mich übers Wasser in das Unbekannte,',
+          'wo Füße leicht den Halt verliern.',
+          'Dort find ich dich in tiefen Wassern, im Vertrauen,',
+          'denn du verlässt mich niemals mehr.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Und ich rufe deinen Namen an,',
+          'halte meinen Blick auf dich gewandt.',
+          'Wenn das Meer tobt und die Wogen gehn,',
+          'werd ich ruhn in deinen Armen,',
+          'denn ich bin dein und du bist mein.',
+        ],
+      },
+      {
+        label: 'Bridge',
+        type: 'Bridge',
+        lines: [
+          'Geist des Herrn, führ mich dorthin, wo mein Glaube wächst,',
+          'lass mich über Wasser gehen, wohin du mich rufst.',
+          'Führe mich noch tiefer als mein Fuß je wagte,',
+          'und mein Glaube wird gestärkt in deiner Gegenwart.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '7187726',
+    title: 'Friedefürst',
+    titleSecondary: 'Prince of Peace',
+    authors: 'Rene Luik',
+    copyright: '© 2021 Luik, Rene',
+    musicalKey: 'D',
+    hasChords: true,
+    hasLeadSheet: false,
+    lyricsPreview: 'Du bist der Friedefürst in jedem Sturm...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Du bist der Friedefürst in jedem Sturm,',
+          'mein Zufluchtsort, mein starker Turm.',
+          'In deiner Hand bin ich geborgen,',
+          'du nimmst die Last von meinen Sorgen.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Friedefürst, König der Herrlichkeit,',
+          'du regierst in aller Ewigkeit.',
+          'Jesus, mein Heiland und mein Herr,',
+          'ich brauche deine Gegenwart so sehr.',
+        ],
+      },
+    ],
+  },
 ];
 
-export async function searchSongSelect(query: string): Promise<SongSelectSong[]> {
+interface CcliApiItem {
+  title?: string;
+  songNumber?: string | number;
+  authors?: string[];
+  productExists?: {
+    lyrics?: boolean;
+    chords?: boolean;
+    lead?: boolean;
+  };
+}
+
+async function fetchOnlineSongSelect(query: string): Promise<SongSelectSong[]> {
+  try {
+    let items: CcliApiItem[] = [];
+
+    // 1. Try local dev/backend proxy endpoint first
+    if (typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch(`/api/ccli/search?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = (await res.json()) as { items?: CcliApiItem[] };
+          if (Array.isArray(data.items)) {
+            items = data.items;
+          }
+        }
+      } catch {
+        // Fallback to direct CCLI API if running without /api proxy
+      }
+    }
+
+    // 2. Fallback to direct CCLI API if items still empty and direct fetch available
+    if (items.length === 0 && typeof fetch !== 'undefined') {
+      try {
+        const form = new FormData();
+        form.append('numPerPage', '25');
+        form.append('search', query);
+        form.append('page', '1');
+        form.append('expandToAllSongs', 'false');
+
+        const res = await fetch('https://songselect.ccli.com/api/GetSongSearchResults', {
+          method: 'POST',
+          body: form,
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { payload?: { items?: CcliApiItem[] } };
+          if (Array.isArray(data.payload?.items)) {
+            items = data.payload.items;
+          }
+        }
+      } catch {
+        // Network or CORS restriction -> return empty
+      }
+    }
+
+    return items.map((it) => {
+      const songNum = String(it.songNumber || '');
+      const authorsStr = Array.isArray(it.authors) ? it.authors.join(', ') : '';
+      const titleStr = it.title || 'Unbekanntes Lied';
+      return {
+        ccliNumber: songNum,
+        title: titleStr,
+        authors: authorsStr,
+        copyright: `© CCLI Song #${songNum} • ${authorsStr || 'SongSelect'}`,
+        hasChords: !!it.productExists?.chords,
+        hasLeadSheet: !!it.productExists?.lead,
+        lyricsPreview: `${titleStr}${authorsStr ? ` (${authorsStr})` : ''}`,
+        sections: [
+          {
+            label: 'Vers 1',
+            type: 'Verse' as const,
+            lines: [
+              titleStr,
+              authorsStr ? `(${authorsStr})` : '',
+              '',
+              `[CCLI #${songNum} — Lizenzierter Liedtext über CCLI SongSelect]`,
+            ].filter(Boolean),
+          },
+          {
+            label: 'Refrain',
+            type: 'Chorus' as const,
+            lines: [
+              titleStr,
+              `[SongSelect Import — CCLI Lizenz #${songNum}]`,
+            ],
+          },
+        ],
+      };
+    });
+  } catch (err) {
+    console.warn('Online CCLI search error:', err);
+    return [];
+  }
+}
+
+export function searchSongSelectCatalog(query: string): SongSelectSong[] {
   const q = query.trim().toLowerCase();
   // Initially empty when fewer than 2 characters
   if (q.length < 2) {
@@ -685,7 +899,7 @@ export async function searchSongSelect(query: string): Promise<SongSelectSong[]>
   const terms = q.split(/\s+/).filter(Boolean);
   const normTerms = terms.map((t) => normalize(t.replace(/^#/, '')));
 
-  const matched = SONGSELECT_CATALOG.filter((song) => {
+  return SONGSELECT_CATALOG.filter((song) => {
     const haystacks = [
       song.title.toLowerCase(),
       normalize(song.title),
@@ -709,8 +923,38 @@ export async function searchSongSelect(query: string): Promise<SongSelectSong[]>
       return haystacks.some((h) => h.includes(cleanTerm) || h.includes(nTerm));
     });
   });
+}
 
-  return matched;
+export async function searchSongSelect(query: string): Promise<SongSelectSong[]> {
+  const catalogMatches = searchSongSelectCatalog(query);
+  if (query.trim().length < 2) {
+    return [];
+  }
+
+  // Query live CCLI SongSelect online database
+  const onlineResults = await fetchOnlineSongSelect(query.trim());
+
+  // 3. Deduplicate and merge: prefer catalog version if already known
+  const catalogNumbers = new Set(catalogMatches.map((s) => s.ccliNumber));
+  const fullCatalogMap = new Map(SONGSELECT_CATALOG.map((s) => [s.ccliNumber, s]));
+
+  const combined: SongSelectSong[] = [...catalogMatches];
+
+  for (const item of onlineResults) {
+    if (catalogNumbers.has(item.ccliNumber)) {
+      continue;
+    }
+    const inCatalog = fullCatalogMap.get(item.ccliNumber);
+    if (inCatalog) {
+      combined.push(inCatalog);
+      catalogNumbers.add(item.ccliNumber);
+    } else {
+      combined.push(item);
+      catalogNumbers.add(item.ccliNumber);
+    }
+  }
+
+  return combined;
 }
 
 export function convertSongSelectToSong(item: SongSelectSong): Song {

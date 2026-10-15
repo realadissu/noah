@@ -8,6 +8,7 @@
     loginCcli,
     logoutCcli,
     searchSongSelect,
+    searchSongSelectCatalog,
     type SongSelectSong,
     type CcliSession,
   } from '$lib/services/ccli';
@@ -76,11 +77,15 @@
     }
   });
 
+  let searchRequestId = 0;
+
   async function executeSearch(queryOverride?: string) {
     if (queryOverride !== undefined) {
       searchQuery = queryOverride;
     }
     const q = searchQuery.trim();
+    const thisRequestId = ++searchRequestId;
+
     if (q.length < 2) {
       localResults = [];
       ccliResults = [];
@@ -95,6 +100,7 @@
     try {
       if (activeTab === 'local') {
         const res = await presentation.searchSongs(q, 200);
+        if (thisRequestId !== searchRequestId) return;
         localResults = res;
         selectedLocalIndex = 0;
         if (res.length > 0) {
@@ -103,12 +109,20 @@
           selectedLocalSong = null;
         }
       } else {
+        // Immediate response from curated catalog for zero-latency feedback
+        const instant = searchSongSelectCatalog(q);
+        ccliResults = instant;
+        selectedCcliIndex = 0;
+
         const res = await searchSongSelect(q);
+        if (thisRequestId !== searchRequestId) return;
         ccliResults = res;
         selectedCcliIndex = 0;
       }
     } finally {
-      isSearching = false;
+      if (thisRequestId === searchRequestId) {
+        isSearching = false;
+      }
     }
   }
 
