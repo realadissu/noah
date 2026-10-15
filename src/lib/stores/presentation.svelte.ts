@@ -442,6 +442,9 @@ class PresentationStore {
       if (savedTheme === 'light' || savedTheme === 'dark') {
         this.theme = savedTheme;
       }
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.toggle('dark', this.theme === 'dark');
+      }
       const savedUiMode = localStorage.getItem('noah_ui_mode');
       if (savedUiMode === 'classic' || savedUiMode === 'modern') {
         this.uiMode = savedUiMode;
@@ -638,12 +641,18 @@ class PresentationStore {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('noah_theme', this.theme);
     }
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', this.theme === 'dark');
+    }
   }
 
   setTheme(theme: 'dark' | 'light') {
     this.theme = theme;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('noah_theme', theme);
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', this.theme === 'dark');
     }
   }
 
@@ -979,8 +988,134 @@ class PresentationStore {
   }
 
   async searchSongs(query: string, limit = 20): Promise<SongSearchResult[]> {
-    const results = await invokeTauri<SongSearchResult[]>('search_songs', { query, limit });
-    return results ?? [];
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+
+    // 1. Try native Tauri database search first
+    const backendResults = await invokeTauri<SongSearchResult[]>('search_songs', { query, limit });
+    if (backendResults && backendResults.length > 0) {
+      return backendResults;
+    }
+
+    // 2. Client-side Search across Schedule + Preset & Local Song Library
+    const results: SongSearchResult[] = [];
+    const seenTitles = new Set<string>();
+
+    // A. Current worship schedule items
+    for (const item of this.schedule) {
+      if (item.item_type.kind === 'Song') {
+        const s = item.item_type.payload;
+        const titleMatch = s.metadata.title.toLowerCase().includes(q);
+        const authorMatch = s.metadata.author?.toLowerCase().includes(q);
+        const lyricsMatch = s.slides.some((sl) => sl.raw_content.toLowerCase().includes(q));
+
+        if (titleMatch || authorMatch || lyricsMatch) {
+          const normTitle = s.metadata.title.toLowerCase();
+          if (!seenTitles.has(normTitle)) {
+            seenTitles.add(normTitle);
+            results.push({
+              id: s.id,
+              title: s.metadata.title,
+              author: s.metadata.author || '',
+              musical_key: s.metadata.musical_key || '',
+              file_path: (s as unknown as { filePath?: string }).filePath || '',
+              match_snippet: lyricsMatch && !titleMatch ? 'Im Liedtext gefunden' : undefined,
+            });
+          }
+        }
+      }
+    }
+
+    // B. Built-in Worship Song Repertoire
+    const sampleLibrary: Song[] = [
+      DEFAULT_SONG,
+      {
+        id: 'lib-grosser-gott',
+        metadata: {
+          title: 'Großer Gott, wir loben dich',
+          author: 'Ignaz Franz',
+          musical_key: 'F',
+          verse_order: ['Vers 1', 'Vers 2'],
+          lang_count: 1,
+          custom_tags: {},
+        },
+        slides: [
+          {
+            id: 'sl-gg-1',
+            index: 0,
+            label: 'Vers 1',
+            section: { type: 'Verse', value: 1 },
+            raw_content: 'Großer Gott, wir loben dich;\nHerr, wir preisen deine Stärke.\nVor dir beugt der Erdkreis sich\nund bewundert deine Werke.',
+            lines: [],
+          },
+        ],
+      },
+      {
+        id: 'lib-herr-ich-komme',
+        metadata: {
+          title: 'Herr, ich komme zu dir',
+          author: 'Albert Frey',
+          musical_key: 'G',
+          verse_order: ['Vers 1', 'Refrain'],
+          lang_count: 1,
+          custom_tags: {},
+        },
+        slides: [
+          {
+            id: 'sl-hik-1',
+            index: 0,
+            label: 'Vers 1',
+            section: { type: 'Verse', value: 1 },
+            raw_content: 'Herr, ich komme zu dir,\nkann dir gar nichts bringen,\nwas dich erfreuen könnt.\nDoch du kennst mein Herz.',
+            lines: [],
+          },
+        ],
+      },
+      {
+        id: 'lib-abba-vater',
+        metadata: {
+          title: 'Abba, Vater, du bist heilig',
+          author: 'Worship',
+          musical_key: 'E',
+          verse_order: ['Refrain'],
+          lang_count: 1,
+          custom_tags: {},
+        },
+        slides: [
+          {
+            id: 'sl-av-1',
+            index: 0,
+            label: 'Refrain',
+            section: { type: 'Chorus' },
+            raw_content: 'Abba, Vater, du bist heilig,\ndein Name sei erhöht in Ewigkeit.',
+            lines: [],
+          },
+        ],
+      },
+    ];
+
+    for (const s of sampleLibrary) {
+      const titleMatch = s.metadata.title.toLowerCase().includes(q);
+      const authorMatch = s.metadata.author?.toLowerCase().includes(q);
+      const lyricsMatch = s.slides.some((sl) => sl.raw_content.toLowerCase().includes(q));
+
+      if (titleMatch || authorMatch || lyricsMatch) {
+        const normTitle = s.metadata.title.toLowerCase();
+        if (!seenTitles.has(normTitle)) {
+          seenTitles.add(normTitle);
+          results.push({
+            id: s.id,
+            title: s.metadata.title,
+            author: s.metadata.author || '',
+            musical_key: s.metadata.musical_key || '',
+            file_path: '',
+            match_snippet: lyricsMatch && !titleMatch ? 'Im Liedtext gefunden' : undefined,
+          });
+        }
+      }
+    }
+
+    return results.slice(0, limit);
   }
 
   addSongToSchedule(song: Song) {
@@ -996,6 +1131,18 @@ class PresentationStore {
   }
 
   async addSongFromSearch(item: SongSearchResult) {
+    // 1. If song already exists in current schedule, simply select it!
+    const existingIndex = this.schedule.findIndex(
+      (s) =>
+        s.item_type.kind === 'Song' &&
+        (s.item_type.payload.id === item.id || s.title.toLowerCase() === item.title.toLowerCase())
+    );
+    if (existingIndex >= 0) {
+      this.selectScheduleItem(existingIndex);
+      return;
+    }
+
+    // 2. Try loading from file path if specified
     if (item.file_path) {
       const loaded = await invokeTauri<FileLoadResult>('load_sng_file', { path: item.file_path });
       if (loaded?.song) {
@@ -1003,14 +1150,38 @@ class PresentationStore {
         return;
       }
     }
-    // If no path or unreadable, check if existing in current schedule
-    const existing = this.schedule.find(
-      (s) => s.title.toLowerCase() === item.title.toLowerCase()
-    );
-    if (existing && existing.item_type.kind === 'Song') {
-      const idx = this.schedule.indexOf(existing);
-      this.selectScheduleItem(idx);
-    }
+
+    // 3. Fallback: construct Song object from search item
+    const id = item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'song-' + Date.now());
+    const newSong: Song = {
+      id,
+      metadata: {
+        title: item.title,
+        author: item.author || '',
+        musical_key: item.musical_key || '',
+        verse_order: ['Vers 1'],
+        lang_count: 1,
+        custom_tags: {},
+      },
+      slides: [
+        {
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'slide-' + Date.now(),
+          index: 0,
+          label: 'Vers 1',
+          section: { type: 'Verse', value: 1 },
+          raw_content: `${item.title}\n(${item.author || 'Liedtext'})`,
+          lines: [
+            {
+              raw_text: item.title,
+              language_index: 0,
+              tokens: [{ kind: 'Text', text: item.title }],
+            },
+          ],
+        },
+      ],
+    };
+
+    this.addSongToSchedule(newSong);
   }
 
   async openSongFileDialog() {
@@ -1060,27 +1231,62 @@ class PresentationStore {
     }
   }
 
-  async openSongFolderDialog() {
-    // 1. Try native folder picker first
-    const nativeFolder = await invokeTauri<string | null>('pick_folder', {
-      title: 'Wähle SongBeamer Lieder-Verzeichnis',
-      defaultPath: this.songsDirectory || undefined,
+  private async selectFolderViaNativeOrBrowser(title: string, defaultPath?: string): Promise<string | null> {
+    // 1. Try native Tauri dialog if running inside Tauri
+    const native = await invokeTauri<string | null>('pick_folder', {
+      title,
+      defaultPath: defaultPath || undefined,
     });
-    if (nativeFolder) {
-      this.setSongsDirectory(nativeFolder);
-      await this.scanSongsDirectory(nativeFolder);
-      return;
+    if (native) return native;
+
+    // 2. Modern Browser File System Access API (Native Windows "Ordner auswählen" dialog in Edge / Chrome)
+    if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+      try {
+        const dirHandle = await (window as unknown as { showDirectoryPicker: (opts?: unknown) => Promise<{ name: string }> }).showDirectoryPicker({
+          mode: 'read',
+        });
+        if (dirHandle?.name) {
+          return dirHandle.name;
+        }
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') {
+          return null; // User cancelled dialog
+        }
+        console.warn('showDirectoryPicker error:', err);
+      }
     }
 
-    // 2. Pure browser fallback (outside Tauri)
-    if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
-      const entered = window.prompt(
-        'Pfad zum Lieder-Verzeichnis eingeben (z. B. C:\\Worship\\Songs):',
-        this.songsDirectory || ''
-      );
-      if (entered !== null && entered.trim()) {
-        this.setSongsDirectory(entered.trim());
-      }
+    // 3. HTML5 Directory input fallback (pure folder selection without uploading files)
+    if (typeof document !== 'undefined') {
+      return new Promise<string | null>((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.setAttribute('webkitdirectory', '');
+        input.onchange = () => {
+          if (!input.files || input.files.length === 0) {
+            resolve(null);
+            return;
+          }
+          const rel = input.files[0].webkitRelativePath || '';
+          const folderName = rel.split('/')[0] || input.files[0].name;
+          resolve(folderName);
+        };
+        input.oncancel = () => resolve(null);
+        input.click();
+      });
+    }
+
+    return null;
+  }
+
+  async openSongFolderDialog() {
+    const folder = await this.selectFolderViaNativeOrBrowser(
+      'Wähle SongBeamer Lieder-Verzeichnis',
+      this.songsDirectory
+    );
+    if (folder) {
+      this.setSongsDirectory(folder);
+      await this.scanSongsDirectory(folder);
     }
   }
 
@@ -1142,48 +1348,22 @@ class PresentationStore {
   }
 
   async openBackgroundsFolderDialog() {
-    // 1. Try native folder picker first
-    const nativeFolder = await invokeTauri<string | null>('pick_folder', {
-      title: 'Wähle Hintergrundbilder-Verzeichnis',
-      defaultPath: this.backgroundsDirectory || undefined,
-    });
-    if (nativeFolder) {
-      this.setBackgroundsDirectory(nativeFolder);
-      return;
-    }
-
-    // 2. Pure browser fallback (outside Tauri)
-    if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
-      const entered = window.prompt(
-        'Pfad zum Hintergrund-Verzeichnis eingeben (z. B. C:\\Worship\\Hintergruende):',
-        this.backgroundsDirectory || ''
-      );
-      if (entered !== null && entered.trim()) {
-        this.setBackgroundsDirectory(entered.trim());
-      }
+    const folder = await this.selectFolderViaNativeOrBrowser(
+      'Wähle Hintergrundbilder-Verzeichnis',
+      this.backgroundsDirectory
+    );
+    if (folder) {
+      this.setBackgroundsDirectory(folder);
     }
   }
 
   async openSchedulesFolderDialog() {
-    // 1. Try native folder picker first
-    const nativeFolder = await invokeTauri<string | null>('pick_folder', {
-      title: 'Wähle Ablaufpläne-Verzeichnis',
-      defaultPath: this.schedulesDirectory || undefined,
-    });
-    if (nativeFolder) {
-      this.setSchedulesDirectory(nativeFolder);
-      return;
-    }
-
-    // 2. Pure browser fallback (outside Tauri)
-    if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
-      const entered = window.prompt(
-        'Pfad zum Ablauf-Verzeichnis eingeben (z. B. C:\\Worship\\Ablaeufe):',
-        this.schedulesDirectory || ''
-      );
-      if (entered !== null && entered.trim()) {
-        this.setSchedulesDirectory(entered.trim());
-      }
+    const folder = await this.selectFolderViaNativeOrBrowser(
+      'Wähle Ablaufpläne-Verzeichnis',
+      this.schedulesDirectory
+    );
+    if (folder) {
+      this.setSchedulesDirectory(folder);
     }
   }
 

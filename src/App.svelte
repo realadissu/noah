@@ -241,12 +241,18 @@
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
+
+  $effect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', presentation.theme === 'dark');
+    }
+  });
 </script>
 
 {#if windowLabel === 'beamer'}
   <BeamerView />
 {:else if presentation.uiMode === 'classic'}
-  <div class="h-screen w-screen overflow-hidden relative">
+  <div class="h-screen w-screen overflow-hidden relative {presentation.theme === 'dark' ? 'dark bg-[#181a1f] text-neutral-100' : 'light bg-neutral-100 text-neutral-900'}">
     <div
       class="flex flex-col h-full w-full font-sans select-none"
       role="region"

@@ -167,6 +167,7 @@
   let searchQuery = $state('');
   let searchResults = $state<SongSearchResult[]>([]);
   let isSearchDropdownOpen = $state(false);
+  let searchSelectedIndex = $state<number>(-1);
 
   async function handleSearchInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
@@ -174,9 +175,32 @@
     if (val.trim().length >= 1) {
       searchResults = await presentation.searchSongs(val);
       isSearchDropdownOpen = searchResults.length > 0;
+      searchSelectedIndex = searchResults.length > 0 ? 0 : -1;
     } else {
       searchResults = [];
       isSearchDropdownOpen = false;
+      searchSelectedIndex = -1;
+    }
+  }
+
+  function handleSearchKeyDown(e: KeyboardEvent) {
+    if (!isSearchDropdownOpen || searchResults.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      searchSelectedIndex = (searchSelectedIndex + 1) % searchResults.length;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      searchSelectedIndex = searchSelectedIndex <= 0 ? searchResults.length - 1 : searchSelectedIndex - 1;
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = searchResults[searchSelectedIndex >= 0 ? searchSelectedIndex : 0];
+      if (target) {
+        selectSearchResult(target);
+      }
+    } else if (e.key === 'Escape') {
+      isSearchDropdownOpen = false;
+      searchSelectedIndex = -1;
     }
   }
 
@@ -184,18 +208,23 @@
     await presentation.addSongFromSearch(res);
     isSearchDropdownOpen = false;
     searchQuery = '';
+    searchSelectedIndex = -1;
   }
 
   function getItemColorClass(item: ScheduleItem, isActive: boolean): string {
     if (isActive) {
       return presentation.theme === 'dark'
-        ? 'bg-[#3b4252] text-white font-bold'
+        ? 'bg-blue-600 text-white font-bold shadow-xs'
         : 'bg-[#dcdcdc] text-[#0000cc] font-bold';
     }
     if (item.item_type.kind === 'Note' || item.item_type.kind === 'Scripture') {
-      return presentation.theme === 'dark' ? 'text-[#ff70ff] font-bold' : 'text-[#c800c8] font-bold';
+      return presentation.theme === 'dark'
+        ? 'text-amber-300 hover:text-amber-200 font-semibold'
+        : 'text-[#c800c8] font-bold';
     }
-    return presentation.theme === 'dark' ? 'text-[#88b0ff] font-bold' : 'text-[#0000cc] font-bold';
+    return presentation.theme === 'dark'
+      ? 'text-slate-100 hover:text-white font-medium'
+      : 'text-[#0000cc] font-bold';
   }
 
   const iconPx = $derived(Math.max(14, Math.round(16 * presentation.uiScale)));
@@ -272,7 +301,7 @@
       <!-- Schedule Tools -->
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.newSchedule')}
         onclick={() => presentation.newSchedule()}
@@ -281,7 +310,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.openSchedule')}
         onclick={() => presentation.openSongFileDialog()}
@@ -290,7 +319,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.saveSchedule')}
       >
@@ -303,7 +332,7 @@
       <!-- Song Tools -->
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.newSong')}
         onclick={() => presentation.createNewSong()}
@@ -313,7 +342,7 @@
       <button
         id="toolbar-edit-song-btn"
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.editSong')}
         onclick={() => presentation.openSongEditor()}
@@ -322,7 +351,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.openSong')}
         onclick={() => presentation.openSongFileDialog()}
@@ -331,7 +360,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.search')}
         onclick={() => {
@@ -348,7 +377,7 @@
       <!-- Media & Scripture Tools -->
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.mediaImage')}
       >
@@ -356,7 +385,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.bible')}
       >
@@ -364,7 +393,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.mediaVideo')}
       >
@@ -372,7 +401,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.mediaAudioCd')}
       >
@@ -380,7 +409,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.mediaMp3')}
       >
@@ -388,7 +417,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.mediaPpt')}
       >
@@ -396,7 +425,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.mediaCamera')}
       >
@@ -409,7 +438,7 @@
       <!-- Beamer Direct Controls in Toolbar -->
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.bgImage')}
       >
@@ -418,8 +447,8 @@
       <button
         type="button"
         class="flex items-center justify-center rounded-none border {presentation.displayMode === 'normal'
-          ? 'border-[#316ac5] bg-[#c2d5e8]'
-          : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+          ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600'
+          : 'border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600'}"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.normal')}
         onclick={() => presentation.setDisplayMode('normal')}
@@ -429,8 +458,8 @@
       <button
         type="button"
         class="flex items-center justify-center rounded-none border {presentation.displayMode === 'clear_text'
-          ? 'border-[#316ac5] bg-[#c2d5e8]'
-          : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+          ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600'
+          : 'border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600'}"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.clear')}
         onclick={() => presentation.setDisplayMode('clear_text')}
@@ -440,8 +469,8 @@
       <button
         type="button"
         class="flex items-center justify-center rounded-none border {presentation.displayMode === 'black'
-          ? 'border-[#316ac5] bg-[#c2d5e8]'
-          : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+          ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600'
+          : 'border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600'}"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.black')}
         onclick={() => presentation.setDisplayMode('black')}
@@ -450,7 +479,7 @@
       </button>
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.alert')}
       >
@@ -459,8 +488,8 @@
       <button
         type="button"
         class="flex items-center justify-center rounded-none border {presentation.showChords
-          ? 'border-[#316ac5] bg-[#c2d5e8]'
-          : 'border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]'}"
+          ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600'
+          : 'border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600'}"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.toggleChords')}
         onclick={() => presentation.toggleChords()}
@@ -474,7 +503,7 @@
       <!-- Play Presentation Button -->
       <button
         type="button"
-        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9] active:bg-[#c2d5e8]"
+        class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 active:bg-[#c2d5e8] dark:active:bg-neutral-600"
         style="width: calc(22px * var(--ui-scale)); height: calc(22px * var(--ui-scale));"
         title={t('toolbar.openBeamer')}
         onclick={() => presentation.toggleBeamer()}
@@ -487,7 +516,7 @@
 
       <!-- Quick Search Bar: "Song suchen:" -->
       <div class="flex items-center gap-1 pl-0.5 relative">
-        <label for="sb-quick-search" class="font-normal text-neutral-700 dark:text-neutral-300 shrink-0" style="font-size: calc(11px * var(--ui-scale));">
+        <label for="sb-quick-search" class="font-normal text-neutral-700 dark:text-neutral-200 shrink-0" style="font-size: calc(11px * var(--ui-scale));">
           {t('search.label')}
         </label>
         <input
@@ -495,25 +524,33 @@
           type="text"
           bind:value={searchQuery}
           oninput={handleSearchInput}
-          class="border border-[#7f9db9] bg-white dark:bg-neutral-900 rounded-none focus:outline-none focus:border-[#316ac5] px-1"
-          style="height: calc(20px * var(--ui-scale)); width: calc(110px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+          onkeydown={handleSearchKeyDown}
+          class="border border-[#7f9db9] dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-none focus:outline-none focus:border-[#316ac5] dark:focus:border-blue-500 px-1 font-medium"
+          style="height: calc(20px * var(--ui-scale)); width: calc(120px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         />
 
         <!-- Search Autocomplete Dropdown -->
         {#if isSearchDropdownOpen && searchResults.length > 0}
           <div
-            class="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-neutral-900 border border-[#7f9db9] shadow-lg max-h-60 overflow-y-auto"
-            style="width: calc(240px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+            class="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-neutral-800 border border-[#7f9db9] dark:border-neutral-600 shadow-xl max-h-60 overflow-y-auto"
+            style="width: calc(260px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
           >
-            {#each searchResults as res}
+            {#each searchResults as res, idx}
               <button
                 type="button"
-                class="w-full text-left px-2 py-1 hover:bg-[#316ac5] hover:text-white flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700"
+                class="w-full text-left px-2 py-1.5 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-700 cursor-pointer {searchSelectedIndex === idx
+                  ? 'bg-blue-600 text-white font-bold'
+                  : 'text-neutral-900 dark:text-neutral-100 hover:bg-blue-500 hover:text-white'}"
                 onclick={() => selectSearchResult(res)}
               >
-                <span class="font-semibold truncate">{res.title}</span>
+                <div class="truncate flex items-center gap-1.5 min-w-0">
+                  <span class="font-semibold truncate">{res.title}</span>
+                  {#if res.match_snippet}
+                    <span class="text-[9px] px-1 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-normal shrink-0">{res.match_snippet}</span>
+                  {/if}
+                </div>
                 {#if res.author}
-                  <span class="text-[10px] opacity-70 truncate ml-1">{res.author}</span>
+                  <span class="text-[10px] opacity-70 truncate ml-1.5 shrink-0">{res.author}</span>
                 {/if}
               </button>
             {/each}
@@ -522,7 +559,7 @@
 
         <button
           type="button"
-          class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9]"
+          class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700"
           style="width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale));"
           title={t('toolbar.ccli')}
         >
@@ -530,7 +567,7 @@
         </button>
         <button
           type="button"
-          class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] hover:bg-[#e0edf9]"
+          class="flex items-center justify-center rounded-none border border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 hover:bg-[#e0edf9] dark:hover:bg-neutral-700"
           style="width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale));"
           title={t('toolbar.history')}
         >
@@ -543,14 +580,14 @@
 
       <!-- Languages Toolbar ("Sprachen" / "Alle" / "1" / "2" / "3" / "4") -->
       <div class="flex items-center space-x-0.5">
-        <span class="font-normal text-neutral-600 dark:text-neutral-400 px-0.5" style="font-size: calc(11px * var(--ui-scale));">
+        <span class="font-normal text-neutral-600 dark:text-neutral-200 px-0.5" style="font-size: calc(11px * var(--ui-scale));">
           {t('toolbar.languages')}
         </span>
         <button
           type="button"
           class="px-1 text-[11px] rounded-none border {presentation.activeLanguageFilter === 'all'
-            ? 'border-[#316ac5] bg-[#c2d5e8] font-bold text-neutral-900'
-            : 'border-transparent hover:border-[#7f9db9] text-neutral-800 dark:text-neutral-200'}"
+            ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600 font-bold text-neutral-900 dark:text-white'
+            : 'border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 text-neutral-800 dark:text-neutral-200 hover:bg-[#e0edf9] dark:hover:bg-neutral-700'}"
           style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
           onclick={() => (presentation.activeLanguageFilter = 'all')}
         >
@@ -560,8 +597,8 @@
           <button
             type="button"
             class="px-1 text-[11px] rounded-none border {presentation.activeLanguageFilter === langIdx
-              ? 'border-[#316ac5] bg-[#c2d5e8] font-bold text-neutral-900'
-              : 'border-transparent hover:border-[#7f9db9] text-neutral-800 dark:text-neutral-200'}"
+              ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600 font-bold text-neutral-900 dark:text-white'
+              : 'border-transparent hover:border-[#7f9db9] dark:hover:border-neutral-500 text-neutral-800 dark:text-neutral-200 hover:bg-[#e0edf9] dark:hover:bg-neutral-700'}"
             style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => (presentation.activeLanguageFilter = langIdx)}
           >
@@ -576,7 +613,7 @@
       <!-- High-DPI UI Scale Zoom Controls -->
       <button
         type="button"
-        class="px-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none font-bold"
+        class="px-1 border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-none font-bold"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         title={t('toolbar.zoomOut')}
         onclick={() => presentation.zoomOut()}
@@ -585,7 +622,7 @@
       </button>
       <button
         type="button"
-        class="px-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none font-mono font-semibold"
+        class="px-1 border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-none font-mono font-semibold"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(10px * var(--ui-scale));"
         title={presentation.uiScaleMode === 'auto' ? t('toolbar.zoomAuto') : t('toolbar.zoomReset')}
         onclick={() => presentation.toggleZoomMode()}
@@ -594,7 +631,7 @@
       </button>
       <button
         type="button"
-        class="px-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none font-bold"
+        class="px-1 border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-none font-bold"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         title={t('toolbar.zoomIn')}
         onclick={() => presentation.zoomIn()}
@@ -607,7 +644,7 @@
 
       <button
         type="button"
-        class="px-1.5 font-semibold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none flex items-center"
+        class="px-1.5 font-semibold border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-none flex items-center"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         title={t('toolbar.toggleTheme')}
         onclick={() => presentation.toggleTheme()}
@@ -616,7 +653,7 @@
       </button>
       <button
         type="button"
-        class="px-1.5 font-bold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none cursor-pointer"
+        class="px-1.5 font-bold border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-none cursor-pointer"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(10px * var(--ui-scale));"
         title={i18n.locale === 'de' ? t('toolbar.switchToEnglish') : t('toolbar.switchToGerman')}
         onclick={() => i18n.setLocale(i18n.locale === 'de' ? 'en' : 'de')}
@@ -625,7 +662,7 @@
       </button>
       <button
         type="button"
-        class="px-1.5 font-semibold border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] rounded-none"
+        class="px-1.5 font-semibold border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 hover:bg-[#e0edf9] dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-none"
         style="height: calc(20px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
         title={t('toolbar.settings')}
         onclick={() => presentation.toggleSettings()}
@@ -705,7 +742,7 @@
           : 'bg-[#f4f4f4]'}"
         style="height: calc(24px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
       >
-        <span class="text-neutral-500 font-mono">
+        <span class="text-neutral-500 dark:text-neutral-400 font-mono">
           {presentation.schedule.length === 1 ? t('schedule.itemCountOne') : t('schedule.itemCount', { count: presentation.schedule.length })}
         </span>
         <div class="flex items-center space-x-1">
@@ -768,10 +805,10 @@
           : 'bg-[#f4f4f4]'}"
         style="height: calc(24px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
       >
-        <span class="font-bold text-neutral-800 dark:text-neutral-200 truncate">
+        <span class="font-bold text-neutral-800 dark:text-white truncate">
           {presentation.activeSong?.metadata.title ?? t('song.noSongLoaded')}
         </span>
-        <span class="font-mono text-neutral-500">
+        <span class="font-mono text-neutral-500 dark:text-neutral-400">
           {presentation.activeSong?.slides.length ?? 0} {presentation.activeSong?.slides.length === 1 ? t('section.slide') : t('section.slidePlural')}
         </span>
       </div>
@@ -799,7 +836,7 @@
               >
                 <!-- Slide Header: Blue Section Label on Left, Red Slide Number on Right -->
                 <div class="flex items-center justify-between px-1.5 py-0.5 font-bold" style="font-size: calc(11px * var(--ui-scale));">
-                  <span class="text-[#0000cc] dark:text-[#70a0ff] tracking-tight">
+                  <span class="text-[#0000cc] dark:text-blue-400 tracking-tight">
                     {slide.label}
                   </span>
                   <div class="flex items-center gap-1.5">
@@ -808,7 +845,7 @@
                         ● LIVE
                       </span>
                     {/if}
-                    <span class="text-[#cc0000] font-bold font-mono">
+                    <span class="text-[#cc0000] dark:text-[#f87171] font-bold font-mono">
                       {idx + 1}
                     </span>
                   </div>
@@ -881,7 +918,7 @@
     >
       <!-- Top Half: Live Audience Beamer Preview (Exact Replica) -->
       <div class="p-2 border-b border-[#b0b0b0] dark:border-neutral-700 flex flex-col gap-1.5">
-        <div class="flex items-center justify-between font-bold text-neutral-700 dark:text-neutral-300" style="font-size: calc(11px * var(--ui-scale));">
+        <div class="flex items-center justify-between font-bold text-neutral-700 dark:text-neutral-200" style="font-size: calc(11px * var(--ui-scale));">
           <span>{t('slide.audienceView')}</span>
           <span class="text-[10px] text-neutral-500 font-mono">
             {presentation.activeSlide ? `${presentation.activeSlide.label} (${presentation.activeSlideIndex + 1}/${presentation.activeSong?.slides.length ?? 0})` : ''}
@@ -948,15 +985,15 @@
 
       <!-- Center Control Buttons: Primary Beamer Controls (Black, Clear, Logo, Normal) -->
       <div class="p-2 border-b border-[#b0b0b0] dark:border-neutral-700 flex flex-col gap-1.5">
-        <div class="font-bold text-neutral-700 dark:text-neutral-300" style="font-size: calc(11px * var(--ui-scale));">
+        <div class="font-bold text-neutral-700 dark:text-neutral-200" style="font-size: calc(11px * var(--ui-scale));">
           {t('toolbar.quickControls')}
         </div>
         <div class="grid grid-cols-2 gap-1">
           <button
             type="button"
             class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'normal'
-              ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
-              : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+              ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600 text-neutral-900 dark:text-white'
+              : 'border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9] dark:hover:bg-neutral-700'}"
             style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('normal')}
           >
@@ -966,8 +1003,8 @@
           <button
             type="button"
             class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'black'
-              ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
-              : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+              ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600 text-neutral-900 dark:text-white'
+              : 'border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9] dark:hover:bg-neutral-700'}"
             style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('black')}
           >
@@ -977,8 +1014,8 @@
           <button
             type="button"
             class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'clear_text'
-              ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
-              : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+              ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600 text-neutral-900 dark:text-white'
+              : 'border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9] dark:hover:bg-neutral-700'}"
             style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('clear_text')}
           >
@@ -988,12 +1025,12 @@
           <button
             type="button"
             class="border rounded-none font-semibold flex items-center justify-center gap-1 transition-none {presentation.displayMode === 'logo'
-              ? 'border-[#316ac5] bg-[#c2d5e8] text-neutral-900'
-              : 'border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9]'}"
+              ? 'border-[#316ac5] bg-[#c2d5e8] dark:border-blue-400 dark:bg-blue-600 text-neutral-900 dark:text-white'
+              : 'border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 hover:bg-[#e0edf9] dark:hover:bg-neutral-700'}"
             style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.setDisplayMode('logo')}
           >
-            <span class="font-bold text-amber-600">N</span>
+            <span class="font-bold text-amber-500">N</span>
             <span>{t('toolbar.btnLogo')}</span>
           </button>
         </div>
@@ -1002,14 +1039,14 @@
       <!-- Bottom Half: Stage Confidence Monitor (Next Slide + Clock) -->
       <div class="flex-1 p-2 flex flex-col justify-between overflow-hidden">
         <div>
-          <div class="flex items-center justify-between font-bold text-neutral-700 dark:text-neutral-300 mb-1" style="font-size: calc(11px * var(--ui-scale));">
+          <div class="flex items-center justify-between font-bold text-neutral-700 dark:text-neutral-200 mb-1" style="font-size: calc(11px * var(--ui-scale));">
             <span>{t('toolbar.stageConfidence')}</span>
-            <span class="font-mono text-neutral-500">{currentTime}</span>
+            <span class="font-mono text-neutral-500 dark:text-neutral-400">{currentTime}</span>
           </div>
 
           {#if nextSlide}
-            <div class="border border-[#7f9db9] bg-white dark:bg-neutral-900 p-2 rounded-none" style="font-size: calc(11px * var(--ui-scale));">
-              <span class="text-[10px] font-bold text-amber-600 block mb-0.5">{t('deck.nextSlideHint')}</span>
+            <div class="border border-[#7f9db9] dark:border-neutral-700 bg-white dark:bg-neutral-900 p-2 rounded-none" style="font-size: calc(11px * var(--ui-scale));">
+              <span class="text-[10px] font-bold text-amber-500 block mb-0.5">{t('deck.nextSlideHint')}</span>
               <p class="truncate text-neutral-800 dark:text-neutral-200">
                 {nextSlide.lines.map((l) => getAudienceText(l)).join(' / ')}
               </p>
@@ -1021,7 +1058,7 @@
         <div class="flex items-center gap-1 mt-2">
           <button
             type="button"
-            class="flex-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 font-bold rounded-none hover:bg-[#e0edf9]"
+            class="flex-1 border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-bold rounded-none hover:bg-[#e0edf9] dark:hover:bg-neutral-700"
             style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.prevSlide()}
           >
@@ -1029,7 +1066,7 @@
           </button>
           <button
             type="button"
-            class="flex-1 border border-[#7f9db9] bg-[#f0f0f0] dark:bg-neutral-800 font-bold rounded-none hover:bg-[#e0edf9]"
+            class="flex-1 border border-[#7f9db9] dark:border-neutral-600 bg-[#f0f0f0] dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-bold rounded-none hover:bg-[#e0edf9] dark:hover:bg-neutral-700"
             style="height: calc(28px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
             onclick={() => presentation.nextSlide()}
           >
@@ -1053,7 +1090,7 @@
         {presentation.isBeamerActive ? t('status.beamerReady') : t('status.beamerDisconnected')}
       </span>
       {#if presentation.activeSong}
-        <span class="border-l border-neutral-400 pl-3 font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+        <span class="border-l border-neutral-400 pl-3 font-semibold text-neutral-800 dark:text-neutral-100 truncate">
           {presentation.activeSong.metadata.title}
         </span>
       {/if}
