@@ -337,3 +337,37 @@ export function parseLyricLine(rawText: string, languageIndex = 0): LyricLine {
     tokens,
   };
 }
+
+/**
+ * Serializes a Song model into SongBeamer (.sng) formatted plain text.
+ */
+export function serializeSng(song: Song): string {
+  const lines: string[] = [];
+  lines.push(`#LangCount=${song.metadata.lang_count || 1}`);
+  if (song.metadata.title) lines.push(`#Title=${song.metadata.title}`);
+  if (song.metadata.title_lang2) lines.push(`#TitleLang2=${song.metadata.title_lang2}`);
+  if (song.metadata.author) lines.push(`#Author=${song.metadata.author}`);
+  if (song.metadata.melody) lines.push(`#Melody=${song.metadata.melody}`);
+  if (song.metadata.musical_key) lines.push(`#Key=${song.metadata.musical_key}`);
+  if (song.metadata.ccli) lines.push(`#CCLI=${song.metadata.ccli}`);
+  if (song.metadata.copyright) lines.push(`#(c)=${song.metadata.copyright}`);
+  if (song.metadata.verse_order && song.metadata.verse_order.length > 0) {
+    lines.push(`#VerseOrder=${song.metadata.verse_order.join(',')}`);
+  }
+  if (song.metadata.custom_tags) {
+    for (const [k, v] of Object.entries(song.metadata.custom_tags)) {
+      if (!lines.some((l) => l.startsWith(`#${k}=`))) {
+        lines.push(`#${k}=${v}`);
+      }
+    }
+  }
+
+  for (const slide of song.slides) {
+    lines.push('---');
+    if (slide.raw_content) {
+      lines.push(slide.raw_content);
+    }
+  }
+
+  return lines.join('\r\n') + '\r\n';
+}

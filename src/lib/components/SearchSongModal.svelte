@@ -76,11 +76,15 @@
     }
   });
 
-  async function executeSearch() {
+  async function executeSearch(queryOverride?: string) {
+    if (queryOverride !== undefined) {
+      searchQuery = queryOverride;
+    }
+    const q = searchQuery;
     isSearching = true;
     try {
       if (activeTab === 'local') {
-        const res = await presentation.searchSongs(searchQuery, 200);
+        const res = await presentation.searchSongs(q, 200);
         localResults = res;
         selectedLocalIndex = 0;
         if (res.length > 0) {
@@ -89,7 +93,7 @@
           selectedLocalSong = null;
         }
       } else {
-        const res = await searchSongSelect(searchQuery);
+        const res = await searchSongSelect(q);
         ccliResults = res;
         selectedCcliIndex = 0;
       }
@@ -309,7 +313,7 @@
           bind:this={searchInputEl}
           type="text"
           bind:value={searchQuery}
-          oninput={() => executeSearch()}
+          oninput={(e) => executeSearch((e.target as HTMLInputElement).value)}
           placeholder={activeTab === 'local' ? t('songSearch.placeholder') : 'SongSelect: Titel, Liedtext, Autor oder CCLI-Nummer...'}
           class="w-full h-9 px-3 pr-8 border border-neutral-400 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-none text-sm font-medium focus:outline-none focus:border-blue-600"
         />
@@ -319,7 +323,7 @@
             class="absolute right-2.5 top-2 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 text-sm font-bold cursor-pointer"
             onclick={() => {
               searchQuery = '';
-              executeSearch();
+              executeSearch('');
             }}
           >
             ✕

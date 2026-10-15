@@ -11,7 +11,8 @@ import type {
   ScanSummary,
   FileLoadResult,
 } from '$lib/types/models';
-import { parseSng, expandSlidesByVerseOrder } from '$lib/utils/sngParser';
+import { parseSng, parseSngText, serializeSng, expandSlidesByVerseOrder } from '$lib/utils/sngParser';
+import { EMBEDDED_SONGS_ARCHIVE } from '$lib/data/songsArchive';
 import { t, i18n } from '$lib/i18n';
 import { PRESENTATION_BACKGROUNDS, type BackgroundItem, isImageBackground } from '$lib/data/backgrounds';
 import { convertSongSelectToSong, generateSngFromSongSelect, type SongSelectSong } from '$lib/services/ccli';
@@ -435,6 +436,7 @@ class PresentationStore {
   customBackgrounds = $state<BackgroundItem[]>([]);
   isScanning = $state<boolean>(false);
   scanSummary = $state<ScanSummary | null>(null);
+  localArchiveSongs = $state<Array<{ song: Song; filePath: string; fileName: string }>>([]);
 
   activeSlide = $derived<Slide | null>(
     this.activeSong?.slides[this.activeSlideIndex] ?? null
@@ -445,6 +447,22 @@ class PresentationStore {
   );
 
   init() {
+    // 1. Populate embedded song archive immediately for instant offline search & preview
+    const initialArchive: Array<{ song: Song; filePath: string; fileName: string }> = [];
+    for (const item of EMBEDDED_SONGS_ARCHIVE) {
+      try {
+        const parsed = parseSngText(item.sngContent, item.fileName);
+        initialArchive.push({
+          song: parsed,
+          filePath: item.path,
+          fileName: item.fileName,
+        });
+      } catch (err) {
+        console.warn('Failed to parse embedded song:', item.fileName, err);
+      }
+    }
+    this.localArchiveSongs = initialArchive;
+
     if (typeof localStorage !== 'undefined') {
       const savedTheme = localStorage.getItem('noah_theme');
       if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -460,8 +478,12 @@ class PresentationStore {
       const savedSongsDir = localStorage.getItem('noah_songs_dir');
       if (savedSongsDir) {
         this.songsDirectory = savedSongsDir;
-        this.scanSongsDirectory(savedSongsDir);
+      } else {
+        // Auto-detect default SongBeamer Songs directory
+        this.songsDirectory = 'Z:/Users/wolfgangmeincke/Documents/SongBeamer/Songs';
       }
+      this.loadLocalArchive();
+
       const savedBackgroundsDir = localStorage.getItem('noah_backgrounds_dir');
       if (savedBackgroundsDir) {
         this.backgroundsDirectory = savedBackgroundsDir;
@@ -1011,6 +1033,51 @@ class PresentationStore {
     }
   }
 
+  async loadLocalArchive() {
+    // 1. If running in native desktop Tauri, scan the directory
+    if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+      if (this.songsDirectory) {
+        await this.scanSongsDirectory(this.songsDirectory);
+      }
+      return;
+    }
+
+    // 2. If running in browser / Vite dev server, fetch live repertoire from /api/songs
+    if (typeof fetch !== 'undefined') {
+      try {
+        const queryDir = this.songsDirectory || '';
+        const url = `/api/songs${queryDir ? `?folder=${encodeURIComponent(queryDir)}` : ''}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.songs) && data.songs.length > 0) {
+            const liveParsed: Array<{ song: Song; filePath: string; fileName: string }> = [];
+            for (const item of data.songs) {
+              try {
+                const s = parseSngText(item.sngContent, item.fileName);
+                liveParsed.push({
+                  song: s,
+                  filePath: item.path,
+                  fileName: item.fileName,
+                });
+              } catch (e) {
+                console.warn('Failed parsing song from /api/songs:', item.fileName, e);
+              }
+            }
+            if (liveParsed.length > 0) {
+              this.localArchiveSongs = liveParsed;
+            }
+            if (data.folder && !this.songsDirectory) {
+              this.songsDirectory = data.folder;
+            }
+          }
+        }
+      } catch (err) {
+        console.debug('Dev server /api/songs not available, using embedded archive:', err);
+      }
+    }
+  }
+
   async searchSongs(query = '', limit = 50, subfolderFilter?: string): Promise<SongSearchResult[]> {
     const q = query.trim().toLowerCase();
 
@@ -1025,30 +1092,68 @@ class PresentationStore {
       }
     }
 
-    // 2. Comprehensive client-side search across Schedule + Subfolder Repertoire
+    // 2. Comprehensive client-side search across Schedule + Local Archive + Sample Library
     const results: SongSearchResult[] = [];
     const seenTitles = new Set<string>();
 
+    // German diacritic / umlaut normalizer (e.g. "Staerke" matches "Stärke", "Grosser" matches "Großer")
+    const normalize = (str: string) =>
+      str
+        .toLowerCase()
+        .replace(/ä/g, 'ae')
+        .replace(/ö/g, 'oe')
+        .replace(/ü/g, 'ue')
+        .replace(/ß/g, 'ss')
+        .replace(/[\.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
     const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+    const normTerms = terms.map(normalize);
 
     // Helper to evaluate multi-term search
-    const matchesQuery = (title: string, author: string, lyrics: string): { matches: boolean; snippet?: string } => {
+    const matchesQuery = (
+      title: string,
+      author: string,
+      lyrics: string,
+      fileName?: string
+    ): { matches: boolean; snippet?: string } => {
       if (terms.length === 0) return { matches: true };
 
       const tLow = title.toLowerCase();
       const aLow = author.toLowerCase();
       const lLow = lyrics.toLowerCase();
+      const fLow = (fileName || '').toLowerCase();
 
-      const allMatch = terms.every((term) => tLow.includes(term) || aLow.includes(term) || lLow.includes(term));
+      const tNorm = normalize(title);
+      const aNorm = normalize(author);
+      const lNorm = normalize(lyrics);
+      const fNorm = normalize(fileName || '');
+
+      const allMatch = terms.every((term, idx) => {
+        const nTerm = normTerms[idx];
+        return (
+          tLow.includes(term) ||
+          tNorm.includes(nTerm) ||
+          aLow.includes(term) ||
+          aNorm.includes(nTerm) ||
+          fLow.includes(term) ||
+          fNorm.includes(nTerm) ||
+          lLow.includes(term) ||
+          lNorm.includes(nTerm)
+        );
+      });
       if (!allMatch) return { matches: false };
 
       // Find best match line in lyrics if title didn't match directly
       let snippet: string | undefined;
-      const titleMatchesAll = terms.every((term) => tLow.includes(term));
+      const titleMatchesAll = terms.every((term) => tLow.includes(term) || tNorm.includes(normalize(term)));
       if (!titleMatchesAll) {
         const lines = lyrics.split('\n').map((l) => l.trim()).filter(Boolean);
         for (const line of lines) {
-          if (terms.some((term) => line.toLowerCase().includes(term))) {
+          const lineLow = line.toLowerCase();
+          const lineNorm = normalize(line);
+          if (terms.some((term, idx) => lineLow.includes(term) || lineNorm.includes(normTerms[idx]))) {
             snippet = line.length > 55 ? line.slice(0, 52) + '...' : line;
             break;
           }
@@ -1085,7 +1190,32 @@ class PresentationStore {
       }
     }
 
-    // B. Built-in Worship Song Repertoire across multiple subfolders
+    // B. Real songs from local archive (disk repertoire)
+    for (const entry of this.localArchiveSongs) {
+      const s = entry.song;
+      const lyrics = s.slides.map((sl) => sl.raw_content).join('\n');
+      const { matches, snippet } = matchesQuery(s.metadata.title, s.metadata.author || '', lyrics, entry.fileName);
+
+      if (matches) {
+        const normTitle = s.metadata.title.toLowerCase();
+        if (!seenTitles.has(normTitle)) {
+          seenTitles.add(normTitle);
+          if (!subfolderFilter || subfolderFilter === 'all' || entry.filePath.toLowerCase().includes(subfolderFilter.toLowerCase())) {
+            results.push({
+              id: s.id,
+              title: s.metadata.title,
+              author: s.metadata.author || '',
+              musical_key: s.metadata.musical_key || '',
+              file_path: entry.filePath,
+              slide_count: s.slides.length,
+              snippet: snippet ? `Im Liedtext: „${snippet}“` : undefined,
+            });
+          }
+        }
+      }
+    }
+
+    // C. Built-in Worship Song Repertoire across multiple subfolders
     const sampleLibrary: Array<{ song: Song; subfolderPath: string }> = [
       {
         song: DEFAULT_SONG,
@@ -1308,8 +1438,19 @@ class PresentationStore {
       return inSchedule.item_type.payload;
     }
 
-    // 2. Load from file if running native desktop
-    if (item.file_path && item.file_path.includes(':')) {
+    // 2. In local archive repertoire?
+    const inArchive = this.localArchiveSongs.find(
+      (entry) =>
+        entry.song.id === item.id ||
+        (item.file_path && entry.filePath.toLowerCase() === item.file_path.toLowerCase()) ||
+        entry.song.metadata.title.toLowerCase() === item.title.toLowerCase()
+    );
+    if (inArchive) {
+      return inArchive.song;
+    }
+
+    // 3. Load from file if running native desktop
+    if (item.file_path && (item.file_path.includes(':') || item.file_path.startsWith('/'))) {
       const loaded = await invokeTauri<FileLoadResult>('load_sng_file', { path: item.file_path });
       if (loaded?.song) {
         return loaded.song;
@@ -1395,7 +1536,19 @@ class PresentationStore {
       return;
     }
 
-    // 2. Try loading from file path if specified
+    // 2. Try loading from local archive songs
+    const inArchive = this.localArchiveSongs.find(
+      (entry) =>
+        entry.song.id === item.id ||
+        (item.file_path && entry.filePath.toLowerCase() === item.file_path.toLowerCase()) ||
+        entry.song.metadata.title.toLowerCase() === item.title.toLowerCase()
+    );
+    if (inArchive) {
+      this.addSongToSchedule(inArchive.song);
+      return;
+    }
+
+    // 3. Try loading from file path if running in native desktop
     if (item.file_path) {
       const loaded = await invokeTauri<FileLoadResult>('load_sng_file', { path: item.file_path });
       if (loaded?.song) {
@@ -1777,10 +1930,33 @@ class PresentationStore {
       path = `${this.songsDirectory.replace(/[\\/]+$/, '')}${sep}${safeTitle}.sng`;
     }
 
-    // 3. Save to disk via Tauri backend
-    await invokeTauri('save_song_to_disk', { song, filePath: path });
+    // 3. Save to disk via Tauri backend or Dev Server API
+    const nativeSaved = await invokeTauri('save_song_to_disk', { song, filePath: path });
+    if (!nativeSaved && path && typeof fetch !== 'undefined') {
+      try {
+        const sngText = serializeSng(song);
+        await fetch('/api/save-song', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filePath: path, content: sngText }),
+        });
+      } catch (err) {
+        console.warn('Failed saving song via dev server API:', err);
+      }
+    }
 
-    // 4. Synchronize live beamer if active
+    // 4. Update in-memory localArchiveSongs
+    if (path) {
+      const fileName = path.split(/[\\/]/).pop() || `${song.metadata.title}.sng`;
+      const idx = this.localArchiveSongs.findIndex((s) => s.filePath === path || s.song.id === song.id);
+      if (idx >= 0) {
+        this.localArchiveSongs[idx] = { song, filePath: path, fileName };
+      } else {
+        this.localArchiveSongs.unshift({ song, filePath: path, fileName });
+      }
+    }
+
+    // 5. Synchronize live beamer if active
     if (this.isBeamerActive) {
       await invokeTauri('sync_active_song', {
         song,

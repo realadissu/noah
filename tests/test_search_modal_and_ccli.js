@@ -283,26 +283,57 @@ async function runTest() {
     console.log('  ✓ CCLI SongSelect song imported to chosen path and added directly to Ablauf!');
 
     // -----------------------------------------------------------------
-    // TEST 7: Toolbar Key Button opens SongSearchModal directly in SongSelect mode
+    // TEST 7: Toolbar Key Button is Removed as Requested
     // -----------------------------------------------------------------
-    console.log('9. Testing Toolbar Key Icon opens Search Modal directly in SongSelect mode...');
-    await evalExpr(`document.querySelector('#sb-quick-ccli-btn').click()`);
+    console.log('9. Verifying Toolbar Key Icon is removed as requested...');
+    const hasToolbarKeyBtn = await evalExpr(`!!document.querySelector('#sb-quick-ccli-btn')`);
+    assert.strictEqual(hasToolbarKeyBtn, false, 'Toolbar key icon (#sb-quick-ccli-btn) must be removed');
+    console.log('  ✓ Toolbar key button is cleanly removed from the toolbar!');
+
+    // -----------------------------------------------------------------
+    // TEST 8: Searching by Real Song Titles in Local Archive
+    // -----------------------------------------------------------------
+    console.log('10. Testing Local Search by Title (Ehre, Gott, Jesus)...');
+    // Open Search Modal again
+    await evalExpr(`document.querySelector('#sb-btn-search-song').click()`);
     await new Promise((r) => setTimeout(r, 400));
 
-    const toolbarKeyResult = await evalExpr(`(() => {
-      const modal = document.querySelector('#sb-song-search-modal');
-      const title = document.querySelector('#sb-song-search-title')?.innerText;
-      const isSongSelectTabActive = document.querySelector('#sb-tab-songselect')?.classList.contains('bg-blue-600') || false;
-      return {
-        isOpen: !!modal,
-        title,
-        isSongSelectTabActive
-      };
+    // Ensure Local Archive tab is active
+    await evalExpr(`document.querySelector('#sb-tab-local').click()`);
+    await new Promise((r) => setTimeout(r, 200));
+
+    // Search for "Ehre"
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Ehre';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
-    console.log('  Toolbar Key Result:', toolbarKeyResult);
-    assert.strictEqual(toolbarKeyResult.isOpen, true, 'Search modal must open');
-    assert.strictEqual(toolbarKeyResult.isSongSelectTabActive, true, 'SongSelect tab must be active');
-    console.log('  ✓ Toolbar key button directly opens Search modal in SongSelect mode!');
+    await new Promise((r) => setTimeout(r, 400));
+
+    const ehreResults = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-search-result-idx]')).map(el => el.innerText);
+      const previewText = document.querySelector('#sb-song-search-preview-text')?.innerText || '';
+      return { items, previewText };
+    })()`);
+    console.log('  Local Search results for "Ehre":', ehreResults);
+    assert.ok(ehreResults.items.some(t => t.includes('Ehre, Macht, und Stärke')), 'Must find "Ehre, Macht, und Stärke"');
+    assert.ok(ehreResults.previewText.includes('sei unserm Gott'), 'Right pane preview must display full song lyrics');
+
+    // Search for "Jesus"
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Jesus';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 400));
+
+    const jesusResults = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-search-result-idx]')).map(el => el.innerText);
+      return items;
+    })()`);
+    console.log('  Local Search results for "Jesus":', jesusResults);
+    assert.ok(jesusResults.some(t => t.includes('Jesus komm') || t.includes('In dem Namen Jesus')), 'Must find Jesus songs from local library');
+    console.log('  ✓ Local song search by title returns results and previews lyrics immediately!');
 
     // Close modal
     await evalExpr(`document.querySelector('#sb-song-search-close-x').click()`);
