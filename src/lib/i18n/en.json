@@ -155,7 +155,7 @@
     "title": "Slides",
     "jumpHint": "Click or use Cursor / Space to present",
     "nextSlideHint": "Next:",
-    "slidesPerRow": "Columns:",
+    "slidesPerRow": "Slides per row",
     "columnsCount": "{count} per row"
   },
   "song": {

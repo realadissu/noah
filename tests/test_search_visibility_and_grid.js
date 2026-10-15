@@ -123,9 +123,9 @@ async function runTest() {
     console.log('  ✓ Search dropdown screenshot saved to:', searchArtifactPath);
 
     // -------------------------------------------------------------
-    // TEST 2: Active Slide Thick Red Border
+    // TEST 2: Active Slide Calibrated Red Border (Etwas Dazwischen)
     // -------------------------------------------------------------
-    console.log('4. Testing Active Slide Thick Red Border...');
+    console.log('4. Testing Active Slide Calibrated Red Border (Etwas Dazwischen)...');
     // Select first slide if not already selected
     await evalExpr(`(() => {
       const slide = document.querySelector('[data-classic-slide-idx="0"]');
@@ -142,89 +142,111 @@ async function runTest() {
       return {
         cardHasBorder2: classes.includes('border-2'),
         cardHasRing2: classes.includes('ring-2'),
-        thumbHasBorder2: thumbClasses.includes('border-2'),
+        cardIsRed: classes.includes('border-[#cc0000]'),
+        thumbHasBorder: thumbClasses.includes('border'),
         thumbHasRing2: thumbClasses.includes('ring-2')
       };
     })()`);
 
     console.log('  Active border metrics:', borderMetrics);
-    assert.ok(borderMetrics.cardHasBorder2, 'Active slide card must have border-2');
-    assert.ok(borderMetrics.cardHasRing2, 'Active slide card must have ring-2');
-    assert.ok(borderMetrics.thumbHasBorder2, 'Active slide thumbnail must have border-2');
-    assert.ok(borderMetrics.thumbHasRing2, 'Active slide thumbnail must have ring-2');
-    console.log('  ✓ Active slide has thick red double-stroke border!');
+    assert.ok(borderMetrics.cardHasBorder2, 'Active slide card must have border-2 (clean 2px thickness)');
+    assert.ok(borderMetrics.cardIsRed, 'Active slide card must have #cc0000 red border');
+    assert.strictEqual(borderMetrics.cardHasRing2, false, 'Active slide card must NOT have ring-2 (avoids excessive thickness)');
+    assert.strictEqual(borderMetrics.thumbHasRing2, false, 'Thumbnail must NOT have ring-2');
+    console.log('  ✓ Active slide has calibrated 2px red border without overblown rings!');
 
     // -------------------------------------------------------------
-    // TEST 3: Slides Per Row Dropdown (2 to 6 columns)
+    // TEST 3: Stepped Slider (Folien pro Zeile, 2 to 6) & UI Cleanup
     // -------------------------------------------------------------
-    console.log('5. Testing Slides Per Row Dropdown in Song Titlebar...');
-    const selectExists = await evalExpr(`(() => {
-      const sel = document.querySelector('#sb-slides-per-row');
-      if (!sel) return { error: 'Select not found' };
-      const options = Array.from(sel.querySelectorAll('option')).map(o => parseInt(o.value, 10));
-      return { found: true, options, currentValue: parseInt(sel.value, 10) };
+    console.log('5. Testing Stepped Slider for Folien pro Zeile in Song Titlebar...');
+    const sliderInfo = await evalExpr(`(() => {
+      const slider = document.querySelector('#sb-slides-per-row');
+      const label = document.querySelector('label[for="sb-slides-per-row"]');
+      const valueBadge = document.querySelector('#sb-slides-per-row-value');
+      const headerText = slider?.closest('div[style*="height"]')?.innerText || '';
+
+      if (!slider) return { error: 'Slider not found' };
+      return {
+        isRangeInput: slider.type === 'range',
+        min: slider.min,
+        max: slider.max,
+        step: slider.step,
+        currentVal: slider.value,
+        labelText: label ? label.innerText.trim() : null,
+        labelHasLargerFont: label ? (label.className.includes('text-xs') && label.className.includes('font-semibold')) : false,
+        valueBadgeText: valueBadge ? valueBadge.innerText.trim() : null,
+        hasSlideCountText: /\\d+\\s*(Folien|slides)/i.test(headerText)
+      };
     })()`);
-    console.log('  Slides per row select options:', selectExists);
-    assert.deepStrictEqual(selectExists.options, [2, 3, 4, 5, 6], 'Options must be [2, 3, 4, 5, 6]');
+    console.log('  Slider info:', sliderInfo);
+    assert.strictEqual(sliderInfo.isRangeInput, true, 'Input must be type="range"');
+    assert.strictEqual(sliderInfo.min, '2', 'Slider min must be 2');
+    assert.strictEqual(sliderInfo.max, '6', 'Slider max must be 6');
+    assert.strictEqual(sliderInfo.step, '1', 'Slider step must be 1 (gerastet)');
+    assert.ok(
+      sliderInfo.labelText === 'Folien pro Zeile' || sliderInfo.labelText === 'Slides per row',
+      `Label must be 'Folien pro Zeile' or 'Slides per row', got: ${sliderInfo.labelText}`
+    );
+    assert.ok(sliderInfo.labelHasLargerFont, 'Label font must be larger (text-xs font-semibold)');
+    assert.strictEqual(sliderInfo.hasSlideCountText, false, 'Slide count text must be completely removed');
 
-    // Change to 4 columns
-    console.log('  Changing to 4 slides per row...');
+    // Change to 5 columns on the fly via slider
+    console.log('  Changing to 5 slides per row via slider input event...');
     await evalExpr(`(() => {
-      const sel = document.querySelector('#sb-slides-per-row');
-      sel.value = '4';
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      const slider = document.querySelector('#sb-slides-per-row');
+      slider.value = '5';
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
     await new Promise((r) => setTimeout(r, 300));
 
-    const check4 = await evalExpr(`(() => {
+    const check5 = await evalExpr(`(() => {
       const grid = document.querySelector('#sb-slide-deck-grid');
       const savedInStorage = localStorage.getItem('noah_slides_per_row');
+      const valueBadge = document.querySelector('#sb-slides-per-row-value');
       return {
         gridColsStyle: grid ? grid.style.gridTemplateColumns : null,
-        savedInStorage
+        savedInStorage,
+        badgeText: valueBadge ? valueBadge.innerText.trim() : null
       };
     })()`);
-    console.log('  Grid after change to 4:', check4);
-    assert.strictEqual(check4.savedInStorage, '4', 'Storage must persist 4');
-    assert.ok(check4.gridColsStyle.includes('repeat(4,'), 'Grid must have repeat(4, ...)');
-    console.log('  ✓ 4 slides per row verified');
+    console.log('  Grid and badge after change to 5:', check5);
+    assert.strictEqual(check5.savedInStorage, '5', 'Storage must persist 5');
+    assert.strictEqual(check5.badgeText, '5', 'Value badge must display 5');
+    assert.ok(check5.gridColsStyle.includes('repeat(5,'), 'Grid must have repeat(5, ...)');
+    console.log('  ✓ 5 slides per row verified on the fly');
 
-    // Change to 6 columns
-    console.log('  Changing to 6 slides per row...');
+    // Change to 3 columns on the fly via slider
+    console.log('  Changing to 3 slides per row via slider input event...');
     await evalExpr(`(() => {
-      const sel = document.querySelector('#sb-slides-per-row');
-      sel.value = '6';
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      const slider = document.querySelector('#sb-slides-per-row');
+      slider.value = '3';
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
     await new Promise((r) => setTimeout(r, 300));
 
-    const check6 = await evalExpr(`(() => {
+    const check3 = await evalExpr(`(() => {
       const grid = document.querySelector('#sb-slide-deck-grid');
       const savedInStorage = localStorage.getItem('noah_slides_per_row');
+      const valueBadge = document.querySelector('#sb-slides-per-row-value');
       return {
         gridColsStyle: grid ? grid.style.gridTemplateColumns : null,
-        savedInStorage
+        savedInStorage,
+        badgeText: valueBadge ? valueBadge.innerText.trim() : null
       };
     })()`);
-    console.log('  Grid after change to 6:', check6);
-    assert.strictEqual(check6.savedInStorage, '6', 'Storage must persist 6');
-    assert.ok(check6.gridColsStyle.includes('repeat(6,'), 'Grid must have repeat(6, ...)');
-    console.log('  ✓ 6 slides per row verified');
+    console.log('  Grid and badge after change to 3:', check3);
+    assert.strictEqual(check3.savedInStorage, '3', 'Storage must persist 3');
+    assert.strictEqual(check3.badgeText, '3', 'Value badge must display 3');
+    assert.ok(check3.gridColsStyle.includes('repeat(3,'), 'Grid must have repeat(3, ...)');
+    console.log('  ✓ 3 slides per row verified on the fly');
 
-    // Capture screenshot with 4 slides per row and thick border
-    await evalExpr(`(() => {
-      const sel = document.querySelector('#sb-slides-per-row');
-      sel.value = '3';
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`);
-    await new Promise((r) => setTimeout(r, 400));
-
+    // Capture screenshot with calibrated border and slider
     const finalScreenshot = await send('Page.captureScreenshot', { format: 'png' });
     const finalArtifactPath = 'C:\\Users\\wolfgangmeincke\\.gemini\\antigravity-ide\\brain\\e51cb7cc-c85b-41d8-a26f-9ab32ccafd1a\\.tempmediaStorage\\slides_per_row_and_border_verified.png';
     fs.writeFileSync(finalArtifactPath, Buffer.from(finalScreenshot.result.data, 'base64'));
     console.log('  ✓ Final verified screenshot saved to:', finalArtifactPath);
 
-    console.log('🎉 ALL 3 REQUESTS TESTED AND VERIFIED CLEANLY!');
+    console.log('🎉 ALL USER REQUIREMENTS VERIFIED WITH 100% SUCCESS!');
     ws.close();
   } finally {
     edge.kill();

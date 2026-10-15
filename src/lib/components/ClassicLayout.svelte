@@ -817,35 +817,35 @@
         class="px-2 border-b border-[#b0b0b0] dark:border-neutral-700 flex items-center justify-between shrink-0 {presentation.theme === 'dark'
           ? 'bg-[#21252b]'
           : 'bg-[#f4f4f4]'}"
-        style="height: calc(24px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
+        style="height: calc(26px * var(--ui-scale)); font-size: calc(11px * var(--ui-scale));"
       >
         <span class="font-bold text-neutral-800 dark:text-white truncate">
           {presentation.activeSong?.metadata.title ?? t('song.noSongLoaded')}
         </span>
-        <div class="flex items-center gap-2.5 shrink-0">
-          <!-- Chic DropDown: Folien pro Zeile (2 bis 6) -->
-          <div class="flex items-center gap-1">
-            <label for="sb-slides-per-row" class="text-[10px] text-neutral-600 dark:text-neutral-400 font-medium select-none">
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Gerasteter Slider: Folien pro Zeile (2 bis 6) -->
+          <div class="flex items-center gap-2">
+            <label for="sb-slides-per-row" class="text-xs font-semibold text-neutral-700 dark:text-neutral-200 select-none whitespace-nowrap">
               {t('deck.slidesPerRow')}
             </label>
-            <select
-              id="sb-slides-per-row"
-              value={presentation.slidesPerRow}
-              onchange={(e) => presentation.setSlidesPerRow(parseInt((e.target as HTMLSelectElement).value, 10))}
-              class="border border-[#7f9db9] dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-none px-1 py-0 text-[10px] font-semibold cursor-pointer focus:outline-none focus:border-[#316ac5]"
-              style="height: calc(18px * var(--ui-scale));"
-            >
-              {#each [2, 3, 4, 5, 6] as count}
-                <option value={count}>
-                  {t('deck.columnsCount', { count })}
-                </option>
-              {/each}
-            </select>
+            <div class="flex items-center gap-1.5">
+              <input
+                type="range"
+                id="sb-slides-per-row"
+                min="2"
+                max="6"
+                step="1"
+                value={presentation.slidesPerRow}
+                oninput={(e) => presentation.setSlidesPerRow(parseInt((e.target as HTMLInputElement).value, 10))}
+                class="w-20 md:w-24 h-1.5 bg-neutral-300 dark:bg-neutral-600 rounded appearance-none cursor-pointer accent-[#316ac5] dark:accent-blue-400 focus:outline-none"
+                title="{presentation.slidesPerRow}"
+                aria-label="{t('deck.slidesPerRow')}"
+              />
+              <span id="sb-slides-per-row-value" class="w-4 text-center font-mono font-bold text-xs text-[#316ac5] dark:text-blue-400 select-none">
+                {presentation.slidesPerRow}
+              </span>
+            </div>
           </div>
-
-          <span class="font-mono text-neutral-500 dark:text-neutral-400">
-            {presentation.activeSong?.slides.length ?? 0} {presentation.activeSong?.slides.length === 1 ? t('section.slide') : t('section.slidePlural')}
-          </span>
         </div>
       </div>
 
@@ -865,7 +865,7 @@
                 tabindex="0"
                 data-classic-slide-idx={idx}
                 class="flex flex-col rounded-none cursor-pointer transition-none select-none {isLive
-                  ? 'border-2 border-[#cc0000] dark:border-[#e53935] ring-2 ring-[#cc0000] dark:ring-[#e53935] bg-white dark:bg-[#21252b] shadow-md'
+                  ? 'border-2 border-[#cc0000] dark:border-[#e53935] bg-white dark:bg-[#21252b] shadow-sm'
                   : 'border border-[#b0b0b0] dark:border-neutral-700 bg-white dark:bg-[#21252b] hover:bg-neutral-50 dark:hover:bg-[#282c34]'}"
                 onclick={() => presentation.selectSlide(idx)}
                 onkeydown={(e) => {
@@ -893,10 +893,10 @@
                 </div>
 
                 <!-- Slide Thumbnail Container: Dynamic Aspect Ratio with Container Query for 1:1 WYSIWYG parity -->
-                <!-- Consistent black canvas matching Beamer exactly, with bold red border when selected -->
+                <!-- Consistent black canvas matching Beamer exactly, with clear calibrated red border when selected -->
                 <div
                   class="w-full relative overflow-hidden bg-black text-white {isLive
-                    ? 'border-2 border-[#cc0000] dark:border-[#e53935] ring-2 ring-[#cc0000] dark:ring-[#e53935] ring-inset'
+                    ? 'border border-[#cc0000] dark:border-[#e53935]'
                     : 'border border-[#7f9db9] dark:border-neutral-700'}"
                   style="aspect-ratio: {presentation.aspectRatio.replace(':', '/')}; container-type: size;"
                 >

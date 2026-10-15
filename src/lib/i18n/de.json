@@ -155,7 +155,7 @@
     "title": "Folien",
     "jumpHint": "Klicken oder Cursortasten / Leertaste zum Weiterschalten",
     "nextSlideHint": "Nächste:",
-    "slidesPerRow": "Spalten:",
+    "slidesPerRow": "Folien pro Zeile",
     "columnsCount": "{count} pro Zeile"
   },
   "song": {
