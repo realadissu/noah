@@ -520,6 +520,148 @@ export const SONGSELECT_CATALOG: SongSelectSong[] = [
       },
     ],
   },
+  {
+    ccliNumber: '6428767',
+    title: 'Oceans (Where Feet May Fail)',
+    titleSecondary: 'Ozeane (Wo Füße scheitern)',
+    authors: 'Joel Houston, Matt Crocker, Salomon Ligthelm, dt. Arne Kopfermann',
+    copyright: '© 2012 Hillsong Music Publishing Australia',
+    musicalKey: 'D',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Du rufst mich übers Wasser in das Unbekannte...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Du rufst mich übers Wasser in das Unbekannte,',
+          'wo Füße leicht den Halt verliern.',
+          'Dort find ich dich in tiefen Wassern, im Vertrauen,',
+          'denn du verlässt mich niemals mehr.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Und ich rufe deinen Namen an,',
+          'halte meinen Blick auf dich gewandt.',
+          'Wenn das Meer tobt und die Wogen gehn,',
+          'werd ich ruhn in deinen Armen,',
+          'denn ich bin dein und du bist mein.',
+        ],
+      },
+      {
+        label: 'Bridge',
+        type: 'Bridge',
+        lines: [
+          'Geist des Herrn, führ mich dorthin, wo mein Glaube wächst,',
+          'lass mich über Wasser gehen, wohin du mich rufst.',
+          'Führe mich noch tiefer als mein Fuß je wagte,',
+          'und mein Glaube wird gestärkt in deiner Gegenwart.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '6456070',
+    title: 'Mittelpunkt',
+    titleSecondary: 'Jesus sei das Zentrum',
+    authors: 'Mia Friesen, Stefan Schöpfle',
+    copyright: '© 2014 D-Town Music / Gerth Medien (Outbreakband)',
+    musicalKey: 'G',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Du bist der Mittelpunkt in meinem Leben...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Du bist der Ursprung, du bist das Ziel,',
+          'du gibst mir Hoffnung, die niemals verfällt.',
+          'In deinen Händen liegt meine Zeit,',
+          'du bist mein Retter in Ewigkeit.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Sei der Mittelpunkt in meinem Leben,',
+          'sei der Mittelpunkt in meiner Welt.',
+          'Alles will ich dir, Herr Jesus, geben,',
+          'alles, was mein Herz zusammenhält.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '2214478',
+    title: 'Anker in der Zeit',
+    titleSecondary: 'Du bist mein Zufluchtsort',
+    authors: 'Albert Frey',
+    copyright: '© 1993 D&D Medien',
+    musicalKey: 'E',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Es gibt bedingungslose Liebe, die alle Furcht vertreibt...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Es gibt bedingungslose Liebe, die alle Furcht vertreibt.',
+          'Es gibt Vergebung aller Sünden, die Schuld zerbricht und heilt.',
+          'Es gibt ein Herz, das für uns schlägt, in Ewigkeit bereit.',
+        ],
+      },
+      {
+        label: 'Refrain',
+        type: 'Chorus',
+        lines: [
+          'Du bist der Fels, du bist der Retter,',
+          'du bist mein Anker in der Zeit.',
+          'Mein starker Turm in jedem Wetter,',
+          'mein Licht in dunkler Dunkelheit.',
+        ],
+      },
+    ],
+  },
+  {
+    ccliNumber: '7068424',
+    title: 'What A Beautiful Name',
+    titleSecondary: 'Wie schön dieser Name ist',
+    authors: 'Ben Fielding, Brooke Ligertwood',
+    copyright: '© 2016 Hillsong Music Publishing Australia',
+    musicalKey: 'D',
+    hasChords: true,
+    hasLeadSheet: true,
+    lyricsPreview: 'Du warst das Wort ganz am Anfang...',
+    sections: [
+      {
+        label: 'Vers 1',
+        type: 'Verse',
+        lines: [
+          'Du warst das Wort ganz am Anfang,',
+          'eins mit dem Höchsten im Licht.',
+          'Verborgen lag deine Herrlichkeit,',
+          'die nun in Christus anbricht.',
+        ],
+      },
+      {
+        label: 'Chorus',
+        type: 'Chorus',
+        lines: [
+          'Wie schön dieser Name ist, wie schön dieser Name ist,',
+          'der Name von Jesus Christus, meinem Herrn.',
+          'Wie schön dieser Name ist, der alles übertrifft,',
+          'wie schön dieser Name ist, der Name Jesus.',
+        ],
+      },
+    ],
+  },
 ];
 
 export async function searchSongSelect(query: string): Promise<SongSelectSong[]> {
@@ -541,7 +683,7 @@ export async function searchSongSelect(query: string): Promise<SongSelectSong[]>
       .trim();
 
   const terms = q.split(/\s+/).filter(Boolean);
-  const normTerms = terms.map(normalize);
+  const normTerms = terms.map((t) => normalize(t.replace(/^#/, '')));
 
   const matched = SONGSELECT_CATALOG.filter((song) => {
     const haystacks = [
@@ -562,72 +704,13 @@ export async function searchSongSelect(query: string): Promise<SongSelectSong[]>
 
     // Every search term must match at least one haystack
     return terms.every((term, idx) => {
+      const cleanTerm = term.replace(/^#/, '').toLowerCase();
       const nTerm = normTerms[idx];
-      return haystacks.some((h) => h.includes(term) || h.includes(nTerm));
+      return haystacks.some((h) => h.includes(cleanTerm) || h.includes(nTerm));
     });
   });
 
-  if (matched.length > 0) {
-    return matched;
-  }
-
-  // Dynamic fallback for any search >= 2 chars not in static catalog:
-  // Allows searching and importing ANY worship title or CCLI number
-  const cleanTitle = query.trim().replace(/^ccli\s*#?\s*/i, '');
-  const isNumeric = /^\d+$/.test(cleanTitle);
-  const fallbackCcli = isNumeric ? cleanTitle : Math.abs(hashCode(cleanTitle)).toString().slice(0, 7).padEnd(7, '4');
-  const fallbackTitle = isNumeric ? `CCLI Song #${cleanTitle}` : cleanTitle;
-
-  return [
-    {
-      ccliNumber: fallbackCcli,
-      title: fallbackTitle,
-      titleSecondary: `${fallbackTitle} (CCLI Repertoire)`,
-      authors: 'CCLI SongSelect Artist',
-      copyright: `© ${new Date().getFullYear()} CCLI License Verified`,
-      musicalKey: 'D',
-      hasChords: true,
-      hasLeadSheet: true,
-      lyricsPreview: `${fallbackTitle} - CCLI SongSelect lizenziertes Lied...`,
-      sections: [
-        {
-          label: 'Vers 1',
-          type: 'Verse',
-          lines: [
-            `${fallbackTitle}`,
-            'Wir preisen deinen Namen, Herr, in Ewigkeit.',
-            'Deine Gnade und Treue währt für alle Zeit.',
-          ],
-        },
-        {
-          label: 'Refrain',
-          type: 'Chorus',
-          lines: [
-            'Heilig, heilig ist der Herr Zebaoth!',
-            'Alle Ehre und Ruhm gebührt unserm Gott.',
-            'Dein Name sei erhöht über alle Welt.',
-          ],
-        },
-        {
-          label: 'Vers 2',
-          type: 'Verse',
-          lines: [
-            'Du bist der Weg, die Wahrheit und das Licht.',
-            'Wer auf dich vertraut, den verlässt du nicht.',
-          ],
-        },
-      ],
-    },
-  ];
-}
-
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
+  return matched;
 }
 
 export function convertSongSelectToSong(item: SongSelectSong): Song {

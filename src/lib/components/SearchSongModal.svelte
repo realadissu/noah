@@ -522,9 +522,13 @@
           <div class="flex-1 flex flex-col items-center justify-center p-8 text-neutral-400 dark:text-neutral-500 text-center select-none">
             <span class="text-4xl mb-2">🎵</span>
             <p class="text-sm">
-              {searchQuery.trim().length >= 2
-                ? t('songSearch.selectSongToPreview')
-                : t('songSearch.searchPrompt')}
+              {#if searchQuery.trim().length < 2}
+                {t('songSearch.searchPrompt')}
+              {:else if (activeTab === 'local' ? localResults.length : ccliResults.length) === 0}
+                {t('songSearch.noSongsFound', { query: searchQuery })}
+              {:else}
+                {t('songSearch.selectSongToPreview')}
+              {/if}
             </p>
           </div>
         {/if}

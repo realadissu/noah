@@ -306,10 +306,43 @@ async function runTest() {
     assert.ok(allesKommtResults.previewText.includes('Alles kommt von dir, Herr, alles ist dein Werk'), 'Preview text must contain lyrics');
     console.log('  ✓ SongSelect search for "Alles kommt von dir" successfully returned song & lyrics!');
 
+    // Test CCLI search with non-existent / gibberish query
+    console.log('10. Testing SongSelect Search for non-existent query ("sdkjfasjkdhkas")...');
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'sdkjfasjkdhkas';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 400));
+
+    const gibberishState = await evalExpr(`(() => {
+      const items = Array.from(document.querySelectorAll('[data-ccli-result-idx]'));
+      const listArea = document.querySelector('#sb-song-search-results-list');
+      const previewArea = document.querySelector('#sb-song-search-preview');
+      return {
+        count: items.length,
+        listText: listArea?.innerText || '',
+        previewText: previewArea?.innerText || ''
+      };
+    })()`);
+    console.log('  Gibberish search state:', gibberishState);
+    assert.strictEqual(gibberishState.count, 0, 'Must NOT return any songs for gibberish input');
+    assert.ok(gibberishState.listText.includes('Keine Lieder gefunden für „sdkjfasjkdhkas“'), 'Must show noSongsFound message');
+    assert.strictEqual(gibberishState.previewText.includes('Wir preisen deinen Namen'), false, 'Must NOT show fake synthesized lyrics');
+    console.log('  ✓ Gibberish search returns 0 results and no fake lyrics!');
+
+    // Re-select "Alles kommt von dir" for import test
+    await evalExpr(`(() => {
+      const input = document.querySelector('#sb-song-search-input');
+      input.value = 'Alles kommt von dir';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await new Promise((r) => setTimeout(r, 400));
+
     // -----------------------------------------------------------------
-    // TEST 6: Save Location Dialog & Automatic Import into Ablauf
+    // TEST 7: Save Location Dialog & Automatic Import into Ablauf
     // -----------------------------------------------------------------
-    console.log('10. Testing Save Destination Dialog and Automatic Schedule Insertion for "Alles kommt von dir"...');
+    console.log('11. Testing Save Destination Dialog and Automatic Schedule Insertion for "Alles kommt von dir"...');
     // Click "In Ablauf importieren..."
     await evalExpr(`document.querySelector('#sb-btn-import-ccli').click()`);
     await new Promise((r) => setTimeout(r, 400));
