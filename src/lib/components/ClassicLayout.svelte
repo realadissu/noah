@@ -5,10 +5,21 @@
   import type { ScheduleItem, Slide, LyricLine, SongSearchResult } from '$lib/types/models';
   import { getAudienceLines, calculateSlideFontSize } from '$lib/utils/slideTypography';
   import { parseSongFormatOptions, getLineRenderStyle } from '$lib/utils/formatUtils';
+  import { isImageBackground } from '$lib/data/backgrounds';
 
   const formatOpts = $derived.by(() => {
     const tags = presentation.activeSong?.metadata?.custom_tags;
     return tags ? parseSongFormatOptions(tags) : null;
+  });
+
+  const activeSongBg = $derived.by<string>(() => {
+    const tags = presentation.activeSong?.metadata?.custom_tags;
+    return tags?.['backgroundimage'] ?? tags?.['format.background'] ?? tags?.['background'] ?? '';
+  });
+
+  const activeSongDimmer = $derived.by<number>(() => {
+    const val = presentation.activeSong?.metadata?.custom_tags?.['backgrounddimmer'];
+    return (val ? parseInt(val, 10) : 25) / 100;
   });
 
   // --- Clock ---
@@ -811,8 +822,24 @@
                     : 'border border-[#7f9db9] dark:border-neutral-700'}"
                   style="aspect-ratio: {presentation.aspectRatio.replace(':', '/')}; container-type: size;"
                 >
+                  <!-- Optional Song Background & Dimmer Layer -->
+                  {#if activeSongBg}
+                    {#if isImageBackground(activeSongBg)}
+                      <div
+                        class="absolute inset-0 bg-cover bg-center pointer-events-none z-0"
+                        style="background-image: url('{activeSongBg}');"
+                      ></div>
+                    {:else}
+                      <div
+                        class="absolute inset-0 pointer-events-none z-0"
+                        style="background: {activeSongBg};"
+                      ></div>
+                    {/if}
+                    <div class="absolute inset-0 bg-black pointer-events-none z-0" style="opacity: {activeSongDimmer};"></div>
+                  {/if}
+
                   <div
-                    class="absolute inset-0 flex items-center justify-center text-center overflow-hidden"
+                    class="absolute inset-0 flex items-center justify-center text-center overflow-hidden relative z-10"
                     style="padding: 5cqh 6cqw;"
                   >
                     <!-- Lyrics Text Preview (Prominent, bold, readable thumbnail parity) -->
@@ -878,8 +905,24 @@
               <span class="text-xl font-bold text-amber-500">Noah</span>
             </div>
           {:else if presentation.activeSlide}
+            <!-- Optional Song Background & Dimmer Layer for Live Audience Preview -->
+            {#if activeSongBg && (presentation.displayMode === 'normal' || !presentation.displayMode)}
+              {#if isImageBackground(activeSongBg)}
+                <div
+                  class="absolute inset-0 bg-cover bg-center pointer-events-none z-0"
+                  style="background-image: url('{activeSongBg}');"
+                ></div>
+              {:else}
+                <div
+                  class="absolute inset-0 pointer-events-none z-0"
+                  style="background: {activeSongBg};"
+                ></div>
+              {/if}
+              <div class="absolute inset-0 bg-black pointer-events-none z-0" style="opacity: {activeSongDimmer};"></div>
+            {/if}
+
             <div
-              class="absolute inset-0 flex items-center justify-center text-center overflow-hidden"
+              class="absolute inset-0 flex items-center justify-center text-center overflow-hidden relative z-10"
               style="padding: 5cqh 6cqw;"
             >
               <div

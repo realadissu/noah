@@ -56,6 +56,7 @@ export function parseSngText(content: string, fileName?: string): Song {
           const val = withoutHash.slice(eqIdx + 1).trim();
           metadata[key.toLowerCase()] = val;
           customTags[key] = val;
+          customTags[key.toLowerCase()] = val;
         }
         continue;
       }

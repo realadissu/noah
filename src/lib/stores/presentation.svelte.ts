@@ -13,6 +13,7 @@ import type {
 } from '$lib/types/models';
 import { parseSng, expandSlidesByVerseOrder } from '$lib/utils/sngParser';
 import { t, i18n } from '$lib/i18n';
+import { PRESENTATION_BACKGROUNDS, type BackgroundItem, isImageBackground } from '$lib/data/backgrounds';
 
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
@@ -419,8 +420,11 @@ class PresentationStore {
   connectedDisplays = $state<DisplayInfo[]>([]);
   activeDisplay = $state<DisplayInfo | null>(null);
 
-  // Songs archive & library state
+  // Standard Directories & Library state
   songsDirectory = $state<string>('');
+  backgroundsDirectory = $state<string>('');
+  schedulesDirectory = $state<string>('');
+  customBackgrounds = $state<BackgroundItem[]>([]);
   isScanning = $state<boolean>(false);
   scanSummary = $state<ScanSummary | null>(null);
 
@@ -446,6 +450,22 @@ class PresentationStore {
       if (savedSongsDir) {
         this.songsDirectory = savedSongsDir;
         this.scanSongsDirectory(savedSongsDir);
+      }
+      const savedBackgroundsDir = localStorage.getItem('noah_backgrounds_dir');
+      if (savedBackgroundsDir) {
+        this.backgroundsDirectory = savedBackgroundsDir;
+      }
+      const savedSchedulesDir = localStorage.getItem('noah_schedules_dir');
+      if (savedSchedulesDir) {
+        this.schedulesDirectory = savedSchedulesDir;
+      }
+      const savedCustomBg = localStorage.getItem('noah_custom_backgrounds');
+      if (savedCustomBg) {
+        try {
+          this.customBackgrounds = JSON.parse(savedCustomBg);
+        } catch (e) {
+          console.warn('Failed to parse saved custom backgrounds:', e);
+        }
       }
       const savedScaleMode = localStorage.getItem('noah_ui_scale_mode');
       if (savedScaleMode === 'custom') {
@@ -934,7 +954,11 @@ class PresentationStore {
   setSongsDirectory(path: string) {
     this.songsDirectory = path;
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('noah_songs_dir', path);
+      if (path) {
+        localStorage.setItem('noah_songs_dir', path);
+      } else {
+        localStorage.removeItem('noah_songs_dir');
+      }
     }
   }
 
@@ -1077,6 +1101,145 @@ class PresentationStore {
         }
       };
       input.click();
+    }
+  }
+
+  setBackgroundsDirectory(dir: string) {
+    this.backgroundsDirectory = dir;
+    if (typeof localStorage !== 'undefined') {
+      if (dir) {
+        localStorage.setItem('noah_backgrounds_dir', dir);
+      } else {
+        localStorage.removeItem('noah_backgrounds_dir');
+      }
+    }
+  }
+
+  setSchedulesDirectory(dir: string) {
+    this.schedulesDirectory = dir;
+    if (typeof localStorage !== 'undefined') {
+      if (dir) {
+        localStorage.setItem('noah_schedules_dir', dir);
+      } else {
+        localStorage.removeItem('noah_schedules_dir');
+      }
+    }
+  }
+
+  async openBackgroundsFolderDialog() {
+    // 1. Try native folder picker first
+    const nativeFolder = await invokeTauri<string | null>('pick_folder', { title: 'Wähle Hintergrundbilder-Verzeichnis' });
+    if (nativeFolder) {
+      this.setBackgroundsDirectory(nativeFolder);
+      return;
+    }
+
+    // 2. Webview HTML5 directory input fallback
+    if (typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.setAttribute('webkitdirectory', '');
+      input.onchange = async () => {
+        if (!input.files || input.files.length === 0) return;
+        this.setBackgroundsDirectory('Browser-Hintergründe');
+        for (const file of Array.from(input.files)) {
+          const nameLower = file.name.toLowerCase();
+          if (
+            nameLower.endsWith('.jpg') ||
+            nameLower.endsWith('.jpeg') ||
+            nameLower.endsWith('.png') ||
+            nameLower.endsWith('.webp') ||
+            nameLower.endsWith('.bmp')
+          ) {
+            await this.addCustomBackgroundFromFile(file);
+          }
+        }
+      };
+      input.click();
+    }
+  }
+
+  async openSchedulesFolderDialog() {
+    // 1. Try native folder picker first
+    const nativeFolder = await invokeTauri<string | null>('pick_folder', { title: 'Wähle Ablaufpläne-Verzeichnis' });
+    if (nativeFolder) {
+      this.setSchedulesDirectory(nativeFolder);
+      return;
+    }
+
+    // 2. Webview HTML5 directory input fallback
+    if (typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.setAttribute('webkitdirectory', '');
+      input.onchange = async () => {
+        if (!input.files || input.files.length === 0) return;
+        this.setSchedulesDirectory('Browser-Abläufe');
+      };
+      input.click();
+    }
+  }
+
+  async importCustomBackgroundFiles() {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/bmp,image/svg+xml,.jpg,.jpeg,.png,.webp,.bmp';
+    input.multiple = true;
+    input.onchange = async () => {
+      if (!input.files || input.files.length === 0) return;
+      for (const file of Array.from(input.files)) {
+        await this.addCustomBackgroundFromFile(file);
+      }
+    };
+    input.click();
+  }
+
+  async addCustomBackgroundFromFile(file: File): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (dataUrl) {
+          const name = file.name.replace(/\.[^/.]+$/, '');
+          this.addCustomBackground({
+            id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            category: 'custom',
+            nameKey: '',
+            defaultName: name,
+            type: 'image',
+            value: dataUrl,
+            previewStyle: `background-image: url('${dataUrl}'); background-size: cover; background-position: center;`,
+            isCustom: true,
+          });
+        }
+        resolve();
+      };
+      reader.onerror = () => resolve();
+      reader.readAsDataURL(file);
+    });
+  }
+
+  addCustomBackground(item: BackgroundItem) {
+    const exists = this.customBackgrounds.some((b) => b.value === item.value);
+    if (!exists) {
+      this.customBackgrounds.push(item);
+      this.persistCustomBackgrounds();
+    }
+  }
+
+  removeCustomBackground(id: string) {
+    this.customBackgrounds = this.customBackgrounds.filter((b) => b.id !== id);
+    this.persistCustomBackgrounds();
+  }
+
+  private persistCustomBackgrounds() {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('noah_custom_backgrounds', JSON.stringify(this.customBackgrounds));
+      } catch (err) {
+        console.warn('Failed to persist custom backgrounds to localStorage:', err);
+      }
     }
   }
 

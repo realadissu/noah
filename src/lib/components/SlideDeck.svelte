@@ -4,6 +4,7 @@
   import type { AspectRatio } from '$lib/types/models';
   import { calculateSlideFontSize } from '$lib/utils/slideTypography';
   import { parseSongFormatOptions, getLineRenderStyle } from '$lib/utils/formatUtils';
+  import { isImageBackground } from '$lib/data/backgrounds';
 
   function getAspectRatioClass(ratio: AspectRatio): string {
     switch (ratio) {
@@ -84,7 +85,7 @@
             >
               <!-- Optional Song Background & Dimmer Layer -->
               {#if activeSongBg}
-                {#if activeSongBg.startsWith('/') || activeSongBg.endsWith('.jpg') || activeSongBg.endsWith('.png') || activeSongBg.endsWith('.webp')}
+                {#if isImageBackground(activeSongBg)}
                   <div
                     class="absolute inset-0 bg-cover bg-center pointer-events-none z-0"
                     style="background-image: url('{activeSongBg}');"

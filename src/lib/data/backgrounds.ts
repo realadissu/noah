@@ -1,4 +1,4 @@
-export type BackgroundCategory = 'colors' | 'gradients' | 'nature' | 'kids';
+export type BackgroundCategory = 'colors' | 'gradients' | 'nature' | 'kids' | 'custom';
 
 export interface BackgroundItem {
   id: string;
@@ -8,6 +8,29 @@ export interface BackgroundItem {
   type: 'color' | 'gradient' | 'image';
   value: string; // Hex, linear-gradient(...), or image URL
   previewStyle: string; // CSS style for preview
+  isCustom?: boolean;
+}
+
+/**
+ * Checks whether a given background value represents an image file / URL / data-URL,
+ * or a CSS color / gradient.
+ */
+export function isImageBackground(val: string | null | undefined): boolean {
+  if (!val) return false;
+  const trimmed = val.trim();
+  if (!trimmed) return false;
+  if (
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('rgb(') ||
+    trimmed.startsWith('rgba(') ||
+    trimmed.startsWith('hsl(') ||
+    trimmed.startsWith('hsla(') ||
+    trimmed.startsWith('linear-gradient(') ||
+    trimmed.startsWith('radial-gradient(')
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export const PRESENTATION_BACKGROUNDS: BackgroundItem[] = [

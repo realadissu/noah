@@ -4,6 +4,7 @@
   import { calculateSlideFontSize } from '$lib/utils/slideTypography';
   import { DEFAULT_SONG } from '$lib/stores/presentation.svelte';
   import { parseSongFormatOptions, getLineRenderStyle } from '$lib/utils/formatUtils';
+  import { isImageBackground } from '$lib/data/backgrounds';
 
   // State managed inside the Beamer webview process
   let activeSong = $state<Song | null>(null);
@@ -241,7 +242,7 @@
 
   <!-- Optional Song Background & Dimmer for Beamer Output -->
   {#if beamerBg && displayMode === 'normal'}
-    {#if beamerBg.startsWith('/') || beamerBg.endsWith('.jpg') || beamerBg.endsWith('.png') || beamerBg.endsWith('.webp')}
+    {#if isImageBackground(beamerBg)}
       <div
         class="absolute inset-0 bg-cover bg-center pointer-events-none z-0 transition-opacity duration-300"
         style="background-image: url('{beamerBg}');"

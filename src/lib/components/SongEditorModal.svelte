@@ -2,8 +2,14 @@
   import { t, i18n } from '$lib/i18n';
   import { presentation } from '$lib/stores/presentation.svelte';
   import type { Song } from '$lib/types/models';
-  import { PRESENTATION_BACKGROUNDS, type BackgroundItem, type BackgroundCategory } from '$lib/data/backgrounds';
+  import {
+    PRESENTATION_BACKGROUNDS,
+    type BackgroundItem,
+    type BackgroundCategory,
+    isImageBackground,
+  } from '$lib/data/backgrounds';
   import SongEditorFormatTab from './editor/SongEditorFormatTab.svelte';
+  import SongEditorBackgroundTab from './editor/SongEditorBackgroundTab.svelte';
   import { type SongFormatOptions, DEFAULT_FORMAT_OPTIONS } from '$lib/types/format';
   import { parseSongFormatOptions, serializeSongFormatOptions } from '$lib/utils/formatUtils';
 
@@ -934,7 +940,7 @@
 
     // Save chosen presentation background & dimmer
     if (selectedBg) {
-      if (selectedBg.startsWith('/') || selectedBg.endsWith('.jpg') || selectedBg.endsWith('.png') || selectedBg.endsWith('.webp')) {
+      if (isImageBackground(selectedBg)) {
         sngContent += `#BackgroundImage=${selectedBg}\n`;
       } else {
         sngContent += `#Format.Background=${selectedBg}\n`;
@@ -994,6 +1000,52 @@
         >
           ✕
         </button>
+      </div>
+
+      <!-- Global Song Header: Title Input + OK / Cancel Action Buttons (Visible across all tabs) -->
+      <div
+        class="px-3.5 py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 border-b {presentation.theme === 'dark'
+          ? 'bg-[#181a20] border-neutral-700'
+          : 'bg-[#f4f2e8] border-neutral-300'}"
+      >
+        <div class="flex-1 flex items-center gap-2.5">
+          <label for="song-title-input" class="text-sm font-bold shrink-0">{t('editor.titleLabel')}</label>
+          <input
+            id="song-title-input"
+            type="text"
+            bind:value={title}
+            placeholder={t('editor.titlePlaceholder')}
+            class="flex-1 px-3 py-1.5 text-sm rounded border focus:outline-none {presentation.theme === 'dark'
+              ? 'bg-neutral-900 border-neutral-700 text-white focus:border-amber-500'
+              : 'bg-white border-neutral-400 text-neutral-900 focus:border-blue-600'}"
+          />
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2 shrink-0 justify-end">
+          <button
+            id="save-song-btn"
+            type="button"
+            class="px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+              ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border-emerald-500/50'
+              : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-xs'}"
+            onclick={handleSave}
+          >
+            <span>✓</span>
+            <span>{t('editor.ok')}</span>
+          </button>
+          <button
+            id="cancel-song-btn"
+            type="button"
+            class="px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
+              ? 'bg-red-600/30 hover:bg-red-600/50 text-red-300 border-red-500/50'
+              : 'bg-red-600 hover:bg-red-700 text-white border-red-700 shadow-xs'}"
+            onclick={handleCancel}
+          >
+            <span>✕</span>
+            <span>{t('editor.cancel')}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Navigation Tabs (Text | Formatierung | Hintergrund | Kategorien | Medien | Copyrights) -->
@@ -1073,45 +1125,8 @@
       <!-- Main Body Area -->
       <div class="flex-1 overflow-y-auto p-3.5 flex flex-col gap-3 min-h-0 select-text">
         {#if activeTab === 'text'}
-          <!-- 1. Song Title Input & Top Action Buttons (OK, Abbrechen, Akkorde, Hintergrund) -->
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
-            <div class="flex-1 flex items-center gap-2.5">
-              <label for="song-title-input" class="text-sm font-bold shrink-0">{t('editor.titleLabel')}</label>
-              <input
-                id="song-title-input"
-                type="text"
-                bind:value={title}
-                placeholder={t('editor.titlePlaceholder')}
-                class="flex-1 px-3 py-1.5 text-base rounded border focus:outline-none {presentation.theme === 'dark'
-                  ? 'bg-neutral-900 border-neutral-700 text-white focus:border-amber-500'
-                  : 'bg-white border-neutral-400 text-neutral-900 focus:border-blue-600'}"
-              />
-            </div>
-
-            <!-- Top Right Action Buttons -->
-            <div class="flex items-center gap-2 shrink-0 justify-end">
-              <button
-                id="save-song-btn"
-                type="button"
-                class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
-                  ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border-emerald-500/50'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-xs'}"
-                onclick={handleSave}
-              >
-                <span>✓</span>
-                <span>{t('editor.ok')}</span>
-              </button>
-              <button
-                id="cancel-song-btn"
-                type="button"
-                class="px-3.5 py-1.5 rounded text-sm font-bold flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
-                  ? 'bg-red-600/30 hover:bg-red-600/50 text-red-300 border-red-500/50'
-                  : 'bg-red-600 hover:bg-red-700 text-white border-red-700 shadow-xs'}"
-                onclick={handleCancel}
-              >
-                <span>✕</span>
-                <span>{t('editor.cancel')}</span>
-              </button>
+          <!-- 1. Text Tab Tools Toolbar (Akkorde, Hintergrund shortcut) -->
+          <div class="flex items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 class="px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 transition border cursor-pointer {presentation.theme === 'dark'
@@ -1133,7 +1148,6 @@
                 {t('editor.bgBtn')}
               </button>
             </div>
-          </div>
 
           <!-- Chord Tool Popover if opened -->
           {#if isChordModalOpen}
@@ -1728,189 +1742,8 @@
             <SongEditorFormatTab bind:formatOptions {langCount} />
           </div>
         {:else if activeTab === 'background'}
-          <!-- 4. Background Tab: 20 Curated Presets across 4 Categories with Contrast Dimmer & Live Preview -->
-          <div
-            class="flex-1 flex flex-col gap-4 rounded-lg border p-5 overflow-y-auto {presentation.theme === 'dark'
-              ? 'bg-neutral-950 border-neutral-700'
-              : 'bg-white border-neutral-300'}"
-          >
-            <div class="flex items-center justify-between border-b pb-2">
-              <div>
-                <div class="font-bold text-base">{t('editor.bgTitle')}</div>
-                <p class="text-xs opacity-75">{t('editor.bgDesc')}</p>
-              </div>
-              {#if selectedBg}
-                <button
-                  type="button"
-                  class="px-3 py-1 rounded border text-xs font-bold hover:bg-red-500/10 text-red-500 transition cursor-pointer"
-                  onclick={() => (selectedBg = '')}
-                >
-                  ✕ {t('editor.bgNone')}
-                </button>
-              {/if}
-            </div>
-
-            <!-- Category Filter Tabs -->
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
-                onclick={() => (selectedBgCategory = 'all')}
-              >
-                {t('editor.bgCategoryAll')}
-              </button>
-              <button
-                type="button"
-                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'colors'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
-                onclick={() => (selectedBgCategory = 'colors')}
-              >
-                🎨 {t('editor.bgCategoryColors')} (5)
-              </button>
-              <button
-                type="button"
-                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'gradients'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
-                onclick={() => (selectedBgCategory = 'gradients')}
-              >
-                🌈 {t('editor.bgCategoryGradients')} (5)
-              </button>
-              <button
-                type="button"
-                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'nature'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
-                onclick={() => (selectedBgCategory = 'nature')}
-              >
-                🏔️ {t('editor.bgCategoryNature')} (5)
-              </button>
-              <button
-                type="button"
-                class="px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer {selectedBgCategory === 'kids'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700'}"
-                onclick={() => (selectedBgCategory = 'kids')}
-              >
-                🧸 {t('editor.bgCategoryKids')} (5)
-              </button>
-            </div>
-
-            <!-- Compact 16:9 Live Stage Preview & Dimmer Controls -->
-            {#if selectedBg}
-              <div class="flex flex-col sm:flex-row items-center gap-4 p-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 shadow-xs">
-                <!-- 16:9 Stage Preview -->
-                <div
-                  class="w-60 shrink-0 rounded-lg border border-neutral-700 shadow-md overflow-hidden relative flex flex-col items-center justify-center text-center p-2.5"
-                  style="{selectedBg.startsWith('/') || selectedBg.endsWith('.jpg') || selectedBg.endsWith('.png') || selectedBg.endsWith('.webp')
-                    ? `background-image: url('${selectedBg}'); background-size: cover; background-position: center;`
-                    : `background: ${selectedBg};`}; aspect-ratio: 16/9; min-height: 90px;"
-                >
-                  <div class="absolute inset-0 bg-black pointer-events-none" style="opacity: {bgDimmer / 100};"></div>
-                  <div class="relative z-10 text-white font-bold text-xs leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)] px-1">
-                    <p class="m-0 truncate max-w-[210px]">{title || 'Großer Gott, wir loben dich'}</p>
-                    <p class="m-0 text-[10px] font-normal opacity-90 truncate max-w-[210px]">Herr, wir preisen deine Stärke.</p>
-                  </div>
-                  <span class="absolute bottom-1 right-1 z-10 text-[8px] uppercase tracking-wider font-extrabold text-white/80 bg-black/60 px-1 py-0.5 rounded">16:9 Beamer</span>
-                </div>
-
-                <!-- Dimmer controls -->
-                <div class="flex-1 flex flex-col gap-2 w-full">
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                      {t('editor.bgDimmerLabel')}:
-                    </span>
-                    <span class="text-xs font-mono font-extrabold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
-                      {bgDimmer}% Abdunklung
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="80"
-                    step="5"
-                    bind:value={bgDimmer}
-                    class="w-full accent-blue-600 cursor-pointer"
-                  />
-                  <div class="flex items-center justify-between text-[10px] text-neutral-500">
-                    <span>0% (Hell)</span>
-                    <span>25% (Ausgewogen)</span>
-                    <span>50% (Hoher Kontrast)</span>
-                    <span>80% (Dunkel)</span>
-                  </div>
-                </div>
-              </div>
-            {/if}
-
-            <!-- 20 Backgrounds Gallery Section -->
-            <div class="flex items-center justify-between pt-1">
-              <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                Vorlagen ({filteredBackgrounds.length} verfügbar):
-              </span>
-              <span class="text-[11px] text-neutral-400">
-                Klick auf ein Bild übernimmt den Hintergrund für Beamer & Vorschau
-              </span>
-            </div>
-
-            <!-- 20 Backgrounds Gallery Grid -->
-            <div class="grid grid-cols-4 sm:grid-cols-5 gap-3.5 max-h-[360px] overflow-y-auto p-2 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50/50 dark:bg-neutral-900/50">
-              {#each filteredBackgrounds as bg (bg.id)}
-                {@const isSelected = selectedBg === bg.value}
-                <div
-                  role="button"
-                  tabindex="0"
-                  class="group flex flex-col rounded-xl border-2 transition-all overflow-hidden text-left cursor-pointer hover:scale-[1.02] select-none shadow-xs {isSelected
-                    ? 'border-blue-600 ring-2 ring-blue-500/40 shadow-md'
-                    : 'border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500'}"
-                  onclick={() => (selectedBg = bg.value)}
-                  onkeydown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      selectedBg = bg.value;
-                    }
-                  }}
-                >
-                  <!-- 16:9 Thumbnail (96px fixed height for true widescreen proportions) -->
-                  <div
-                    class="w-full h-24 relative flex items-center justify-center p-2 overflow-hidden bg-cover bg-center shrink-0"
-                    style="{bg.previewStyle}"
-                  >
-                    <!-- Built-in Dimmer Preview Layer -->
-                    <div
-                      class="absolute inset-0 bg-black pointer-events-none transition-opacity"
-                      style="opacity: {isSelected ? bgDimmer / 100 : 0.25};"
-                    ></div>
-
-                    <!-- Lyric preview snippet showing high contrast legibility -->
-                    <span class="relative z-10 text-[11px] font-bold text-white text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] opacity-90 group-hover:opacity-100 transition">
-                      Abba, Vater
-                    </span>
-
-                    {#if isSelected}
-                      <span class="absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold shadow">
-                        ✓
-                      </span>
-                    {/if}
-                  </div>
-
-                  <!-- Card Label -->
-                  <div class="h-8 px-2 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700 flex items-center justify-between shrink-0">
-                    <span class="text-[11px] font-semibold truncate text-neutral-800 dark:text-neutral-200" title={t(bg.nameKey) !== bg.nameKey ? t(bg.nameKey) : bg.defaultName}>
-                      {t(bg.nameKey) !== bg.nameKey ? t(bg.nameKey) : bg.defaultName}
-                    </span>
-                    {#if isSelected}
-                      <span class="text-[9px] font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-400 ml-1 shrink-0">
-                        {t('editor.bgActiveBadge')}
-                      </span>
-                    {/if}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          </div>
+          <!-- 4. Background Tab: 20 Presets + Custom Background Imports + Contrast Dimmer -->
+          <SongEditorBackgroundTab bind:selectedBg bind:bgDimmer songTitle={title} />
         {:else if activeTab === 'media'}
           <!-- 5. Medien Tab -->
           <div

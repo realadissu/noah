@@ -208,28 +208,49 @@
         </button>
       </div>
 
-      <!-- 6. Songs Directory / Lieder-Verzeichnis -->
-      <div class="pt-3 border-t {presentation.theme === 'dark' ? 'border-neutral-800' : 'border-neutral-200'}">
-        <div class="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
-          📁 {t('settings.libraryTitle')}
+      <!-- 6. Default Directories / Standard-Verzeichnisse (Songs, Backgrounds, Schedules) -->
+      <div class="pt-4 border-t {presentation.theme === 'dark' ? 'border-neutral-800' : 'border-neutral-200'} space-y-4">
+        <div class="block text-xs font-bold uppercase tracking-wider text-neutral-400">
+          📁 {t('settings.defaultDirectoriesTitle')}
         </div>
-        <div class="space-y-2">
+
+        <!-- 6.1 Songs Archive Directory -->
+        <div class="p-3.5 rounded-xl border space-y-2 {presentation.theme === 'dark' ? 'bg-neutral-950/40 border-neutral-800' : 'bg-neutral-50 border-neutral-200'}">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+              🎵 {t('settings.songsDirectoryTitle')}
+            </span>
+            <span class="text-[11px] text-neutral-400">
+              {t('settings.songsDirectoryDesc')}
+            </span>
+          </div>
           <div class="flex items-center gap-2">
             <input
               type="text"
-              readonly
-              value={presentation.songsDirectory || t('settings.noFolderConfigured')}
-              class="flex-1 p-2.5 rounded-xl border text-xs font-mono truncate {presentation.theme === 'dark' ? 'bg-neutral-950 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-300 text-neutral-700'}"
+              value={presentation.songsDirectory}
+              placeholder={t('settings.folderPlaceholder')}
+              oninput={(e) => presentation.setSongsDirectory((e.target as HTMLInputElement).value)}
+              class="flex-1 p-2 rounded-lg border text-xs font-mono {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700 text-neutral-200 placeholder-neutral-600' : 'bg-white border-neutral-300 text-neutral-800 placeholder-neutral-400'}"
             />
             <button
               type="button"
-              class="px-3 py-2.5 rounded-xl text-xs font-bold transition border cursor-pointer shrink-0 {presentation.theme === 'dark'
+              class="px-3 py-2 rounded-lg text-xs font-bold transition border cursor-pointer shrink-0 {presentation.theme === 'dark'
                 ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-600 text-white'
                 : 'bg-white hover:bg-neutral-100 border-neutral-300 text-neutral-800 shadow-xs'}"
               onclick={() => presentation.openSongFolderDialog()}
             >
               {t('settings.chooseFolder')}
             </button>
+            {#if presentation.songsDirectory}
+              <button
+                type="button"
+                title={t('settings.clearFolderTooltip')}
+                class="px-2.5 py-2 rounded-lg text-xs font-bold transition border cursor-pointer text-red-500 hover:bg-red-500/10 border-red-500/30"
+                onclick={() => presentation.setSongsDirectory('')}
+              >
+                ✕
+              </button>
+            {/if}
           </div>
 
           {#if presentation.songsDirectory}
@@ -263,6 +284,86 @@
               </button>
             </div>
           {/if}
+        </div>
+
+        <!-- 6.2 Backgrounds Directory -->
+        <div class="p-3.5 rounded-xl border space-y-2 {presentation.theme === 'dark' ? 'bg-neutral-950/40 border-neutral-800' : 'bg-neutral-50 border-neutral-200'}">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+              🖼️ {t('settings.backgroundsDirectoryTitle')}
+            </span>
+            <span class="text-[11px] text-neutral-400">
+              {t('settings.backgroundsDirectoryDesc')}
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              value={presentation.backgroundsDirectory}
+              placeholder={t('settings.folderPlaceholder')}
+              oninput={(e) => presentation.setBackgroundsDirectory((e.target as HTMLInputElement).value)}
+              class="flex-1 p-2 rounded-lg border text-xs font-mono {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700 text-neutral-200 placeholder-neutral-600' : 'bg-white border-neutral-300 text-neutral-800 placeholder-neutral-400'}"
+            />
+            <button
+              type="button"
+              class="px-3 py-2 rounded-lg text-xs font-bold transition border cursor-pointer shrink-0 {presentation.theme === 'dark'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-600 text-white'
+                : 'bg-white hover:bg-neutral-100 border-neutral-300 text-neutral-800 shadow-xs'}"
+              onclick={() => presentation.openBackgroundsFolderDialog()}
+            >
+              {t('settings.chooseFolder')}
+            </button>
+            {#if presentation.backgroundsDirectory}
+              <button
+                type="button"
+                title={t('settings.clearFolderTooltip')}
+                class="px-2.5 py-2 rounded-lg text-xs font-bold transition border cursor-pointer text-red-500 hover:bg-red-500/10 border-red-500/30"
+                onclick={() => presentation.setBackgroundsDirectory('')}
+              >
+                ✕
+              </button>
+            {/if}
+          </div>
+        </div>
+
+        <!-- 6.3 Schedules Directory -->
+        <div class="p-3.5 rounded-xl border space-y-2 {presentation.theme === 'dark' ? 'bg-neutral-950/40 border-neutral-800' : 'bg-neutral-50 border-neutral-200'}">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-neutral-700 dark:text-neutral-300">
+              📋 {t('settings.schedulesDirectoryTitle')}
+            </span>
+            <span class="text-[11px] text-neutral-400">
+              {t('settings.schedulesDirectoryDesc')}
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              value={presentation.schedulesDirectory}
+              placeholder={t('settings.folderPlaceholder')}
+              oninput={(e) => presentation.setSchedulesDirectory((e.target as HTMLInputElement).value)}
+              class="flex-1 p-2 rounded-lg border text-xs font-mono {presentation.theme === 'dark' ? 'bg-neutral-900 border-neutral-700 text-neutral-200 placeholder-neutral-600' : 'bg-white border-neutral-300 text-neutral-800 placeholder-neutral-400'}"
+            />
+            <button
+              type="button"
+              class="px-3 py-2 rounded-lg text-xs font-bold transition border cursor-pointer shrink-0 {presentation.theme === 'dark'
+                ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-600 text-white'
+                : 'bg-white hover:bg-neutral-100 border-neutral-300 text-neutral-800 shadow-xs'}"
+              onclick={() => presentation.openSchedulesFolderDialog()}
+            >
+              {t('settings.chooseFolder')}
+            </button>
+            {#if presentation.schedulesDirectory}
+              <button
+                type="button"
+                title={t('settings.clearFolderTooltip')}
+                class="px-2.5 py-2 rounded-lg text-xs font-bold transition border cursor-pointer text-red-500 hover:bg-red-500/10 border-red-500/30"
+                onclick={() => presentation.setSchedulesDirectory('')}
+              >
+                ✕
+              </button>
+            {/if}
+          </div>
         </div>
       </div>
     </div>
